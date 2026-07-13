@@ -47,7 +47,7 @@ enum ParseService {
             return cached
         }
 
-        let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey)
+        let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey, wireAPI: ep.wireAPI)
 
         var lastError: Error = LLMError.emptyResponse
         for _ in 0..<2 {

@@ -32,6 +32,7 @@ final class ResultPanelController {
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
+        panel.isMovableByWindowBackground = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.panel = panel
 
@@ -76,7 +77,7 @@ final class ResultPanelController {
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? .zero
 
-        var origin = CGPoint(x: mouse.x + 12, y: mouse.y - size.height - 12)
+        var origin = CGPoint(x: mouse.x - size.width / 2, y: mouse.y - size.height - 12)
         if origin.x + size.width > visible.maxX { origin.x = visible.maxX - size.width - 8 }
         if origin.x < visible.minX { origin.x = visible.minX + 8 }
         if origin.y < visible.minY { origin.y = mouse.y + 12 }
@@ -87,7 +88,10 @@ final class ResultPanelController {
 
     private func installMonitors() {
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            Task { @MainActor in self?.close() }
+            Task { @MainActor in
+                guard let self, !self.state.pinned else { return }
+                self.close()
+            }
         }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Esc

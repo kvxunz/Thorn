@@ -20,11 +20,26 @@ enum LLMError: LocalizedError {
     }
 }
 
+enum WireAPI: String, CaseIterable, Identifiable {
+    case chatCompletions = "chat"
+    case responses = "responses"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .chatCompletions: return "Chat Completions"
+        case .responses: return "Responses (Codex)"
+        }
+    }
+}
+
 /// Minimal OpenAI-compatible chat client. Works for Ollama and any relay (Sub2API etc.).
 struct LLMClient {
     let baseURL: String
     let model: String
     let apiKey: String?
+    var wireAPI: WireAPI = .chatCompletions
 
     private struct ChatRequest: Encodable {
         struct Message: Encodable {
@@ -50,7 +65,16 @@ struct LLMClient {
     }
 
     func chat(system: String, user: String, jsonMode: Bool) async throws -> String {
-        guard let url = URL(string: baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions") else {
+        switch wireAPI {
+        case .chatCompletions:
+            return try await chatCompletions(system: system, user: user, jsonMode: jsonMode)
+        case .responses:
+            return try await responses(system: system, user: user)
+        }
+    }
+
+    private func post(path: String, body: Data) async throws -> Data {
+        guard let url = URL(string: baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path) else {
             throw LLMError.badURL
         }
         var req = URLRequest(url: url)
@@ -60,17 +84,7 @@ struct LLMClient {
         if let apiKey {
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
-        let body = ChatRequest(
-            model: model,
-            messages: [
-                .init(role: "system", content: system),
-                .init(role: "user", content: user),
-            ],
-            temperature: 0.2,
-            response_format: jsonMode ? .init(type: "json_object") : nil,
-            stream: false
-        )
-        req.httpBody = try JSONEncoder().encode(body)
+        req.httpBody = body
 
         let data: Data
         let response: URLResponse
@@ -83,11 +97,65 @@ struct LLMClient {
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw LLMError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
         }
+        return data
+    }
+
+    private func chatCompletions(system: String, user: String, jsonMode: Bool) async throws -> String {
+        let body = ChatRequest(
+            model: model,
+            messages: [
+                .init(role: "system", content: system),
+                .init(role: "user", content: user),
+            ],
+            temperature: 0.2,
+            response_format: jsonMode ? .init(type: "json_object") : nil,
+            stream: false
+        )
+        let data = try await post(path: "/chat/completions", body: try JSONEncoder().encode(body))
         let decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
         guard let content = decoded.choices.first?.message.content, !content.isEmpty else {
             throw LLMError.emptyResponse
         }
         return content
+    }
+
+    /// OpenAI Responses API (Codex-style gateways). JSON output enforced by prompt only.
+    private func responses(system: String, user: String) async throws -> String {
+        struct ResponsesRequest: Encodable {
+            let model: String
+            let instructions: String
+            let input: String
+            let stream: Bool
+        }
+        struct ResponsesResponse: Decodable {
+            struct Output: Decodable {
+                struct Content: Decodable {
+                    let type: String?
+                    let text: String?
+                }
+                let type: String?
+                let content: [Content]?
+            }
+            let output: [Output]?
+            let output_text: String?
+        }
+        let body = ResponsesRequest(model: model, instructions: system, input: user, stream: false)
+        let data = try await post(path: "/responses", body: try JSONEncoder().encode(body))
+        let decoded = try JSONDecoder().decode(ResponsesResponse.self, from: data)
+
+        if let direct = decoded.output_text, !direct.isEmpty { return direct }
+        // Take any content item carrying text; gateways vary on type labels
+        // ("output_text" / "text") and item ordering (reasoning first).
+        let text = (decoded.output ?? [])
+            .filter { $0.type != "reasoning" }
+            .flatMap { $0.content ?? [] }
+            .compactMap(\.text)
+            .joined()
+        guard !text.isEmpty else {
+            ThornLog.info("responses raw body: \(String(data: data, encoding: .utf8)?.prefix(6000) ?? "<binary>")")
+            throw LLMError.emptyResponse
+        }
+        return text
     }
 
     /// GET /models — for the settings model picker.
@@ -100,17 +168,35 @@ struct LLMClient {
         if let apiKey {
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
-        struct ModelList: Decodable {
-            struct Model: Decodable { let id: String }
-            let data: [Model]
-        }
         let data: Data
+        let response: URLResponse
         do {
-            (data, _) = try await URLSession.shared.data(for: req)
+            (data, response) = try await URLSession.shared.data(for: req)
         } catch {
             throw LLMError.connectionFailed
         }
-        let list = try JSONDecoder().decode(ModelList.self, from: data)
-        return list.data.map(\.id).sorted()
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw LLMError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+        }
+
+        // Accept common shapes: {"data":[{"id":..}]}, {"models":[..]}, ["m1","m2"]
+        struct Entry: Decodable {
+            let id: String?
+            let name: String?
+            var modelID: String? { id ?? name }
+        }
+        struct Wrapped: Decodable {
+            let data: [Entry]?
+            let models: [Entry]?
+        }
+        let decoder = JSONDecoder()
+        if let wrapped = try? decoder.decode(Wrapped.self, from: data),
+           let entries = wrapped.data ?? wrapped.models {
+            return entries.compactMap(\.modelID).sorted()
+        }
+        if let plain = try? decoder.decode([String].self, from: data) {
+            return plain.sorted()
+        }
+        throw LLMError.badJSON(String(data: data, encoding: .utf8) ?? "")
     }
 }

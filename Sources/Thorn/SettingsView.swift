@@ -17,40 +17,42 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
             }
 
-            Section("本地 Ollama") {
-                HStack {
-                    if ollamaModels.isEmpty {
-                        TextField("模型", text: $settings.ollamaModel)
-                    } else {
-                        Picker("模型", selection: $settings.ollamaModel) {
-                            ForEach(ollamaModels, id: \.self) { Text($0).tag($0) }
+            if settings.provider == .ollama {
+                Section("本地 Ollama") {
+                    HStack {
+                        if ollamaModels.isEmpty {
+                            TextField("模型", text: $settings.ollamaModel)
+                        } else {
+                            Picker("模型", selection: $settings.ollamaModel) {
+                                ForEach(ollamaModels, id: \.self) { Text($0).tag($0) }
+                            }
                         }
+                        Button("刷新") { Task { await fetchOllamaModels() } }
                     }
-                    Button("刷新") { Task { await fetchOllamaModels() } }
-                }
-                Text("端点固定为 \(SettingsStore.ollamaBaseURL)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("自定义端点（Sub2API 等 OpenAI 兼容）") {
-                TextField("Base URL", text: $settings.customBaseURL, prompt: Text("https://your-relay.example.com/v1"))
-                SecureField("API Key", text: $settings.customAPIKey)
-                HStack {
-                    if customModels.isEmpty {
-                        TextField("模型", text: $settings.customModel, prompt: Text("模型名"))
-                    } else {
-                        Picker("模型", selection: $settings.customModel) {
-                            ForEach(customModels, id: \.self) { Text($0).tag($0) }
-                        }
-                    }
-                    Button("获取模型列表") { Task { await fetchCustomModels() } }
-                        .disabled(settings.customBaseURL.isEmpty)
-                }
-                if let modelFetchError {
-                    Text(modelFetchError)
+                    Text("端点固定为 \(SettingsStore.ollamaBaseURL)")
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Section("自定义端点（Sub2API 等 OpenAI 兼容）") {
+                    TextField("Base URL", text: $settings.customBaseURL, prompt: Text("https://your-relay.example.com/v1"))
+                    SecureField("API Key", text: $settings.customAPIKey)
+                    HStack {
+                        if customModels.isEmpty {
+                            TextField("模型", text: $settings.customModel, prompt: Text("模型名"))
+                        } else {
+                            Picker("模型", selection: $settings.customModel) {
+                                ForEach(customModels, id: \.self) { Text($0).tag($0) }
+                            }
+                        }
+                        Button("获取模型列表") { Task { await fetchCustomModels() } }
+                            .disabled(settings.customBaseURL.isEmpty)
+                    }
+                    if let modelFetchError {
+                        Text(modelFetchError)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
             }
 

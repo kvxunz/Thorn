@@ -12,12 +12,14 @@ final class PanelState: ObservableObject {
     @Published var status: Status = .loading
     @Published var hoveredChunkID: String?
     @Published var usingCloud = false
+    @Published var pinned = false
 
     private var task: Task<Void, Never>?
 
     func start(sentence: String) {
         self.sentence = sentence
         self.usingCloud = false
+        self.pinned = false
         run(provider: nil, force: false)
     }
 

@@ -37,9 +37,15 @@ struct SettingsView: View {
                 Section("自定义端点（Sub2API 等 OpenAI 兼容）") {
                     TextField("Base URL", text: $settings.customBaseURL, prompt: Text("https://your-relay.example.com/v1"))
                     SecureField("API Key", text: $settings.customAPIKey)
+                    Picker("协议", selection: $settings.customWireAPI) {
+                        ForEach(WireAPI.allCases) { wire in
+                            Text(wire.label).tag(wire)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                     HStack {
                         if customModels.isEmpty {
-                            TextField("模型", text: $settings.customModel, prompt: Text("模型名"))
+                            TextField("模型", text: $settings.customModel, prompt: Text("如 gpt-5.4，可手动填写"))
                         } else {
                             Picker("模型", selection: $settings.customModel) {
                                 ForEach(customModels, id: \.self) { Text($0).tag($0) }
@@ -48,6 +54,9 @@ struct SettingsView: View {
                         Button("获取模型列表") { Task { await fetchCustomModels() } }
                             .disabled(settings.customBaseURL.isEmpty)
                     }
+                    Text("Codex 订阅型网关选 Responses；普通中转选 Chat Completions。模型列表拉不到就手动填模型名。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     if let modelFetchError {
                         Text(modelFetchError)
                             .font(.caption)

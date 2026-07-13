@@ -35,6 +35,9 @@ final class SettingsStore: ObservableObject {
     @Published var customAPIKey: String {
         didSet { KeychainHelper.set(customAPIKey, account: "customAPIKey") }
     }
+    @Published var customWireAPI: WireAPI {
+        didSet { defaults.set(customWireAPI.rawValue, forKey: "customWireAPI") }
+    }
 
     static let ollamaBaseURL = "http://127.0.0.1:11434/v1"
 
@@ -44,15 +47,16 @@ final class SettingsStore: ObservableObject {
         customBaseURL = defaults.string(forKey: "customBaseURL") ?? ""
         customModel = defaults.string(forKey: "customModel") ?? ""
         customAPIKey = KeychainHelper.get(account: "customAPIKey") ?? ""
+        customWireAPI = WireAPI(rawValue: defaults.string(forKey: "customWireAPI") ?? "") ?? .chatCompletions
     }
 
     /// Endpoint config for a given provider (nil = current provider).
-    func endpoint(for provider: Provider? = nil) -> (baseURL: String, model: String, apiKey: String?) {
+    func endpoint(for provider: Provider? = nil) -> (baseURL: String, model: String, apiKey: String?, wireAPI: WireAPI) {
         switch provider ?? self.provider {
         case .ollama:
-            return (Self.ollamaBaseURL, ollamaModel, nil)
+            return (Self.ollamaBaseURL, ollamaModel, nil, .chatCompletions)
         case .custom:
-            return (customBaseURL, customModel, customAPIKey.isEmpty ? nil : customAPIKey)
+            return (customBaseURL, customModel, customAPIKey.isEmpty ? nil : customAPIKey, customWireAPI)
         }
     }
 

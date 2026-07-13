@@ -21,6 +21,20 @@ struct ResultView: View {
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(Color.primary.opacity(0.08))
         )
+        .overlay(alignment: .topTrailing) {
+            if case .result = state.status {
+                Button {
+                    state.pinned.toggle()
+                } label: {
+                    Image(systemName: state.pinned ? "pin.fill" : "pin")
+                        .font(.system(size: 11))
+                        .foregroundStyle(state.pinned ? Color.orange : Color.secondary.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .padding(10)
+                .help(state.pinned ? "取消固定" : "固定：点击外部不再关闭")
+            }
+        }
     }
 
     private var loadingView: some View {
@@ -68,7 +82,8 @@ struct ResultView: View {
                         }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.leading, 16)
+            .padding(.trailing, 30) // room for the pin button
             .padding(.top, 16)
             .padding(.bottom, 12)
 

@@ -27,6 +27,25 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         Task { @MainActor in self.userResized = true }
     }
 
+    /// Bring back the last result after the panel was dismissed (⌥Z).
+    func recall() {
+        guard !state.sentence.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        if let panel {
+            panel.orderFrontRegardless()
+            return
+        }
+        if case .result = state.status {
+            presentPanel() // show as-is, no re-parse
+        } else {
+            // was closed mid-parse or errored: run again (cache makes it cheap)
+            state.start(sentence: state.sentence)
+            presentPanel()
+        }
+    }
+
     /// The content's true minimum height at a given width: the window must
     /// never go below it, or SwiftUI overflows and the window clips corners.
     private func minContentHeight(atWidth width: CGFloat) -> CGFloat {

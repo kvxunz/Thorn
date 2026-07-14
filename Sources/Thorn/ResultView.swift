@@ -21,20 +21,18 @@ struct ResultView: View {
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(Color.primary.opacity(0.08))
         )
-        .overlay(alignment: .topTrailing) {
-            if case .result = state.status {
-                Button {
-                    state.pinned.toggle()
-                } label: {
-                    Image(systemName: state.pinned ? "pin.fill" : "pin")
-                        .font(.system(size: 11))
-                        .foregroundStyle(state.pinned ? Color.orange : Color.secondary.opacity(0.6))
-                }
-                .buttonStyle(.plain)
-                .padding(10)
-                .help(state.pinned ? "取消固定" : "固定：点击外部不再关闭")
-            }
+    }
+
+    private var pinButton: some View {
+        Button {
+            state.pinned.toggle()
+        } label: {
+            Image(systemName: state.pinned ? "pin.fill" : "pin")
+                .font(.system(size: 11))
+                .foregroundStyle(state.pinned ? Color.orange : Color.secondary.opacity(0.6))
         }
+        .buttonStyle(.plain)
+        .help(state.pinned ? "取消固定" : "固定：点击外部不再关闭")
     }
 
     private var loadingView: some View {
@@ -67,6 +65,15 @@ struct ResultView: View {
 
     private func resultView(_ result: ParseResult) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Control strip: engine toggle + pin
+            HStack(spacing: 10) {
+                Spacer()
+                engineToggle
+                pinButton
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+
             // Sentence with trunk emphasis
             FlowLayout(spacing: 5) {
                 ForEach(result.chunks) { chunk in
@@ -86,9 +93,8 @@ struct ResultView: View {
                         }
                 }
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 30) // room for the pin button
-            .padding(.top, 16)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
             .padding(.bottom, 12)
 
             Divider().padding(.horizontal, 12)
@@ -104,18 +110,14 @@ struct ResultView: View {
 
             Divider().padding(.horizontal, 12)
 
-            // Full translation + engine toggle
-            HStack(alignment: .top, spacing: 8) {
-                Text(result.translation)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.primary.opacity(0.85))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                engineToggle
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            // Full translation
+            Text(result.translation)
+                .font(.system(size: 13))
+                .foregroundStyle(.primary.opacity(0.85))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
         }
     }
 

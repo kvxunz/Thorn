@@ -98,10 +98,25 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
             }
     }
 
+    /// Content changed while the user holds a manual size: keep their size,
+    /// but never smaller than the content's new minimum (or it overflows).
+    private func enforceMinimum() {
+        guard let panel else { return }
+        let minH = minContentHeight(atWidth: panel.frame.width)
+        guard panel.frame.height < minH else { return }
+        var frame = panel.frame
+        frame.origin.y = frame.maxY - minH
+        frame.size.height = minH
+        if let visible = panel.screen?.visibleFrame {
+            frame.origin.y = max(visible.minY + 8, frame.origin.y)
+        }
+        panel.setFrame(frame, display: true)
+    }
+
     /// Resize to the content's real size: keep top edge fixed, clamp to screen.
     /// Backs off once the user has resized the panel manually.
     private func fitToContent() {
-        guard !userResized else { return }
+        guard !userResized else { return enforceMinimum() }
         guard let panel, let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize

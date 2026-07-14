@@ -15,25 +15,25 @@ enum ParseService {
       "translation": "<流畅的中文翻译>"
     }
 
-    Rules:
-    - "role" must be one of: subject, verb, object, complement, clause-relative, clause-adverbial, clause-noun, prep-phrase, insertion, conjunction, relative, adverbial, other
-    - Split the MAIN clause backbone into separate chunks: subject / verb / object / complement each gets its own chunk. The verb chunk includes auxiliaries ("have to get used to" is ONE verb chunk).
-    - Linking verbs (be/become/seem/look/remain...) take a PREDICATIVE, not an object: "are" is the verb chunk, "volatile quantities" is a separate chunk with role "complement" — never merge them and never call the predicative an object.
-    - Each modifier (prepositional phrase, subordinate clause, insertion) is its own chunk.
-    - Use clause-* roles ONLY for real SUBORDINATE clauses containing their own subject and verb. "In other places" has no verb: it is prep-phrase, not a clause.
-    - COORDINATE clauses (joined by and/but/or/so, often after a dash or semicolon) are MAIN clauses, never clause-*. Decompose EACH coordinate clause into its own subject/verb/object/complement chunks.
-    - A coordinating conjunction joining two clauses ("or", "but", "—or at least", "and yet") is its own chunk with role "conjunction". Never glue it to the preceding object or the following subject.
-    - NEVER reorder words: chunks in array order must read exactly like the original. ONLY in questions where the auxiliary comes BEFORE the subject ("Why must we master...") keep the inverted group "must we master" as ONE verb chunk; the question word (Why/How/What...) is its own chunk with role "adverbial".
-    - In every DECLARATIVE clause the subject is ALWAYS its own separate chunk, and the object is separate from the verb. "they would have hedged their bets" is THREE chunks (they / would have hedged / their bets), never one.
-    - An infinitive complement ("to purchase assets") belongs with its verb chain or gets role "complement" — never "other".
-    - COVERAGE INVARIANT: top-level chunk texts concatenated in order must equal the WHOLE input. And whenever a chunk has children, that chunk's own text must equal its children's texts concatenated. So a subject with an attached relative clause has text "The committee, which had been deliberating for weeks," and children ["The committee," + the which-clause] — the parent text is never shorter than its children.
-    - NEVER make a chunk that is only punctuation. Attach punctuation (: , ; ?) to the end of the preceding chunk; a dash introducing a new clause stays with the conjunction chunk ("—or at least").
-    - RECURSIVE EXPANSION: every clause-* chunk MUST carry a "children" array that decomposes the clause into its OWN components. Inside the clause, split out prep-phrases and adverbials too ("had been deliberating" verb + "for weeks" prep-phrase). If a child is itself a clause, give it children the same way, recursively. Children texts concatenated must equal the parent chunk text.
-    - Inside a clause, the introducing word gets its true role: a relative pronoun (which/who/that referring back to a noun) is role "relative" — it often IS the clause's subject or object, so gloss it as what it refers to (e.g. which -> "指代前述委员会"). A pure subordinating conjunction (when/because/if/although, or "that" introducing a noun clause) is role "conjunction".
-    - A non-clause chunk gets "children" ONLY when it embeds a clause inside it (e.g. object "everyone who attended" -> children: "everyone" + the who-clause). Plain phrases never have children.
-    - Participial phrases ("Standing at the door," / "encouraged by the news,") are role "adverbial"; appositives ("John, a local farmer,") are role "insertion".
-    - "gloss" is a concise Chinese rendering of that chunk in context.
-    - "translation" is fluent natural Chinese covering ALL input sentences, not a concatenation of glosses.
+    Roles: subject, verb, object, complement, clause-relative, clause-adverbial, clause-noun, prep-phrase, insertion, conjunction, relative, adverbial, other
+
+    Chunking:
+    - Backbone components each get their OWN chunk: subject / verb / object / complement — never merge the subject or object into the verb chunk. The verb chunk keeps its auxiliaries and fixed particles ("have to get used to", "benefit from" are each ONE verb chunk).
+    - Linking verbs (be/become/seem/remain...) take a predicative with role "complement", never an object; verb and predicative are separate chunks. Infinitive complements ("to purchase assets") are "complement", never "other".
+    - Modifiers are separate chunks: prep-phrases, subordinate clauses, adverbials. Participial phrases ("Standing at the door,") are "adverbial"; appositives ("John, a local farmer,") are "insertion".
+    - Coordinate clauses (and/but/or/so, often after a dash or semicolon) are MAIN clauses: decompose each into its own backbone. The joining conjunction ("—but", "or at least") is its own "conjunction" chunk, never glued to a neighbor.
+    - Keep original word order. One exception: in questions, the inverted aux+subject+verb group ("must we master") stays ONE verb chunk and the question word (Why/How...) is "adverbial". In declarative clauses the subject ALWAYS stands alone.
+    - Never make a punctuation-only chunk: attach punctuation to the preceding chunk (a clause-introducing dash stays with its conjunction: "—but").
+
+    Clauses and recursion:
+    - clause-* roles ONLY for subordinate clauses containing their own subject and verb. Prep-phrases and V-ing phrases without their own subject ("in other places", "making a decision") are NOT clauses.
+    - Every clause-* chunk MUST have "children" decomposing it into its own components (split out its internal prep-phrases and adverbials too), recursively if a child is itself a clause.
+    - Inside a clause the introducing word gets its true role: relative pronouns (which/who/that referring to a noun) are "relative", glossed by their referent ("指代前述委员会"); subordinating conjunctions (when/if/because, noun-clause "that") are "conjunction".
+    - A non-clause chunk has "children" ONLY when a clause is embedded in it ("everyone who attended" -> "everyone" + the who-clause).
+
+    Invariants:
+    - Top-level chunk texts concatenated in order = the WHOLE input, word for word. A parent's text = its children's texts concatenated.
+    - "gloss": concise Chinese for that chunk in context. "translation": fluent Chinese covering ALL input sentences, not a concatenation of glosses.
 
     Example, for "In other places, people have to get used to the rain and cold when autumn comes.":
     {"chunks":[

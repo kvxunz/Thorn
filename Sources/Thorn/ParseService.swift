@@ -9,7 +9,8 @@ enum ParseService {
     Output STRICT JSON only, no markdown, no commentary:
     {
       "chunks": [
-        {"text": "<exact substring from the sentence>", "role": "<role>", "gloss": "<自然的中文释义>"}
+        {"text": "<exact substring>", "role": "<role>", "gloss": "<自然的中文释义>",
+         "children": [ ...same shape, ONLY for clause-* chunks... ]}
       ],
       "translation": "<整句流畅中文翻译>"
     }
@@ -24,6 +25,8 @@ enum ParseService {
     - An infinitive complement ("to purchase assets") belongs with its verb chain or gets role "complement" — never "other".
     - Chunks concatenated in order must cover the whole sentence.
     - NEVER make a chunk that is only punctuation. Attach punctuation (: , ; ?) to the end of the preceding chunk; a dash introducing a new clause stays with the conjunction chunk ("—or at least").
+    - RECURSIVE EXPANSION: every clause-* chunk MUST carry a "children" array that decomposes the clause into its OWN components — the introducing word (that/which/who/when/because/if...) gets role "conjunction", then the clause's own subject/verb/object/complement/prep-phrase chunks. If a child is itself a clause, give it children the same way, recursively. Children texts concatenated must equal the parent chunk text.
+    - A non-clause chunk gets "children" ONLY when it embeds a clause inside it (e.g. object "everyone who attended" -> children: "everyone" + the who-clause). Plain phrases never have children.
     - "gloss" is a concise Chinese rendering of that chunk in context.
     - "translation" is one fluent Chinese sentence, not a concatenation of glosses.
 
@@ -33,7 +36,11 @@ enum ParseService {
       {"text":"people","role":"subject","gloss":"人们"},
       {"text":"have to get used to","role":"verb","gloss":"不得不习惯"},
       {"text":"the rain and cold","role":"object","gloss":"雨水和寒冷"},
-      {"text":"when autumn comes.","role":"clause-adverbial","gloss":"当秋天到来时"}
+      {"text":"when autumn comes.","role":"clause-adverbial","gloss":"当秋天到来时","children":[
+        {"text":"when","role":"conjunction","gloss":"当…时"},
+        {"text":"autumn","role":"subject","gloss":"秋天"},
+        {"text":"comes.","role":"verb","gloss":"到来"}
+      ]}
     ],"translation":"在其他地方，秋天来临时人们不得不习惯雨水和寒冷。"}
 
     Example with coordinate clauses, for "The committee praised the ambitious proposal—but in the end they rejected it unanimously.":
@@ -104,10 +111,16 @@ enum ParseService {
 
     /// Merge punctuation-only chunks into their neighbor so they never render as
     /// cards: into the previous chunk, or ahead into the next if they lead.
+    /// Applied recursively to clause children.
     private static func sanitize(_ result: ParseResult) -> ParseResult {
+        ParseResult(chunks: sanitize(result.chunks), translation: result.translation)
+    }
+
+    private static func sanitize(_ chunks: [Chunk]) -> [Chunk] {
         var merged: [Chunk] = []
         var pendingPrefix = ""
-        for chunk in result.chunks {
+        for chunk in chunks {
+            let children = chunk.children.map(sanitize)
             let hasContent = chunk.text.rangeOfCharacter(from: .alphanumerics) != nil
             if !hasContent {
                 if merged.isEmpty {
@@ -117,15 +130,16 @@ enum ParseService {
                     merged[merged.count - 1] = Chunk(
                         text: last.text + chunk.text,
                         role: last.role,
-                        gloss: last.gloss
+                        gloss: last.gloss,
+                        children: last.children
                     )
                 }
             } else {
                 let text = pendingPrefix + chunk.text
                 pendingPrefix = ""
-                merged.append(Chunk(text: text, role: chunk.role, gloss: chunk.gloss))
+                merged.append(Chunk(text: text, role: chunk.role, gloss: chunk.gloss, children: children))
             }
         }
-        return ParseResult(chunks: merged, translation: result.translation)
+        return merged
     }
 }

@@ -21,6 +21,15 @@ struct ResultView: View {
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(Color.primary.opacity(0.08))
         )
+        .overlay(alignment: .topTrailing) {
+            if case .result = state.status {
+                HStack(spacing: 10) {
+                    engineToggle
+                    pinButton
+                }
+                .padding(10)
+            }
+        }
     }
 
     private var pinButton: some View {
@@ -84,16 +93,17 @@ struct ResultView: View {
                         }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.leading, 16)
+            .padding(.trailing, 60) // room for cloud + pin in the corner
             .padding(.top, 16)
             .padding(.bottom, 12)
 
             Divider().padding(.horizontal, 12)
 
-            // Chunk cards
+            // Chunk cards, clause children indented beneath their clause
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(result.chunks) { chunk in
-                    chunkRow(chunk)
+                ForEach(flatten(result.chunks), id: \.chunk.id) { entry in
+                    chunkRow(entry.chunk, depth: entry.depth)
                 }
             }
             .padding(.horizontal, 10)
@@ -101,59 +111,49 @@ struct ResultView: View {
 
             Divider().padding(.horizontal, 12)
 
-            // Full translation + controls, one row
-            HStack(alignment: .bottom, spacing: 10) {
-                Text(result.translation)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.primary.opacity(0.85))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                engineToggle
-                pinButton
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            // Full translation
+            Text(result.translation)
+                .font(.system(size: 13))
+                .foregroundStyle(.primary.opacity(0.85))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
         }
     }
 
+    /// Single cloud button that flips engines: filled = cloud active, outline = local.
     @ViewBuilder
     private var engineToggle: some View {
         if settings.hasCustomEndpoint {
-            HStack(spacing: 2) {
-                engineButton("本地", .ollama)
-                engineButton("云端", .custom)
+            Button {
+                state.switchEngine(to: state.usingCloud ? .ollama : .custom)
+            } label: {
+                Image(systemName: state.usingCloud ? "cloud.fill" : "cloud")
+                    .font(.system(size: 12))
+                    .foregroundStyle(state.usingCloud ? Color.accentColor : Color.secondary.opacity(0.6))
             }
-            .padding(2)
-            .background(Color.primary.opacity(0.06), in: Capsule())
+            .buttonStyle(.plain)
+            .help(state.usingCloud ? "当前：云端 — 点击切回本地" : "当前：本地 — 点击用云端拆")
         }
     }
 
-    private func engineButton(_ title: String, _ provider: Provider) -> some View {
-        let active = state.activeProvider == provider
-        return Button {
-            state.switchEngine(to: provider)
-        } label: {
-            Text(title)
-                .font(.system(size: 10.5, weight: active ? .semibold : .regular))
-                .foregroundStyle(active ? Color.primary : Color.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(active ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color.clear), in: Capsule())
+    private func flatten(_ chunks: [Chunk], depth: Int = 0) -> [(chunk: Chunk, depth: Int)] {
+        chunks.flatMap { chunk in
+            [(chunk, depth)] + flatten(chunk.children ?? [], depth: depth + 1)
         }
-        .buttonStyle(.plain)
     }
 
-    private func chunkRow(_ chunk: Chunk) -> some View {
+    private func chunkRow(_ chunk: Chunk, depth: Int = 0) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(chunk.role.color)
+                .fill(chunk.role.color.opacity(depth > 0 ? 0.55 : 1))
                 .frame(width: 3, height: 14)
                 .offset(y: 1)
 
             Text(chunk.text)
-                .font(.system(size: 12.5, design: .serif))
-                .foregroundStyle(.primary.opacity(0.9))
+                .font(.system(size: depth > 0 ? 11.5 : 12.5, design: .serif))
+                .foregroundStyle(.primary.opacity(depth > 0 ? 0.75 : 0.9))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -166,12 +166,13 @@ struct ResultView: View {
                 .fixedSize()
 
             Text(chunk.gloss)
-                .font(.system(size: 12))
+                .font(.system(size: depth > 0 ? 11 : 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(width: 130, alignment: .leading)
         }
-        .padding(.horizontal, 6)
+        .padding(.leading, 6 + CGFloat(depth) * 18)
+        .padding(.trailing, 6)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)

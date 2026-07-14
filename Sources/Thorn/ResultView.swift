@@ -185,13 +185,15 @@ struct ResultView: View {
     }
 
     /// Rough per-row estimate so the default panel height fits the content;
-    /// the scroll view catches any underestimate.
+    /// only counts rows that are visible given the current expansion state.
     private func estimatedCardsHeight(_ result: ParseResult) -> CGFloat {
         var total: CGFloat = 16
         func walk(_ chunks: [Chunk]) {
             for c in chunks {
                 total += 30 + CGFloat(c.text.count / 42) * 16
-                walk(c.children ?? [])
+                if state.expanded.contains(c.id) {
+                    walk(c.children ?? [])
+                }
             }
         }
         walk(headerChunks(result))
@@ -230,23 +232,35 @@ struct ResultView: View {
             }
             piece.font = .system(size: 15, weight: weight, design: .serif)
             piece.foregroundColor = color
-            if state.hoveredChunkID == chunk.id {
-                piece.backgroundColor = chunk.role.color.opacity(0.22)
-            }
             out += piece
             if index < chunks.count - 1, !chunk.text.hasSuffix(" ") {
                 out += AttributedString(" ")
             }
         }
+        // Hover from ANY tree depth lights up its exact span in the sentence.
+        if let highlight = state.hoveredHighlight,
+           let range = out.range(of: highlight.text) {
+            out[range].backgroundColor = highlight.color.opacity(0.22)
+        }
         return out
     }
 
-    /// Parent row, then children indented behind a guide line in the parent's color.
+    /// Parent row, then children indented behind a guide line in the parent's
+    /// color. Children start collapsed; clicking the parent row toggles them.
     private func chunkTree(_ chunk: Chunk, depth: Int) -> AnyView {
         AnyView(
             VStack(alignment: .leading, spacing: 2) {
                 chunkRow(chunk, depth: depth)
-                if let kids = chunk.children {
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard chunk.children != nil else { return }
+                        if state.expanded.contains(chunk.id) {
+                            state.expanded.remove(chunk.id)
+                        } else {
+                            state.expanded.insert(chunk.id)
+                        }
+                    }
+                if let kids = chunk.children, state.expanded.contains(chunk.id) {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(kids) { chunkTree($0, depth: depth + 1) }
                     }
@@ -269,6 +283,13 @@ struct ResultView: View {
                 .fill(chunk.role.color.opacity(depth > 0 ? 0.55 : 1))
                 .frame(width: 3, height: 14)
                 .offset(y: 1)
+
+            if chunk.children != nil {
+                Image(systemName: state.expanded.contains(chunk.id) ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 10)
+            }
 
             Text(chunk.text)
                 .font(.system(size: depth > 0 ? 11.5 : 12.5, design: .serif))
@@ -299,6 +320,7 @@ struct ResultView: View {
         )
         .onHover { hovering in
             state.hoveredChunkID = hovering ? chunk.id : nil
+            state.hoveredHighlight = hovering ? (chunk.text, chunk.role.color) : nil
         }
     }
 }

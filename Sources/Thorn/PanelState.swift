@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @MainActor
 final class PanelState: ObservableObject {
@@ -11,6 +12,10 @@ final class PanelState: ObservableObject {
     @Published var sentence: String = ""
     @Published var status: Status = .loading
     @Published var hoveredChunkID: UUID?
+    /// Text span + color to light up in the header sentence (any depth).
+    @Published var hoveredHighlight: (text: String, color: Color)?
+    /// Chunks whose children are currently shown; everything starts collapsed.
+    @Published var expanded: Set<UUID> = []
     @Published var activeProvider: Provider = .ollama
     @Published var pinned = false
 
@@ -22,6 +27,8 @@ final class PanelState: ObservableObject {
         self.sentence = sentence
         self.activeProvider = SettingsStore.shared.provider
         self.pinned = false
+        self.expanded = []
+        self.hoveredHighlight = nil
         run(provider: activeProvider, force: false)
     }
 

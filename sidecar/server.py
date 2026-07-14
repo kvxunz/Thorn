@@ -135,6 +135,16 @@ def relative_or_conjunction(tok):
 CLAUSE_DEPS = ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
 WH_TAGS = ("WDT", "WP", "WP$")
 
+# verb+object pairs that read as one idiom chunk (lemma-based)
+IDIOM_VO = {
+    ("raise", "eyebrow"), ("make", "sense"), ("take", "place"), ("pay", "attention"),
+    ("take", "care"), ("take", "advantage"), ("make", "use"), ("shed", "light"),
+    ("play", "role"), ("play", "part"), ("catch", "sight"), ("give", "rise"),
+    ("draw", "attention"), ("make", "progress"), ("take", "part"), ("keep", "pace"),
+    ("lose", "sight"), ("make", "difference"), ("take", "account"), ("take", "effect"),
+    ("make", "way"), ("take", "root"), ("break", "ground"), ("set", "foot"),
+}
+
 
 def np_expand(head, doc, role):
     """Expand a noun-ish chunk that embeds clauses: the clause subtrees become
@@ -228,20 +238,35 @@ def build_chunks(head, doc, clause_role_of_head=None):
         run, run_key = [], None
 
         if key == "verb":
-            chunks.append({"text": text, "role": "verb", "gloss": "", "children": None})
+            chunks.append({"text": text, "role": "verb", "gloss": "",
+                           "children": None, "_lem": head.lemma_})
             return
         c, role, expand = root_entries[key]
         if key in inline:
             # coordinate clause: splice its own backbone in at this level
             chunks.extend(build_chunks(c, doc))
             return
-        # single wh-word: it's the relative/interrogative word
+        # single introducing word inside a clause gets its true role:
+        # wh-pronouns/adverbs -> relative (in relative clauses) or conjunction;
+        # bare subordinators (when/if/because via "mark") -> conjunction
+        if len(run_local) == 1 and clause_role_of_head is not None:
+            tok = toks[0]
+            if tok.tag_ in WH_TAGS or tok.tag_ == "WRB":
+                r = "relative" if clause_role_of_head == "clause-relative" else "conjunction"
+                chunks.append({"text": text, "role": r, "gloss": "", "children": None})
+                return
+            if tok.dep_ == "mark":
+                chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
+                return
         if len(run_local) == 1 and toks[0].tag_ in WH_TAGS:
             r = "relative" if (clause_role_of_head == "clause-relative") else "conjunction"
             chunks.append({"text": text, "role": r, "gloss": "", "children": None})
             return
         if role is None:
             chunks.append({"text": text, "role": "other", "gloss": "", "children": None})
+        elif role == "object" and not expand:
+            chunks.append({"text": text, "role": role, "gloss": "",
+                           "children": None, "_lem": c.lemma_})
         elif expand:
             if c.pos_ in ("VERB", "AUX"):
                 # verbal heads recurse fully, wrapped under their clause label
@@ -264,7 +289,22 @@ def build_chunks(head, doc, clause_role_of_head=None):
             run_key = key
         run.append(t.i)
     flush()
-    return merge_tiny(chunks)
+    return merge_tiny(merge_idioms(chunks))
+
+
+def merge_idioms(chunks):
+    """Fuse verb + object when they form a fixed idiom (raise eyebrows)."""
+    out = []
+    for ch in chunks:
+        if (out and out[-1].get("_lem") and out[-1]["role"] == "verb"
+                and ch.get("_lem") and ch["role"] == "object"
+                and (out[-1]["_lem"], ch["_lem"]) in IDIOM_VO):
+            out[-1]["text"] = out[-1]["text"] + " " + ch["text"]
+        else:
+            out.append(ch)
+    for ch in out:
+        ch.pop("_lem", None)
+    return out
 
 
 def merge_tiny(chunks):

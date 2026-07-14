@@ -39,7 +39,12 @@ final class PanelState: ObservableObject {
         let sentence = self.sentence
         task = Task {
             do {
-                let result = try await ParseService.parse(sentence: sentence, provider: provider, force: force)
+                let result = try await ParseService.parse(sentence: sentence, provider: provider, force: force) { partial in
+                    Task { @MainActor in
+                        guard self.task?.isCancelled == false else { return }
+                        self.status = .result(partial)
+                    }
+                }
                 guard !Task.isCancelled else { return }
                 ThornLog.info("parse ok, \(result.chunks.count) chunks")
                 self.status = .result(result)

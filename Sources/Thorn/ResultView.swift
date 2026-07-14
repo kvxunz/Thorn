@@ -15,7 +15,8 @@ struct ResultView: View {
                 resultView(result)
             }
         }
-        .frame(width: 460)
+        .frame(minWidth: 400, idealWidth: 460, maxWidth: .infinity,
+               maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -103,7 +104,9 @@ struct ResultView: View {
                 ScrollView(.vertical, showsIndicators: true) {
                     cards
                 }
-                .frame(height: min(540, (NSScreen.main?.visibleFrame.height ?? 900) * 0.45))
+                .frame(minHeight: 180,
+                       idealHeight: min(540, (NSScreen.main?.visibleFrame.height ?? 900) * 0.45),
+                       maxHeight: .infinity)
             } else {
                 cards
             }

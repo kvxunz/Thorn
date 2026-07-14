@@ -3,20 +3,27 @@ import SwiftUI
 import Combine
 
 /// Borderless non-activating panel that shows the parse result near the mouse.
-/// Closes on Esc or click outside.
+/// Closes on Esc or click outside. Resizable from its edges; once the user
+/// resizes manually, auto-fitting backs off.
 @MainActor
-final class ResultPanelController {
+final class ResultPanelController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
     private var clickMonitor: Any?
     private var keyMonitor: Any?
     private var globalKeyMonitor: Any?
     private var statusObserver: AnyCancellable?
+    private var userResized = false
     let state = PanelState()
 
     func show(sentence: String) {
         close()
+        userResized = false
         state.start(sentence: sentence)
         presentPanel()
+    }
+
+    nonisolated func windowDidEndLiveResize(_ notification: Notification) {
+        Task { @MainActor in self.userResized = true }
     }
 
     /// Show a standalone message (e.g. selection too long) without parsing.
@@ -31,10 +38,11 @@ final class ResultPanelController {
 
         let panel = NSPanel(
             contentRect: .zero,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless, .nonactivatingPanel, .resizable],
             backing: .buffered,
             defer: false
         )
+        panel.delegate = self
         panel.contentView = hosting
         panel.isFloatingPanel = true
         panel.level = .floating
@@ -61,7 +69,9 @@ final class ResultPanelController {
     }
 
     /// Resize to the content's real size: keep top edge fixed, clamp to screen.
+    /// Backs off once the user has resized the panel manually.
     private func fitToContent() {
+        guard !userResized else { return }
         guard let panel, let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize

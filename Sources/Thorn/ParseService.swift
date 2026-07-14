@@ -22,6 +22,7 @@ enum ParseService {
     - Use clause-* roles ONLY for real SUBORDINATE clauses containing their own subject and verb. "In other places" has no verb: it is prep-phrase, not a clause.
     - COORDINATE clauses (joined by and/but/or/so, often after a dash or semicolon) are MAIN clauses, never clause-*. Decompose EACH coordinate clause into its own subject/verb/object/complement chunks.
     - A coordinating conjunction joining two clauses ("or", "but", "—or at least", "and yet") is its own chunk with role "conjunction". Never glue it to the preceding object or the following subject.
+    - NEVER reorder words: chunks in array order must read exactly like the original. In questions with subject–auxiliary inversion ("Why must we master..."), keep the inverted group "must we master" as ONE verb chunk (gloss includes the subject, e.g. "我们必须掌握"); the question word (Why/How/What...) is its own chunk with role "adverbial".
     - An infinitive complement ("to purchase assets") belongs with its verb chain or gets role "complement" — never "other".
     - COVERAGE INVARIANT: top-level chunk texts concatenated in order must equal the WHOLE input. And whenever a chunk has children, that chunk's own text must equal its children's texts concatenated. So a subject with an attached relative clause has text "The committee, which had been deliberating for weeks," and children ["The committee," + the which-clause] — the parent text is never shorter than its children.
     - NEVER make a chunk that is only punctuation. Attach punctuation (: , ; ?) to the end of the preceding chunk; a dash introducing a new clause stays with the conjunction chunk ("—or at least").
@@ -80,6 +81,7 @@ enum ParseService {
         for _ in 0..<2 {
             do {
                 let raw = try await client.chat(system: systemPrompt, user: normalized, jsonMode: true)
+                ThornLog.info("model \(ep.model) raw output: \(raw.prefix(4000))")
                 let result = try decode(raw)
                 ParseCache.set(model: ep.model, sentence: normalized, result: result)
                 return result

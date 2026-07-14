@@ -49,6 +49,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey = HotkeyManager { [weak self] in
             self?.handleHotkey()
         }
+
+        // Warm the structure sidecar so the first parse isn't a cold start.
+        Task.detached { _ = await Sidecar.shared.structure(for: "Warm up.") }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        let sidecar = Sidecar.shared
+        Task.detached { await sidecar.terminate() }
     }
 
     private var capturing = false
@@ -67,8 +75,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.rangeOfCharacter(from: CharacterSet.letters) != nil else {
+            let letters = trimmed.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+            guard !letters.isEmpty else {
                 NSSound.beep()
+                return
+            }
+            let asciiRatio = Double(letters.filter(\.isASCII).count) / Double(letters.count)
+            guard asciiRatio > 0.5 else {
+                panelController.showError("Thorn 只拆解英文文本，选中的内容主要是非英文字符。")
                 return
             }
             guard trimmed.count <= 1200 else {

@@ -11,8 +11,9 @@ enum ParseCache {
     }()
 
     private static func key(model: String, sentence: String) -> String {
-        // "v2": schema gained recursive children; old flat entries must miss.
-        let digest = SHA256.hash(data: Data(("v2\n" + model + "\n" + sentence).utf8))
+        // "v3": local engine switched to the sidecar pipeline; older entries
+        // came from direct LLM parsing and must miss.
+        let digest = SHA256.hash(data: Data(("v3\n" + model + "\n" + sentence).utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 

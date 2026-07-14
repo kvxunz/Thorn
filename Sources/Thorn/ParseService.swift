@@ -82,6 +82,26 @@ enum ParseService {
 
         let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey, wireAPI: ep.wireAPI)
 
+        // Local engine: deterministic structure from the sidecar, LLM only
+        // fills glosses + translation. Falls through to direct LLM parsing
+        // when the sidecar is unavailable.
+        if (provider ?? SettingsStore.shared.provider) == .ollama,
+           let structure = await Sidecar.shared.structure(for: normalized) {
+            let bare = ParseResult(chunks: structure, translation: "")
+            onPartial?(bare) // tree on screen immediately, glosses pending
+            do {
+                let result = try await fillGlosses(structure: structure, sentence: normalized, client: client)
+                ParseCache.set(model: ep.model, sentence: normalized, result: result)
+                return result
+            } catch {
+                ThornLog.info("gloss fill failed: \(error.localizedDescription)")
+                // Structure alone still beats nothing — but fill the translation
+                // slot so the panel doesn't spin forever waiting for one.
+                return ParseResult(chunks: structure,
+                                   translation: "（中文释义暂缺：本地模型未响应，结构来自句法引擎）")
+            }
+        }
+
         if let onPartial, client.supportsStreaming {
             do {
                 let raw = try await streamRaw(client: client, sentence: normalized, onPartial: onPartial)
@@ -119,6 +139,68 @@ enum ParseService {
             }
         }
         throw lastError
+    }
+
+    // MARK: - Gloss filling (pipeline path)
+
+    private static let glossPrompt = """
+    You annotate English sense-groups for Chinese learners. Given a sentence and its numbered chunks, output STRICT JSON only:
+    {"glosses": ["<中文释义>", ...], "translation": "<整句流畅中文翻译>"}
+    - glosses: one concise Chinese rendering per chunk, in the SAME order and count as given.
+    - For role "relative", gloss the referent (e.g. "指代前述委员会"). For role "conjunction", gloss the connective meaning.
+    - translation: fluent Chinese of the whole input, not a gloss concatenation.
+    """
+
+    private static func fillGlosses(structure: [Chunk], sentence: String, client: LLMClient) async throws -> ParseResult {
+        struct Node: Encodable {
+            let n: Int
+            let text: String
+            let role: String
+        }
+        var nodes: [Node] = []
+        func collect(_ chunks: [Chunk]) {
+            for c in chunks {
+                nodes.append(Node(n: nodes.count + 1, text: c.text, role: c.role.rawValue))
+                collect(c.children ?? [])
+            }
+        }
+        collect(structure)
+
+        struct Payload: Encodable {
+            let sentence: String
+            let chunks: [Node]
+        }
+        let payload = String(data: try JSONEncoder().encode(Payload(sentence: sentence, chunks: nodes)),
+                             encoding: .utf8) ?? sentence
+        let raw = try await client.chat(system: glossPrompt, user: payload, jsonMode: true)
+
+        struct GlossResponse: Decodable {
+            let glosses: [String]
+            let translation: String
+        }
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("```") {
+            text = text
+                .replacingOccurrences(of: "^```(json)?\\s*", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "```\\s*$", with: "", options: .regularExpression)
+        }
+        guard let data = text.data(using: .utf8),
+              let decoded = try? JSONDecoder().decode(GlossResponse.self, from: data),
+              decoded.glosses.count == nodes.count else {
+            throw LLMError.badJSON(raw)
+        }
+
+        var index = 0
+        func attach(_ chunks: [Chunk]) -> [Chunk] {
+            chunks.map { c in
+                let gloss = decoded.glosses[index]
+                index += 1
+                return Chunk(text: c.text, role: c.role, gloss: gloss,
+                             children: c.children.map(attach))
+            }
+        }
+        let glossed = attach(structure)
+        return ParseResult(chunks: glossed, translation: decoded.translation)
     }
 
     // MARK: - Streaming

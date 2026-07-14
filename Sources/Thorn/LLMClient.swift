@@ -15,7 +15,7 @@ enum LLMError: LocalizedError {
         case .http(let code, let body): return "HTTP \(code): \(body.prefix(200))"
         case .emptyResponse: return "模型返回为空"
         case .badJSON(let raw): return "JSON 解析失败: \(raw.prefix(200))"
-        case .connectionFailed: return "无法连接端点（Ollama 未启动？）"
+        case .connectionFailed: return "无法连接端点（服务未启动或正在重启？）"
         }
     }
 }

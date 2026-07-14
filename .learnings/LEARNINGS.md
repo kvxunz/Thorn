@@ -29,3 +29,5 @@
 11. **Sub2API（Wei-Shaw/sub2api）是 Responses 协议网关**：Codex 订阅转 API。老版本（v0.1.103）非流式 `/v1/responses` 有 bug：status=completed、output_tokens 有计数但 `output` 数组为空（流式聚合丢内容）。升级到 v0.1.15x 修复。诊断关键：usage 有 token 计数但 output 空 = 网关聚合 bug，不是模型问题。
 
 12. **"模型返回为空"类错误要先 dump 原始响应体**：在解析失败分支记录 raw body（截断 6000 字符），一轮就定位；别猜格式。
+
+13. **few-shot 例句不能和真实输入太像**：例句与输入几乎相同时，模型直接照抄例句文本，把输入里例句没有的词（extremely）吞掉。例句要结构同构、措辞完全无关，并显式加"chunk text 必须逐字来自输入句"规则。验证手段：拼接所有 chunk text 与原句做覆盖对比。

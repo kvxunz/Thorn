@@ -76,9 +76,10 @@ def chunk_roots(head, is_root_clause):
         if d in ("nsubj", "nsubjpass", "expl"):
             roots.append((c, "subject", contains_clause(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
-            # copular "be" never takes an object: its nominal is a predicative
-            role = "complement" if head.lemma_ == "be" else "object"
-            roots.append((c, role, contains_clause(c)))
+            # linking verbs never take an object: theirs is a predicative
+            linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
+                                      "look", "feel", "sound", "stay", "grow")
+            roots.append((c, "complement" if linking else "object", contains_clause(c)))
         elif d in ("attr", "acomp"):
             roots.append((c, "complement", contains_clause(c)))
         elif d == "xcomp":
@@ -86,11 +87,15 @@ def chunk_roots(head, is_root_clause):
         elif d in ("ccomp", "csubj", "csubjpass"):
             roots.append((c, "clause-noun", True))
         elif d == "advcl":
-            # infinitive purpose phrases have no subject of their own:
-            # label them adverbial, not clause (still expanded)
-            has_to = any(t.tag_ == "TO" for t in c.children) or (
-                c.i > 0 and c.doc[c.i - 1].tag_ == "TO")
-            roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
+            if c.pos_ not in ("VERB", "AUX"):
+                # advcl hung on a non-verb ("at worst"): plain adverbial, no expansion
+                roots.append((c, "adverbial", False))
+            else:
+                # infinitive purpose phrases have no subject of their own:
+                # label them adverbial, not clause (still expanded)
+                has_to = any(t.tag_ == "TO" for t in c.children) or (
+                    c.i > 0 and c.doc[c.i - 1].tag_ == "TO")
+                roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
         elif d in ("relcl", "acl"):
             roots.append((c, "clause-relative", True))
         elif d in ("prep", "agent"):

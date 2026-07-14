@@ -147,7 +147,7 @@ enum ParseService {
     You annotate English sense-groups for Chinese learners. Given a sentence and its numbered chunks, output STRICT JSON only:
     {"glosses": ["<中文释义>", ...], "translation": "<整句流畅中文翻译>"}
     - glosses: one concise Chinese rendering per chunk, in the SAME order and count as given.
-    - For role "relative", gloss the referent (e.g. "指代前述委员会"). For role "conjunction", gloss the connective meaning.
+    - For role "relative", state what it refers to in THIS sentence: "指代前述" + the actual noun from the sentence. Never copy nouns that are not in the sentence.
     - translation: fluent Chinese of the whole input, not a gloss concatenation.
     """
 

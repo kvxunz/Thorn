@@ -1,36 +1,41 @@
 import Carbon.HIToolbox
 import AppKit
 
-/// Global hotkey via Carbon RegisterEventHotKey. Default: ⌥D.
+/// Global hotkeys via Carbon RegisterEventHotKey.
+/// Parse: ⌥A — Recall last result: ⌥Z.
 final class HotkeyManager {
-    private var hotKeyRef: EventHotKeyRef?
+    private var hotKeyRefs: [EventHotKeyRef] = []
     private var eventHandler: EventHandlerRef?
-    private let callback: () -> Void
+    private var callbacks: [UInt32: () -> Void] = [:]
 
-    init(callback: @escaping () -> Void) {
-        self.callback = callback
-        register()
-    }
-
-    private func register() {
-        let hotKeyID = EventHotKeyID(signature: OSType(0x5448_524E), id: 1) // "THRN"
-        var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-
+    init() {
+        var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
+                                      eventKind: UInt32(kEventHotKeyPressed))
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, userData in
-            guard let userData else { return noErr }
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, userData in
+            guard let userData, let event else { return noErr }
+            var hotKeyID = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject),
+                              EventParamType(typeEventHotKeyID), nil,
+                              MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
             let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
-            DispatchQueue.main.async { manager.callback() }
+            if let callback = manager.callbacks[hotKeyID.id] {
+                DispatchQueue.main.async { callback() }
+            }
             return noErr
         }, 1, &eventType, selfPtr, &eventHandler)
+    }
 
-        // kVK_ANSI_D = 0x02, optionKey modifier
-        RegisterEventHotKey(UInt32(kVK_ANSI_D), UInt32(optionKey), hotKeyID,
-                            GetApplicationEventTarget(), 0, &hotKeyRef)
+    func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, callback: @escaping () -> Void) {
+        callbacks[id] = callback
+        let hotKeyID = EventHotKeyID(signature: OSType(0x5448_524E), id: id) // "THRN"
+        var ref: EventHotKeyRef?
+        RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref)
+        if let ref { hotKeyRefs.append(ref) }
     }
 
     deinit {
-        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
+        for ref in hotKeyRefs { UnregisterEventHotKey(ref) }
         if let eventHandler { RemoveEventHandler(eventHandler) }
     }
 }

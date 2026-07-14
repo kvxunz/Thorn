@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Carbon.HIToolbox
 
 /// Diagnostics logger, off by default — captured text would otherwise sit in
 /// world-readable /tmp. Enable: defaults write com.xvz.thorn debugLog -bool true
@@ -36,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "选中英文后按 ⌥D 拆句", action: nil, keyEquivalent: "")
+        menu.addItem(withTitle: "选中英文后按 ⌥A 拆句", action: nil, keyEquivalent: "")
+        menu.addItem(withTitle: "⌥Z 重现上次结果", action: nil, keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "设置…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
@@ -46,8 +48,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let trusted = TextCapture.ensureAccessibilityPermission()
         ThornLog.info("launched, axTrusted=\(trusted)")
 
-        hotkey = HotkeyManager { [weak self] in
+        hotkey = HotkeyManager()
+        hotkey.register(id: 1, keyCode: UInt32(kVK_ANSI_A), modifiers: UInt32(optionKey)) { [weak self] in
             self?.handleHotkey()
+        }
+        hotkey.register(id: 2, keyCode: UInt32(kVK_ANSI_Z), modifiers: UInt32(optionKey)) { [weak self] in
+            self?.panelController.recall()
         }
 
         // Warm the structure sidecar so the first parse isn't a cold start.

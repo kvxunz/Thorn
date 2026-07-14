@@ -106,6 +106,7 @@ struct ResultView: View {
             // modifiers in their role color — sense groups read by shade.
             Text(attributedSentence(headerChunks(result)))
                 .lineSpacing(5)
+                .lineLimit(12) // monster sentences: cap by lines, not by a greedy frame
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
@@ -113,9 +114,6 @@ struct ResultView: View {
                 .padding(.trailing, 60) // room for cloud + pin in the corner
                 .padding(.top, 16)
                 .padding(.bottom, 12)
-                // Monster sentences: cap the header so cards keep their space.
-                .frame(maxHeight: 240, alignment: .topLeading)
-                .clipped()
 
             Divider().padding(.horizontal, 12)
 
@@ -288,7 +286,7 @@ struct ResultView: View {
                 .font(.system(size: depth > 0 ? 11 : 12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(width: 130, alignment: .leading)
+                .frame(minWidth: 130, maxWidth: 260, alignment: .leading)
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 4)

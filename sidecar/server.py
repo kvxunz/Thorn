@@ -55,13 +55,17 @@ def load():
 # ---------------------------------------------------------------- chunking
 
 def verb_group(head):
-    """Verb + its auxiliaries, negation, particles, plus a directly attached
-    preposition when it has no object of its own inside this clause (phrasal
-    feel: 'benefit from' stays with the verb only when 'from' is prt)."""
+    """Verb + auxiliaries, negation, particles — plus adverbs sandwiched
+    inside the auxiliary chain ('can hardly be classed' stays one chunk)."""
     toks = {head.i}
     for c in head.children:
         if c.dep_ in ("aux", "auxpass", "neg", "prt"):
             toks.add(c.i)
+    if len(toks) > 1:
+        lo, hi = min(toks), max(toks)
+        for c in head.children:
+            if c.dep_ == "advmod" and lo < c.i < hi:
+                toks.add(c.i)
     return toks
 
 
@@ -273,6 +277,17 @@ def build_chunks(head, doc, clause_role_of_head=None):
             return
         if role is None:
             chunks.append({"text": text, "role": "other", "gloss": "", "children": None})
+        elif (role == "clause-noun"
+              and not any(t.dep_ == "mark" and t.lower_ in
+                          ("that", "whether", "if", "what", "whatever", "how", "why", "who")
+                          for t in c.children)
+              and not (chunks and chunks[-1]["role"] == "verb")):
+            # A "noun clause" with no real subordinator that does NOT follow
+            # its governing verb is almost always a misattached coordinate
+            # main clause ("..., for, ..."): splice its backbone in flat.
+            # Right after a verb it's a bare object clause ("He said he would
+            # come") and keeps its clause identity.
+            chunks.extend(build_chunks(c, doc, clause_role_of_head=clause_role_of_head))
         elif role == "object" and not expand:
             chunks.append({"text": text, "role": role, "gloss": "",
                            "children": None, "_lem": c.lemma_})

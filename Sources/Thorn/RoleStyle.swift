@@ -19,4 +19,15 @@ extension ChunkRole {
         case .other: return Color(hue: 0.60, saturation: 0.06, brightness: 0.55)
         }
     }
+
+    /// Deeper, saturated variants for the sentence header backbone (S/V/O).
+    var emphaticColor: Color {
+        switch self {
+        case .subject: return Color(hue: 0.58, saturation: 0.75, brightness: 0.52)
+        case .verb: return Color(hue: 0.10, saturation: 0.90, brightness: 0.60) // deep amber-yellow
+
+        case .object: return Color(hue: 0.38, saturation: 0.70, brightness: 0.45)
+        default: return color
+        }
+    }
 }

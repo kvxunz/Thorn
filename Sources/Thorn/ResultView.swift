@@ -3,6 +3,8 @@ import SwiftUI
 struct ResultView: View {
     @ObservedObject var state: PanelState
     @ObservedObject var settings = SettingsStore.shared
+    var onResizeDrag: ((CGSize) -> Void)? = nil
+    @State private var lastDrag: CGSize = .zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -29,6 +31,29 @@ struct ResultView: View {
                     pinButton
                 }
                 .padding(10)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            // Dedicated resize grip: the borderless window's system resize
+            // border is only ~4px and hard to grab.
+            if case .result = state.status {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(-45))
+                    .frame(width: 20, height: 20, alignment: .bottomTrailing)
+                    .padding(4)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .onChanged { value in
+                                let delta = CGSize(width: value.translation.width - lastDrag.width,
+                                                   height: value.translation.height - lastDrag.height)
+                                lastDrag = value.translation
+                                onResizeDrag?(delta)
+                            }
+                            .onEnded { _ in lastDrag = .zero }
+                    )
             }
         }
     }
@@ -100,16 +125,14 @@ struct ResultView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
 
-            if nodeCount(result.chunks) > 14 {
-                ScrollView(.vertical, showsIndicators: true) {
-                    cards
-                }
-                .frame(minHeight: 180,
-                       idealHeight: min(540, (NSScreen.main?.visibleFrame.height ?? 900) * 0.45),
-                       maxHeight: .infinity)
-            } else {
+            // Always a ScrollView: it absorbs extra height when the user
+            // enlarges the panel and compresses when they shrink it.
+            ScrollView(.vertical, showsIndicators: true) {
                 cards
             }
+            .frame(minHeight: 100,
+                   idealHeight: estimatedCardsHeight(result),
+                   maxHeight: .infinity)
 
             Divider().padding(.horizontal, 12)
 
@@ -153,6 +176,20 @@ struct ResultView: View {
 
     private func nodeCount(_ chunks: [Chunk]) -> Int {
         chunks.reduce(0) { $0 + 1 + nodeCount($1.children ?? []) }
+    }
+
+    /// Rough per-row estimate so the default panel height fits the content;
+    /// the scroll view catches any underestimate.
+    private func estimatedCardsHeight(_ result: ParseResult) -> CGFloat {
+        var total: CGFloat = 16
+        func walk(_ chunks: [Chunk]) {
+            for c in chunks {
+                total += 30 + CGFloat(c.text.count / 42) * 16
+                walk(c.children ?? [])
+            }
+        }
+        walk(headerChunks(result))
+        return min(total, (NSScreen.main?.visibleFrame.height ?? 900) * 0.5)
     }
 
     /// The level worth showing: descend while the model wrapped everything

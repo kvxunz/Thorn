@@ -26,6 +26,18 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         Task { @MainActor in self.userResized = true }
     }
 
+    /// Grip-driven resize: grow right/down, keep the top-left corner fixed.
+    private func resizeBy(_ delta: CGSize) {
+        guard let panel else { return }
+        userResized = true
+        var frame = panel.frame
+        let newWidth = max(400, frame.width + delta.width)
+        let newHeight = max(180, frame.height + delta.height)
+        frame.origin.y -= (newHeight - frame.height)
+        frame.size = CGSize(width: newWidth, height: newHeight)
+        panel.setFrame(frame, display: true)
+    }
+
     /// Show a standalone message (e.g. selection too long) without parsing.
     func showError(_ message: String) {
         close()
@@ -34,7 +46,9 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     }
 
     private func presentPanel() {
-        let hosting = NSHostingView(rootView: ResultView(state: state))
+        let hosting = NSHostingView(rootView: ResultView(state: state) { [weak self] delta in
+            self?.resizeBy(delta)
+        })
 
         let panel = NSPanel(
             contentRect: .zero,

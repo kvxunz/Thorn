@@ -51,24 +51,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var capturing = false
+
     private func handleHotkey() {
+        // Concurrent captures fight over the pasteboard save/restore dance.
+        guard !capturing else { return }
+        capturing = true
         ThornLog.info("hotkey fired, axTrusted=\(AXIsProcessTrusted())")
         Task { @MainActor in
+            defer { capturing = false }
             let text = await TextCapture.capture()
             ThornLog.info("captured: \(text.map { String($0.prefix(60)) } ?? "<nil>")")
-            guard let text, isParseable(text) else {
+            guard let text else {
                 NSSound.beep()
                 return
             }
-            panelController.show(sentence: text)
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.rangeOfCharacter(from: CharacterSet.letters) != nil else {
+                NSSound.beep()
+                return
+            }
+            guard trimmed.count <= 1200 else {
+                panelController.showError("选中内容过长（超过 1200 字符）。请划选一句或一小段。")
+                return
+            }
+            panelController.show(sentence: trimmed)
         }
-    }
-
-    /// Accept English-ish selections of sane length; reject empty or huge blobs.
-    private func isParseable(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed.count <= 1200 else { return false }
-        return trimmed.rangeOfCharacter(from: CharacterSet.letters) != nil
     }
 
     @objc private func openSettings() {

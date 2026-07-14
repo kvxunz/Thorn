@@ -25,6 +25,14 @@ final class PanelState: ObservableObject {
         run(provider: activeProvider, force: false)
     }
 
+    /// Standalone message without any parse (e.g. selection too long).
+    func presentError(_ message: String) {
+        task?.cancel()
+        sentence = ""
+        pinned = false
+        status = .error(message)
+    }
+
     /// Toggle between engines; results are cached per model, so flipping back is instant.
     func switchEngine(to provider: Provider) {
         guard provider != activeProvider else { return }

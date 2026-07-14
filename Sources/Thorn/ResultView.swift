@@ -65,15 +65,6 @@ struct ResultView: View {
 
     private func resultView(_ result: ParseResult) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Control strip: engine toggle + pin
-            HStack(spacing: 10) {
-                Spacer()
-                engineToggle
-                pinButton
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-
             // Sentence with trunk emphasis
             FlowLayout(spacing: 5) {
                 ForEach(result.chunks) { chunk in
@@ -94,7 +85,7 @@ struct ResultView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 4)
+            .padding(.top, 16)
             .padding(.bottom, 12)
 
             Divider().padding(.horizontal, 12)
@@ -110,14 +101,19 @@ struct ResultView: View {
 
             Divider().padding(.horizontal, 12)
 
-            // Full translation
-            Text(result.translation)
-                .font(.system(size: 13))
-                .foregroundStyle(.primary.opacity(0.85))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            // Full translation + controls, one row
+            HStack(alignment: .bottom, spacing: 10) {
+                Text(result.translation)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.primary.opacity(0.85))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                engineToggle
+                pinButton
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
     }
 

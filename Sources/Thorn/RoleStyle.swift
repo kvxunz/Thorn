@@ -8,23 +8,31 @@ private func adaptive(light: NSColor, dark: NSColor) -> Color {
     })
 }
 
+/// Role color tuned per appearance: muted deep tones on light backgrounds,
+/// lifted brightness / eased saturation on dark ones.
+private func roleColor(_ hue: CGFloat, _ sat: CGFloat, _ bri: CGFloat) -> Color {
+    adaptive(light: NSColor(hue: hue, saturation: sat, brightness: bri, alpha: 1),
+             dark: NSColor(hue: hue, saturation: max(0.22, sat * 0.75),
+                           brightness: min(0.95, bri + 0.24), alpha: 1))
+}
+
 /// Muted, learner-friendly palette. Trunk roles saturated; modifiers softer.
 extension ChunkRole {
     var color: Color {
         switch self {
-        case .subject: return Color(hue: 0.58, saturation: 0.55, brightness: 0.72)
-        case .verb: return Color(hue: 0.02, saturation: 0.58, brightness: 0.78)
-        case .object: return Color(hue: 0.38, saturation: 0.50, brightness: 0.62)
-        case .complement: return Color(hue: 0.47, saturation: 0.52, brightness: 0.62)
-        case .clauseRelative: return Color(hue: 0.75, saturation: 0.35, brightness: 0.70)
-        case .clauseAdverbial: return Color(hue: 0.68, saturation: 0.35, brightness: 0.70)
-        case .clauseNoun: return Color(hue: 0.82, saturation: 0.32, brightness: 0.70)
-        case .prepPhrase: return Color(hue: 0.09, saturation: 0.42, brightness: 0.68)
-        case .insertion: return Color(hue: 0.60, saturation: 0.10, brightness: 0.58)
-        case .conjunction: return Color(hue: 0.13, saturation: 0.45, brightness: 0.62)
-        case .relative: return Color(hue: 0.78, saturation: 0.30, brightness: 0.66)
-        case .adverbial: return Color(hue: 0.53, saturation: 0.38, brightness: 0.62)
-        case .other: return Color(hue: 0.60, saturation: 0.06, brightness: 0.55)
+        case .subject: return roleColor(0.58, 0.55, 0.72)
+        case .verb: return roleColor(0.02, 0.58, 0.78)
+        case .object: return roleColor(0.38, 0.50, 0.62)
+        case .complement: return roleColor(0.47, 0.52, 0.62)
+        case .clauseRelative: return roleColor(0.75, 0.35, 0.70)
+        case .clauseAdverbial: return roleColor(0.68, 0.35, 0.70)
+        case .clauseNoun: return roleColor(0.82, 0.32, 0.70)
+        case .prepPhrase: return roleColor(0.09, 0.42, 0.68)
+        case .insertion: return roleColor(0.60, 0.10, 0.58)
+        case .conjunction: return roleColor(0.13, 0.45, 0.62)
+        case .relative: return roleColor(0.78, 0.30, 0.66)
+        case .adverbial: return roleColor(0.53, 0.38, 0.62)
+        case .other: return roleColor(0.60, 0.06, 0.55)
         }
     }
 

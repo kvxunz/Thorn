@@ -106,7 +106,10 @@ def chunk_roots(head, is_root_clause):
                     c.i > 0 and c.doc[c.i - 1].tag_ == "TO")
                 roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
         elif d in ("relcl", "acl"):
-            roots.append((c, "clause-relative", True))
+            # "the fact that..." — introducer is a bare "that" mark, so the
+            # clause is appositive (noun clause), not relative
+            appositive = any(t.dep_ == "mark" and t.lower_ == "that" for t in c.children)
+            roots.append((c, "clause-noun" if appositive else "clause-relative", True))
         elif d in ("prep", "agent"):
             # "agent" is the by-phrase of a passive
             roots.append((c, "prep-phrase", contains_clause(c)))
@@ -148,6 +151,13 @@ def relative_or_conjunction(tok):
 CLAUSE_DEPS = ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
 WH_TAGS = ("WDT", "WP", "WP$")
 
+# adverb+preposition compounds that read as one prep chunk
+COMPOUND_ADV_PREP = {
+    ("apart", "from"), ("according", "to"), ("regardless", "of"), ("instead", "of"),
+    ("prior", "to"), ("owing", "to"), ("contrary", "to"), ("thanks", "to"),
+    ("along", "with"), ("together", "with"), ("ahead", "of"), ("aside", "from"),
+}
+
 # verb+object pairs that read as one idiom chunk (lemma-based)
 IDIOM_VO = {
     ("raise", "eyebrow"), ("make", "sense"), ("take", "place"), ("pay", "attention"),
@@ -186,6 +196,9 @@ def np_expand(head, doc, role):
             chunks.append({"text": text, "role": role, "gloss": "", "children": None})
         else:
             crole = CLAUSE_ROLES.get(o.dep_, "clause-relative")
+            if crole == "clause-relative" and any(
+                    t.dep_ == "mark" and t.lower_ == "that" for t in o.children):
+                crole = "clause-noun"  # appositive "the fact that..."
             kids = build_chunks(o, doc, clause_role_of_head=crole)
             chunks.append({"text": text, "role": crole, "gloss": "",
                            "children": kids if len(kids) >= 2 else None})
@@ -317,15 +330,22 @@ def build_chunks(head, doc, clause_role_of_head=None):
 
 
 def merge_idioms(chunks):
-    """Fuse verb + object when they form a fixed idiom (raise eyebrows)."""
+    """Fuse verb+object idioms (raise eyebrows) and adverb+preposition
+    compounds (apart from the fact)."""
     out = []
     for ch in chunks:
         if (out and out[-1].get("_lem") and out[-1]["role"] == "verb"
                 and ch.get("_lem") and ch["role"] == "object"
                 and (out[-1]["_lem"], ch["_lem"]) in IDIOM_VO):
             out[-1]["text"] = out[-1]["text"] + " " + ch["text"]
-        else:
-            out.append(ch)
+            continue
+        if (out and out[-1]["role"] in ("adverbial", "other")
+                and ch["role"] == "prep-phrase" and not out[-1].get("children")):
+            first_prep = ch["text"].split()[0].lower() if ch["text"].split() else ""
+            if (out[-1]["text"].strip(",").lower(), first_prep) in COMPOUND_ADV_PREP:
+                ch = dict(ch, text=out[-1]["text"] + " " + ch["text"])
+                out.pop()
+        out.append(ch)
     for ch in out:
         ch.pop("_lem", None)
     return out

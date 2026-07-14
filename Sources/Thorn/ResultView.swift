@@ -153,6 +153,9 @@ struct ResultView: View {
                         .font(.system(size: 13))
                         .foregroundStyle(.primary.opacity(0.85))
                         .textSelection(.enabled)
+                        // Rigid: the min-height clamp must count every line,
+                        // or the window shrinks under it and clips.
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }

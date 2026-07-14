@@ -14,6 +14,7 @@ extension ChunkRole {
         case .prepPhrase: return Color(hue: 0.09, saturation: 0.42, brightness: 0.68)
         case .insertion: return Color(hue: 0.60, saturation: 0.10, brightness: 0.58)
         case .conjunction: return Color(hue: 0.13, saturation: 0.45, brightness: 0.62)
+        case .relative: return Color(hue: 0.78, saturation: 0.30, brightness: 0.66)
         case .adverbial: return Color(hue: 0.53, saturation: 0.38, brightness: 0.62)
         case .other: return Color(hue: 0.60, saturation: 0.06, brightness: 0.55)
         }

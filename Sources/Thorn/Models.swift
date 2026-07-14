@@ -11,6 +11,7 @@ enum ChunkRole: String, Codable, CaseIterable {
     case prepPhrase = "prep-phrase"
     case insertion
     case conjunction
+    case relative
     case adverbial
     case other
 
@@ -18,6 +19,13 @@ enum ChunkRole: String, Codable, CaseIterable {
     var isTrunk: Bool {
         switch self {
         case .subject, .verb, .object, .complement: return true
+        default: return false
+        }
+    }
+
+    var isClause: Bool {
+        switch self {
+        case .clauseRelative, .clauseAdverbial, .clauseNoun: return true
         default: return false
         }
     }
@@ -34,6 +42,7 @@ enum ChunkRole: String, Codable, CaseIterable {
         case .prepPhrase: return "介词短语"
         case .insertion: return "插入语"
         case .conjunction: return "连词"
+        case .relative: return "关系词"
         case .adverbial: return "状语"
         case .other: return "其他"
         }

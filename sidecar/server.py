@@ -243,14 +243,17 @@ def build_chunks(head, doc, clause_role_of_head=None):
         if role is None:
             chunks.append({"text": text, "role": "other", "gloss": "", "children": None})
         elif expand:
-            # verbal heads recurse fully; nominal heads only split out clauses
             if c.pos_ in ("VERB", "AUX"):
+                # verbal heads recurse fully, wrapped under their clause label
                 kids = build_chunks(c, doc,
                                     clause_role_of_head=role if role.startswith("clause") else None)
+                chunks.append({"text": text, "role": role, "gloss": "",
+                               "children": kids if len(kids) >= 2 else None})
             else:
-                kids = np_expand(c, doc, role)
-            chunks.append({"text": text, "role": role, "gloss": "",
-                           "children": kids if len(kids) >= 2 else None})
+                # nominal head embedding a clause: splice core + clause as
+                # siblings — no wrapper level, and the backbone highlight
+                # stays on the core noun only
+                chunks.extend(np_expand(c, doc, role))
         else:
             chunks.append({"text": text, "role": role, "gloss": "", "children": None})
 

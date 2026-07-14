@@ -274,19 +274,28 @@ def build_chunks(head, doc, clause_role_of_head=None):
             return
         # single introducing word inside a clause gets its true role:
         # wh-pronouns/adverbs -> relative (in relative clauses) or conjunction;
-        # bare subordinators (when/if/because via "mark") -> conjunction
+        # bare subordinators (when/if/because via "mark") -> conjunction.
+        # For relatives the dependency tree already knows the referent
+        # (the noun the clause hangs on), so the gloss is deterministic.
+        referent = head.head.text if clause_role_of_head == "clause-relative" else None
         if len(run_local) == 1 and clause_role_of_head is not None:
             tok = toks[0]
             if tok.tag_ in WH_TAGS or tok.tag_ == "WRB":
-                r = "relative" if clause_role_of_head == "clause-relative" else "conjunction"
-                chunks.append({"text": text, "role": r, "gloss": "", "children": None})
+                if clause_role_of_head == "clause-relative":
+                    gloss = f"指代前述的 {referent}" if referent else ""
+                    chunks.append({"text": text, "role": "relative", "gloss": gloss, "children": None})
+                else:
+                    chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
                 return
             if tok.dep_ == "mark":
                 chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
                 return
         if len(run_local) == 1 and toks[0].tag_ in WH_TAGS:
-            r = "relative" if (clause_role_of_head == "clause-relative") else "conjunction"
-            chunks.append({"text": text, "role": r, "gloss": "", "children": None})
+            if clause_role_of_head == "clause-relative":
+                gloss = f"指代前述的 {referent}" if referent else ""
+                chunks.append({"text": text, "role": "relative", "gloss": gloss, "children": None})
+            else:
+                chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
             return
         if role is None:
             chunks.append({"text": text, "role": "other", "gloss": "", "children": None})

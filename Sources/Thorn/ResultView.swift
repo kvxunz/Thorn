@@ -238,9 +238,20 @@ struct ResultView: View {
             }
         }
         // Hover from ANY tree depth lights up its exact span in the sentence.
-        if let highlight = state.hoveredHighlight,
-           let range = out.range(of: highlight.text) {
-            out[range].backgroundColor = highlight.color.opacity(0.22)
+        // Word-boundary match, or "he" lands inside "then".
+        if let highlight = state.hoveredHighlight {
+            var pattern = NSRegularExpression.escapedPattern(for: highlight.text)
+            if highlight.text.first?.isLetter == true || highlight.text.first?.isNumber == true {
+                pattern = "\\b" + pattern
+            }
+            if highlight.text.last?.isLetter == true || highlight.text.last?.isNumber == true {
+                pattern += "\\b"
+            }
+            let range = out.range(of: pattern, options: .regularExpression)
+                ?? out.range(of: highlight.text)
+            if let range {
+                out[range].backgroundColor = highlight.color.opacity(0.22)
+            }
         }
         return out
     }

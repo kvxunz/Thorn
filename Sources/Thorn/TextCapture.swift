@@ -9,6 +9,8 @@ enum TextCapture {
         return AXIsProcessTrustedWithOptions(options)
     }
 
+    /// Nonisolated async: runs on the global executor (SE-0338), so the
+    /// synchronous AX tree walk below never blocks the main thread.
     static func capture() async -> String? {
         if let text = viaAccessibility(), !text.isEmpty {
             ThornLog.info("capture path: AX focused")

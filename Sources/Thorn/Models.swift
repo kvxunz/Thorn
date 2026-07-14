@@ -45,10 +45,17 @@ struct Chunk: Codable, Identifiable, Equatable {
     let role: ChunkRole
     let gloss: String
 
-    var id: String { text + role.rawValue }
+    // Identity must be unique per instance: the same text+role can appear
+    // twice in one sentence, and duplicate ForEach IDs break hover highlight.
+    private let uid = UUID()
+    var id: UUID { uid }
 
     enum CodingKeys: String, CodingKey {
         case text, role, gloss
+    }
+
+    static func == (lhs: Chunk, rhs: Chunk) -> Bool {
+        lhs.text == rhs.text && lhs.role == rhs.role && lhs.gloss == rhs.gloss
     }
 
     init(text: String, role: ChunkRole, gloss: String) {

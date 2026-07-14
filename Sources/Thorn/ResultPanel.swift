@@ -9,6 +9,7 @@ final class ResultPanelController {
     private var panel: NSPanel?
     private var clickMonitor: Any?
     private var keyMonitor: Any?
+    private var globalKeyMonitor: Any?
     private var statusObserver: AnyCancellable?
     let state = PanelState()
 
@@ -100,6 +101,14 @@ final class ResultPanelController {
             }
             return event
         }
+        // The panel is non-activating, so key events go to the frontmost app,
+        // not to us: without a global monitor Esc never reaches Thorn at all
+        // (and a pinned panel would have no keyboard way to close).
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // Esc
+                Task { @MainActor in self?.close() }
+            }
+        }
     }
 
     func close() {
@@ -107,8 +116,10 @@ final class ResultPanelController {
         statusObserver = nil
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
         clickMonitor = nil
         keyMonitor = nil
+        globalKeyMonitor = nil
         panel?.orderOut(nil)
         panel = nil
     }

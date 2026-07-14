@@ -158,10 +158,16 @@ enum ParseService {
             let text: String
             let role: String
         }
+        // Number every node in DFS order, but only send the ones the sidecar
+        // didn't already gloss deterministically (e.g. relative referents).
         var nodes: [Node] = []
+        var totalCount = 0
         func collect(_ chunks: [Chunk]) {
             for c in chunks {
-                nodes.append(Node(n: nodes.count + 1, text: c.text, role: c.role.rawValue))
+                totalCount += 1
+                if c.gloss.isEmpty {
+                    nodes.append(Node(n: totalCount, text: c.text, role: c.role.rawValue))
+                }
                 collect(c.children ?? [])
             }
         }
@@ -215,7 +221,8 @@ enum ParseService {
         func attach(_ chunks: [Chunk]) -> [Chunk] {
             chunks.map { c in
                 index += 1
-                return Chunk(text: c.text, role: c.role, gloss: byIndex[index] ?? "",
+                let gloss = c.gloss.isEmpty ? (byIndex[index] ?? "") : c.gloss
+                return Chunk(text: c.text, role: c.role, gloss: gloss,
                              children: c.children.map(attach))
             }
         }

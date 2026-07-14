@@ -16,7 +16,17 @@ final class ResultPanelController {
     func show(sentence: String) {
         close()
         state.start(sentence: sentence)
+        presentPanel()
+    }
 
+    /// Show a standalone message (e.g. selection too long) without parsing.
+    func showError(_ message: String) {
+        close()
+        state.presentError(message)
+        presentPanel()
+    }
+
+    private func presentPanel() {
         let hosting = NSHostingView(rootView: ResultView(state: state))
 
         let panel = NSPanel(

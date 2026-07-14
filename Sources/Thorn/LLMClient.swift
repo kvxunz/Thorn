@@ -193,7 +193,12 @@ struct LLMClient {
             throw LLMError.connectionFailed
         }
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            throw LLMError.http(http.statusCode, "")
+            var body = ""
+            for try await line in bytes.lines {
+                body += line
+                if body.count > 500 { break }
+            }
+            throw LLMError.http(http.statusCode, body)
         }
 
         struct Event: Decodable {

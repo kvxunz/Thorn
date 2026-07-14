@@ -13,6 +13,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     private var keyMonitor: Any?
     private var globalKeyMonitor: Any?
     private var statusObserver: AnyCancellable?
+    private var expandObserver: AnyCancellable?
     private var userResized = false
     let state = PanelState()
 
@@ -109,8 +110,14 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         ThornLog.info("panel shown, frame=\(panel.frame), visible=\(panel.isVisible)")
         installMonitors()
 
-        // Re-fit the panel whenever content changes (loading -> result/error).
+        // Re-fit the panel whenever content changes (loading -> result/error)
+        // or the user expands/collapses a clause.
         statusObserver = state.$status
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                DispatchQueue.main.async { self?.fitToContent() }
+            }
+        expandObserver = state.$expanded
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 DispatchQueue.main.async { self?.fitToContent() }
@@ -198,6 +205,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     func close() {
         state.cancel()
         statusObserver = nil
+        expandObserver = nil
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }

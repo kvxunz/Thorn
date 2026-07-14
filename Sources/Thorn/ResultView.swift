@@ -90,13 +90,23 @@ struct ResultView: View {
 
             // Chunk cards; children nest under their parent with a guide line.
             // Same descent as the header: skip a single all-covering wrapper.
-            VStack(alignment: .leading, spacing: 2) {
+            // Deep trees scroll so the translation stays visible.
+            let cards = VStack(alignment: .leading, spacing: 2) {
                 ForEach(headerChunks(result)) { chunk in
                     chunkTree(chunk, depth: 0)
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+
+            if nodeCount(result.chunks) > 14 {
+                ScrollView(.vertical, showsIndicators: true) {
+                    cards
+                }
+                .frame(height: min(540, (NSScreen.main?.visibleFrame.height ?? 900) * 0.45))
+            } else {
+                cards
+            }
 
             Divider().padding(.horizontal, 12)
 
@@ -136,6 +146,10 @@ struct ResultView: View {
             .buttonStyle(.plain)
             .help(state.usingCloud ? "当前：云端 — 点击切回本地" : "当前：本地 — 点击用云端拆")
         }
+    }
+
+    private func nodeCount(_ chunks: [Chunk]) -> Int {
+        chunks.reduce(0) { $0 + 1 + nodeCount($1.children ?? []) }
     }
 
     /// The level worth showing: descend while the model wrapped everything

@@ -9,7 +9,8 @@
 #     "sentencepiece>=0.1.99",
 #     "fastapi>=0.110",
 #     "uvicorn>=0.29",
-#     "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl",
+#     "spacy-transformers>=1.3,<1.4",
+#     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 # ]
 # ///
 """Thorn structure sidecar: dual-tree (dependency + constituency) sentence
@@ -46,7 +47,7 @@ last_request = time.time()
 def load():
     global nlp
     benepar.download("benepar_en3")
-    nlp = spacy.load("en_core_web_md")
+    nlp = spacy.load("en_core_web_trf")
     if "benepar" not in nlp.pipe_names:
         nlp.add_pipe("benepar", config={"model": "benepar_en3"})
 
@@ -75,7 +76,9 @@ def chunk_roots(head, is_root_clause):
         if d in ("nsubj", "nsubjpass", "expl"):
             roots.append((c, "subject", contains_clause(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
-            roots.append((c, "object", contains_clause(c)))
+            # copular "be" never takes an object: its nominal is a predicative
+            role = "complement" if head.lemma_ == "be" else "object"
+            roots.append((c, role, contains_clause(c)))
         elif d in ("attr", "acomp"):
             roots.append((c, "complement", contains_clause(c)))
         elif d == "xcomp":
@@ -90,7 +93,8 @@ def chunk_roots(head, is_root_clause):
             roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
         elif d in ("relcl", "acl"):
             roots.append((c, "clause-relative", True))
-        elif d == "prep":
+        elif d in ("prep", "agent"):
+            # "agent" is the by-phrase of a passive
             roots.append((c, "prep-phrase", contains_clause(c)))
         elif d in ("advmod", "npadvmod"):
             roots.append((c, "adverbial", False))

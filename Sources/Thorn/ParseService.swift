@@ -237,12 +237,15 @@ enum ParseService {
         for chunk in chunks {
             var kids = repair(sanitize(chunk.children ?? []))
 
-            // A decomposition is real only if it contains a predicate: genuine
-            // clause/verb-phrase expansions always do; junk splits ("or"+"at
-            // least", "a"+"decision", chains of tiny complements) never do.
+            // Asymmetric keep-criterion:
+            // - a clause chunk's decomposition is real only if it contains a
+            //   predicate (kills "capable of" + complement-chain junk);
+            // - a non-clause chunk keeps children only when one embeds a
+            //   clause (kills aux-verb chains like can / get / out of whack).
             let hasVerb = kids.contains { $0.role == .verb }
             let hasClauseChild = kids.contains { $0.role.isClause }
-            if !(kids.count >= 2 && (hasVerb || hasClauseChild)) { kids = [] }
+            let keep = kids.count >= 2 && (chunk.role.isClause ? (hasVerb || hasClauseChild) : hasClauseChild)
+            if !keep { kids = [] }
 
             guard !kids.isEmpty else {
                 out.append(Chunk(text: chunk.text, role: chunk.role, gloss: chunk.gloss))

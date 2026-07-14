@@ -74,35 +74,24 @@ struct ResultView: View {
 
     private func resultView(_ result: ParseResult) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Sentence with trunk emphasis
-            FlowLayout(spacing: 5) {
-                ForEach(result.chunks) { chunk in
-                    Text(chunk.text)
-                        .font(.system(size: 14, weight: chunk.role.isTrunk ? .semibold : .regular, design: .serif))
-                        .foregroundStyle(chunk.role.isTrunk ? Color.primary : Color.primary.opacity(0.55))
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 1)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(state.hoveredChunkID == chunk.id
-                                      ? chunk.role.color.opacity(0.28)
-                                      : Color.clear)
-                        )
-                        .onHover { hovering in
-                            state.hoveredChunkID = hovering ? chunk.id : nil
-                        }
-                }
-            }
-            .padding(.leading, 16)
-            .padding(.trailing, 60) // room for cloud + pin in the corner
-            .padding(.top, 16)
-            .padding(.bottom, 12)
+            // Sentence flows like the original text: trunk bold and dark,
+            // modifiers in their role color — sense groups read by shade.
+            Text(attributedSentence(headerChunks(result)))
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+                .padding(.leading, 16)
+                .padding(.trailing, 60) // room for cloud + pin in the corner
+                .padding(.top, 16)
+                .padding(.bottom, 12)
 
             Divider().padding(.horizontal, 12)
 
-            // Chunk cards; children nest under their parent with a guide line
+            // Chunk cards; children nest under their parent with a guide line.
+            // Same descent as the header: skip a single all-covering wrapper.
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(result.chunks) { chunk in
+                ForEach(headerChunks(result)) { chunk in
                     chunkTree(chunk, depth: 0)
                 }
             }
@@ -111,14 +100,25 @@ struct ResultView: View {
 
             Divider().padding(.horizontal, 12)
 
-            // Full translation
-            Text(result.translation)
-                .font(.system(size: 13))
-                .foregroundStyle(.primary.opacity(0.85))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            // Full translation (arrives last while streaming)
+            Group {
+                if result.translation.isEmpty {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("拆解中…")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text(result.translation)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.primary.opacity(0.85))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
     }
 
@@ -136,6 +136,37 @@ struct ResultView: View {
             .buttonStyle(.plain)
             .help(state.usingCloud ? "当前：云端 — 点击切回本地" : "当前：本地 — 点击用云端拆")
         }
+    }
+
+    /// The level worth showing: descend while the model wrapped everything
+    /// into one container chunk (e.g. imperative "imagine that ...").
+    private func headerChunks(_ result: ParseResult) -> [Chunk] {
+        var chunks = result.chunks
+        while chunks.count == 1, let kids = chunks[0].children, !kids.isEmpty {
+            chunks = kids
+        }
+        return chunks
+    }
+
+    /// Two weights only: trunk heavy and dark, everything else light gray —
+    /// the backbone should jump out at a glance.
+    private func attributedSentence(_ chunks: [Chunk]) -> AttributedString {
+        var out = AttributedString()
+        for (index, chunk) in chunks.enumerated() {
+            var piece = AttributedString(chunk.text)
+            piece.font = .system(size: 15, weight: chunk.role.isTrunk ? .bold : .regular, design: .serif)
+            piece.foregroundColor = chunk.role.isTrunk
+                ? Color.primary.opacity(0.95)
+                : Color.primary.opacity(0.38)
+            if state.hoveredChunkID == chunk.id {
+                piece.backgroundColor = chunk.role.color.opacity(0.22)
+            }
+            out += piece
+            if index < chunks.count - 1, !chunk.text.hasSuffix(" ") {
+                out += AttributedString(" ")
+            }
+        }
+        return out
     }
 
     /// Parent row, then children indented behind a guide line in the parent's color.

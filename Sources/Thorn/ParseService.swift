@@ -22,7 +22,8 @@ enum ParseService {
     - Use clause-* roles ONLY for real SUBORDINATE clauses containing their own subject and verb. "In other places" has no verb: it is prep-phrase, not a clause.
     - COORDINATE clauses (joined by and/but/or/so, often after a dash or semicolon) are MAIN clauses, never clause-*. Decompose EACH coordinate clause into its own subject/verb/object/complement chunks.
     - A coordinating conjunction joining two clauses ("or", "but", "—or at least", "and yet") is its own chunk with role "conjunction". Never glue it to the preceding object or the following subject.
-    - NEVER reorder words: chunks in array order must read exactly like the original. In questions with subject–auxiliary inversion ("Why must we master..."), keep the inverted group "must we master" as ONE verb chunk (gloss includes the subject, e.g. "我们必须掌握"); the question word (Why/How/What...) is its own chunk with role "adverbial".
+    - NEVER reorder words: chunks in array order must read exactly like the original. ONLY in questions where the auxiliary comes BEFORE the subject ("Why must we master...") keep the inverted group "must we master" as ONE verb chunk; the question word (Why/How/What...) is its own chunk with role "adverbial".
+    - In every DECLARATIVE clause the subject is ALWAYS its own separate chunk, and the object is separate from the verb. "they would have hedged their bets" is THREE chunks (they / would have hedged / their bets), never one.
     - An infinitive complement ("to purchase assets") belongs with its verb chain or gets role "complement" — never "other".
     - COVERAGE INVARIANT: top-level chunk texts concatenated in order must equal the WHOLE input. And whenever a chunk has children, that chunk's own text must equal its children's texts concatenated. So a subject with an attached relative clause has text "The committee, which had been deliberating for weeks," and children ["The committee," + the which-clause] — the parent text is never shorter than its children.
     - NEVER make a chunk that is only punctuation. Attach punctuation (: , ; ?) to the end of the preceding chunk; a dash introducing a new clause stays with the conjunction chunk ("—or at least").
@@ -63,7 +64,10 @@ enum ParseService {
     """
 
     /// Parse via given provider; cache hit returns instantly. Retries once on malformed JSON.
-    static func parse(sentence: String, provider: Provider? = nil, force: Bool = false) async throws -> ParseResult {
+    /// `onPartial` receives progressively growing results while the model streams
+    /// (Chat Completions wire only; Responses gateways deliver in one piece).
+    static func parse(sentence: String, provider: Provider? = nil, force: Bool = false,
+                      onPartial: (@Sendable (ParseResult) -> Void)? = nil) async throws -> ParseResult {
         let ep = SettingsStore.shared.endpoint(for: provider)
         guard !ep.baseURL.isEmpty, !ep.model.isEmpty else {
             throw LLMError.notConfigured
@@ -76,6 +80,23 @@ enum ParseService {
         }
 
         let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey, wireAPI: ep.wireAPI)
+
+        if let onPartial, client.supportsStreaming {
+            do {
+                let raw = try await streamRaw(client: client, sentence: normalized, onPartial: onPartial)
+                ThornLog.info("model \(ep.model) streamed output: \(raw.prefix(4000))")
+                let result = try decode(raw)
+                ParseCache.set(model: ep.model, sentence: normalized, result: result)
+                return result
+            } catch let error as LLMError {
+                switch error {
+                case .badJSON, .emptyResponse:
+                    break // fall through to the non-streaming retry below
+                default:
+                    throw error
+                }
+            }
+        }
 
         var lastError: Error = LLMError.emptyResponse
         for _ in 0..<2 {
@@ -95,6 +116,87 @@ enum ParseService {
             }
         }
         throw lastError
+    }
+
+    // MARK: - Streaming
+
+    private static func streamRaw(client: LLMClient, sentence: String,
+                                  onPartial: @Sendable (ParseResult) -> Void) async throws -> String {
+        var buffer = ""
+        var sinceParse = 0
+        for try await delta in try await client.chatStream(system: systemPrompt, user: sentence, jsonMode: true) {
+            buffer += delta
+            sinceParse += delta.count
+            // Attempt a partial parse every ~60 chars; cheap enough, feels live.
+            if sinceParse >= 60 {
+                sinceParse = 0
+                if let partial = partialResult(from: buffer), !partial.chunks.isEmpty {
+                    onPartial(partial)
+                }
+            }
+        }
+        return buffer
+    }
+
+    /// Lenient mirror of the schema: everything optional, so a truncated tail
+    /// doesn't sink the fields that already arrived.
+    private struct LenientChunk: Decodable {
+        let text: String?
+        let role: String?
+        let gloss: String?
+        let children: [LenientChunk]?
+    }
+    private struct LenientResult: Decodable {
+        let chunks: [LenientChunk]?
+        let translation: String?
+    }
+
+    private static func partialResult(from buffer: String) -> ParseResult? {
+        guard let data = completeJSON(buffer).data(using: .utf8),
+              let lenient = try? JSONDecoder().decode(LenientResult.self, from: data),
+              let rawChunks = lenient.chunks else { return nil }
+        let chunks = rawChunks.compactMap(materialize)
+        guard !chunks.isEmpty else { return nil }
+        return ParseResult(chunks: repair(sanitize(chunks)), translation: lenient.translation ?? "")
+    }
+
+    private static func materialize(_ lenient: LenientChunk) -> Chunk? {
+        guard let text = lenient.text, !text.isEmpty,
+              let role = lenient.role, let gloss = lenient.gloss else { return nil }
+        let kids = lenient.children?.compactMap(materialize)
+        return Chunk(text: text, role: ChunkRole(rawValue: role) ?? .other, gloss: gloss,
+                     children: (kids?.isEmpty == false) ? kids : nil)
+    }
+
+    /// Close whatever is dangling (open strings, braces, brackets) so a
+    /// mid-generation buffer becomes decodable JSON.
+    private static func completeJSON(_ s: String) -> String {
+        var stack: [Character] = []
+        var inString = false
+        var escaped = false
+        for ch in s {
+            if inString {
+                if escaped { escaped = false }
+                else if ch == "\\" { escaped = true }
+                else if ch == "\"" { inString = false }
+            } else {
+                switch ch {
+                case "\"": inString = true
+                case "{", "[": stack.append(ch)
+                case "}", "]": if !stack.isEmpty { stack.removeLast() }
+                default: break
+                }
+            }
+        }
+        var out = s
+        if escaped { out.removeLast() }
+        if inString { out += "\"" }
+        while let last = out.last, last == "," || last.isWhitespace { out.removeLast() }
+        if out.last == ":" { out += "null" }
+        for opener in stack.reversed() {
+            out.append(opener == "{" ? "}" : "]")
+        }
+        return out
     }
 
     private static func decode(_ raw: String) throws -> ParseResult {
@@ -134,8 +236,12 @@ enum ParseService {
         for chunk in chunks {
             var kids = repair(sanitize(chunk.children ?? []))
 
-            let clauseInvolved = chunk.role.isClause || kids.contains { $0.role.isClause }
-            if !clauseInvolved { kids = [] }
+            // A decomposition is real only if it contains a predicate: genuine
+            // clause/verb-phrase expansions always do; junk splits ("or"+"at
+            // least", "a"+"decision", chains of tiny complements) never do.
+            let hasVerb = kids.contains { $0.role == .verb }
+            let hasClauseChild = kids.contains { $0.role.isClause }
+            if !(kids.count >= 2 && (hasVerb || hasClauseChild)) { kids = [] }
 
             guard !kids.isEmpty else {
                 out.append(Chunk(text: chunk.text, role: chunk.role, gloss: chunk.gloss))

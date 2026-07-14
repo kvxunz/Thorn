@@ -158,6 +158,73 @@ struct LLMClient {
         return text
     }
 
+    var supportsStreaming: Bool { wireAPI == .chatCompletions }
+
+    /// SSE stream of content deltas (Chat Completions wire only).
+    func chatStream(system: String, user: String, jsonMode: Bool) async throws -> AsyncThrowingStream<String, Error> {
+        guard let url = URL(string: baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions") else {
+            throw LLMError.badURL
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 120
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let apiKey {
+            req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        let body = ChatRequest(
+            model: model,
+            messages: [
+                .init(role: "system", content: system),
+                .init(role: "user", content: user),
+            ],
+            temperature: 0.2,
+            response_format: jsonMode ? .init(type: "json_object") : nil,
+            stream: true
+        )
+        req.httpBody = try JSONEncoder().encode(body)
+
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await URLSession.shared.bytes(for: req)
+        } catch {
+            ThornLog.info("stream network error: \(error)")
+            throw LLMError.connectionFailed
+        }
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            throw LLMError.http(http.statusCode, "")
+        }
+
+        struct Event: Decodable {
+            struct Choice: Decodable {
+                struct Delta: Decodable { let content: String? }
+                let delta: Delta
+            }
+            let choices: [Choice]
+        }
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await line in bytes.lines {
+                        guard line.hasPrefix("data: ") else { continue }
+                        let payload = String(line.dropFirst(6))
+                        if payload == "[DONE]" { break }
+                        if let event = try? JSONDecoder().decode(Event.self, from: Data(payload.utf8)),
+                           let content = event.choices.first?.delta.content, !content.isEmpty {
+                            continuation.yield(content)
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     /// GET /models — for the settings model picker.
     func listModels() async throws -> [String] {
         guard let url = URL(string: baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/models") else {

@@ -92,7 +92,9 @@ enum ParseService {
             } catch let error as LLMError {
                 switch error {
                 case .badJSON, .emptyResponse:
-                    break // fall through to the non-streaming retry below
+                    // Falling back to a non-streaming retry: clear the stale
+                    // partial from the panel (empty result = reset signal).
+                    onPartial(ParseResult(chunks: [], translation: ""))
                 default:
                     throw error
                 }
@@ -235,7 +237,8 @@ enum ParseService {
     private static func repair(_ chunks: [Chunk]) -> [Chunk] {
         var out: [Chunk] = []
         for chunk in chunks {
-            var kids = repair(sanitize(chunk.children ?? []))
+            // Children were already cleaned by sanitize's own recursion.
+            var kids = repair(chunk.children ?? [])
 
             // Asymmetric keep-criterion:
             // - a clause chunk's decomposition is real only if it contains a

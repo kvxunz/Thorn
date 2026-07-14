@@ -50,7 +50,8 @@ final class PanelState: ObservableObject {
                 let result = try await ParseService.parse(sentence: sentence, provider: provider, force: force) { partial in
                     Task { @MainActor in
                         guard self.task?.isCancelled == false else { return }
-                        self.status = .result(partial)
+                        // Empty partial = stream fell back to a retry: show loading again.
+                        self.status = partial.chunks.isEmpty ? .loading : .result(partial)
                     }
                 }
                 guard !Task.isCancelled else { return }

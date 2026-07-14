@@ -32,7 +32,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         userResized = true
         var frame = panel.frame
         let newWidth = max(400, frame.width + delta.width)
-        let newHeight = max(180, frame.height + delta.height)
+        let newHeight = max(240, frame.height + delta.height)
         frame.origin.y -= (newHeight - frame.height)
         frame.size = CGSize(width: newWidth, height: newHeight)
         panel.setFrame(frame, display: true)

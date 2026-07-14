@@ -20,6 +20,8 @@ struct ResultView: View {
         .frame(minWidth: 400, idealWidth: 460, maxWidth: .infinity,
                maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        // Whatever squeezing happens, the panel silhouette stays rounded.
+        .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(Color.primary.opacity(0.08))
@@ -111,6 +113,9 @@ struct ResultView: View {
                 .padding(.trailing, 60) // room for cloud + pin in the corner
                 .padding(.top, 16)
                 .padding(.bottom, 12)
+                // Monster sentences: cap the header so cards keep their space.
+                .frame(maxHeight: 240, alignment: .topLeading)
+                .clipped()
 
             Divider().padding(.horizontal, 12)
 

@@ -11,21 +11,25 @@ final class PanelState: ObservableObject {
     @Published var sentence: String = ""
     @Published var status: Status = .loading
     @Published var hoveredChunkID: UUID?
-    @Published var usingCloud = false
+    @Published var activeProvider: Provider = .ollama
     @Published var pinned = false
+
+    var usingCloud: Bool { activeProvider == .custom }
 
     private var task: Task<Void, Never>?
 
     func start(sentence: String) {
         self.sentence = sentence
-        self.usingCloud = false
+        self.activeProvider = SettingsStore.shared.provider
         self.pinned = false
-        run(provider: nil, force: false)
+        run(provider: activeProvider, force: false)
     }
 
-    func reparseWithCloud() {
-        usingCloud = true
-        run(provider: .custom, force: true)
+    /// Toggle between engines; results are cached per model, so flipping back is instant.
+    func switchEngine(to provider: Provider) {
+        guard provider != activeProvider else { return }
+        activeProvider = provider
+        run(provider: provider, force: false)
     }
 
     private func run(provider: Provider?, force: Bool) {

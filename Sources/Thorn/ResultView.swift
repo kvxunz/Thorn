@@ -50,8 +50,12 @@ struct ResultView: View {
 
     private func errorView(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("拆解失败", systemImage: "exclamationmark.triangle")
-                .font(.system(size: 13, weight: .semibold))
+            HStack {
+                Label("拆解失败", systemImage: "exclamationmark.triangle")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                engineToggle
+            }
             Text(message)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -100,7 +104,7 @@ struct ResultView: View {
 
             Divider().padding(.horizontal, 12)
 
-            // Full translation + actions
+            // Full translation + engine toggle
             HStack(alignment: .top, spacing: 8) {
                 Text(result.translation)
                     .font(.system(size: 13))
@@ -108,21 +112,38 @@ struct ResultView: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                if settings.hasCustomEndpoint && !state.usingCloud {
-                    Button {
-                        state.reparseWithCloud()
-                    } label: {
-                        Image(systemName: "cloud")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help("用云端重拆")
-                }
+                engineToggle
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
+    }
+
+    @ViewBuilder
+    private var engineToggle: some View {
+        if settings.hasCustomEndpoint {
+            HStack(spacing: 2) {
+                engineButton("本地", .ollama)
+                engineButton("云端", .custom)
+            }
+            .padding(2)
+            .background(Color.primary.opacity(0.06), in: Capsule())
+        }
+    }
+
+    private func engineButton(_ title: String, _ provider: Provider) -> some View {
+        let active = state.activeProvider == provider
+        return Button {
+            state.switchEngine(to: provider)
+        } label: {
+            Text(title)
+                .font(.system(size: 10.5, weight: active ? .semibold : .regular))
+                .foregroundStyle(active ? Color.primary : Color.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(active ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color.clear), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private func chunkRow(_ chunk: Chunk) -> some View {

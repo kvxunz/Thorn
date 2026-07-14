@@ -1,9 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Dead-simple file logger for diagnostics: /tmp/thorn.log
+/// Diagnostics logger, off by default — captured text would otherwise sit in
+/// world-readable /tmp. Enable: defaults write com.xvz.thorn debugLog -bool true
 enum ThornLog {
+    private static let enabled = UserDefaults.standard.bool(forKey: "debugLog")
+
     static func info(_ message: String) {
+        guard enabled else { return }
         let line = "\(Date()) \(message)\n"
         let url = URL(fileURLWithPath: "/tmp/thorn.log")
         if let handle = try? FileHandle(forWritingTo: url) {

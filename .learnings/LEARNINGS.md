@@ -23,3 +23,9 @@
 9. **web 内核应用选中文本不在 AX 焦点元素上**：挂在 AXWebArea 后代；Readest 的 epub iframe 甚至完全不暴露选区（AX 树里无 AXSelectedText），只能走剪贴板兜底。已加 AX 树深度遍历（depth 12，每层限 40 子节点）作中间层。
 
 10. **诊断脚本可从有辅助功能权限的宿主进程直接跑**：`swift /tmp/xxx.swift` 继承宿主 TCC 信任（AXIsProcessTrusted=true），可注入按键、扫 AX 树，比在 app 里加日志迭代快得多。
+
+## 2026-07-14 Sub2API 云端接入
+
+11. **Sub2API（Wei-Shaw/sub2api）是 Responses 协议网关**：Codex 订阅转 API。老版本（v0.1.103）非流式 `/v1/responses` 有 bug：status=completed、output_tokens 有计数但 `output` 数组为空（流式聚合丢内容）。升级到 v0.1.15x 修复。诊断关键：usage 有 token 计数但 output 空 = 网关聚合 bug，不是模型问题。
+
+12. **"模型返回为空"类错误要先 dump 原始响应体**：在解析失败分支记录 raw body（截断 6000 字符），一轮就定位；别猜格式。

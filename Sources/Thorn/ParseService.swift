@@ -84,19 +84,28 @@ enum ParseService {
         return sanitize(result)
     }
 
-    /// Merge punctuation-only chunks into their neighbor so they never render as cards.
+    /// Merge punctuation-only chunks into their neighbor so they never render as
+    /// cards: into the previous chunk, or ahead into the next if they lead.
     private static func sanitize(_ result: ParseResult) -> ParseResult {
         var merged: [Chunk] = []
+        var pendingPrefix = ""
         for chunk in result.chunks {
             let hasContent = chunk.text.rangeOfCharacter(from: .alphanumerics) != nil
-            if !hasContent, let last = merged.last {
-                merged[merged.count - 1] = Chunk(
-                    text: last.text + chunk.text,
-                    role: last.role,
-                    gloss: last.gloss
-                )
+            if !hasContent {
+                if merged.isEmpty {
+                    pendingPrefix += chunk.text
+                } else {
+                    let last = merged[merged.count - 1]
+                    merged[merged.count - 1] = Chunk(
+                        text: last.text + chunk.text,
+                        role: last.role,
+                        gloss: last.gloss
+                    )
+                }
             } else {
-                merged.append(chunk)
+                let text = pendingPrefix + chunk.text
+                pendingPrefix = ""
+                merged.append(Chunk(text: text, role: chunk.role, gloss: chunk.gloss))
             }
         }
         return ParseResult(chunks: merged, translation: result.translation)

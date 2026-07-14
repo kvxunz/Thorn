@@ -10,7 +10,7 @@ final class PanelState: ObservableObject {
 
     @Published var sentence: String = ""
     @Published var status: Status = .loading
-    @Published var hoveredChunkID: String?
+    @Published var hoveredChunkID: UUID?
     @Published var usingCloud = false
     @Published var pinned = false
 

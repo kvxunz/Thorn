@@ -32,4 +32,10 @@
 
 14. **结构不变量靠代码修复，不靠提示词堆规则**：给 30B 模型加"父块文本=子块拼接"规则后，它反而开始过度拆解（a+decision）且不变量照破。解法：提示词只描述理想输出，代码里加 repair 层（越界子块提升为兄弟、无从句的琐碎展开剪除、修不好的树宁可丢弃）。规则数量与小模型服从率成反比。
 
+15. **无边框 NSPanel 缩放裁切类 bug 的统一根因**：窗口被允许缩到比 SwiftUI 内容最小布局还小 → 内容溢出被窗口矩形硬裁（圆角变直角、文字切半）。clipShape 治不了。正解：`windowWillResize` 回调里用 `NSHostingController.sizeThatFits(in: CGSize(width: W, height: 1))` 实时钳制下限；且**布局里每个文字都必须 fixedSize(vertical) 声明刚体**——任何一个可压缩 Text 都会让 sizeThatFits 谎报最小值。内容异步长大后还要再 enforce 一次。
+
+16. **SwiftUI frame(maxHeight:) 是"贪婪上限"不是"内容封顶"**：VStack 会把可用空间给到 maxHeight 满格，短内容下面全是空气。想按内容封顶用 lineLimit（文本）或精确 ideal。
+
+17. **本地 LLM 批量结构化输出要用键值对不用平行数组**：让 qwen 按序输出 N 条 glosses 数组，N>15 时计数必错整包报废。改成 `{"n":3,"g":"…"}` 键值对 + 宽容对齐（对上多少用多少），成功率质变。
+
 13. **few-shot 例句不能和真实输入太像**：例句与输入几乎相同时，模型直接照抄例句文本，把输入里例句没有的词（extremely）吞掉。例句要结构同构、措辞完全无关，并显式加"chunk text 必须逐字来自输入句"规则。验证手段：拼接所有 chunk text 与原句做覆盖对比。

@@ -135,7 +135,7 @@ struct ResultView: View {
             ScrollView(.vertical, showsIndicators: true) {
                 cards
             }
-            .frame(minHeight: 100,
+            .frame(minHeight: 80,
                    idealHeight: estimatedCardsHeight(result),
                    maxHeight: .infinity)
 

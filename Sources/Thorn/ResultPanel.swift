@@ -8,6 +8,7 @@ import Combine
 @MainActor
 final class ResultPanelController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
+    private var hosting: NSHostingController<ResultView>?
     private var clickMonitor: Any?
     private var keyMonitor: Any?
     private var globalKeyMonitor: Any?
@@ -26,13 +27,27 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         Task { @MainActor in self.userResized = true }
     }
 
+    /// The content's true minimum height at a given width: the window must
+    /// never go below it, or SwiftUI overflows and the window clips corners.
+    private func minContentHeight(atWidth width: CGFloat) -> CGFloat {
+        guard let hosting else { return 240 }
+        return max(240, hosting.sizeThatFits(in: CGSize(width: width, height: 1)).height)
+    }
+
+    nonisolated func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        MainActor.assumeIsolated {
+            let minH = minContentHeight(atWidth: max(400, frameSize.width))
+            return NSSize(width: max(400, frameSize.width), height: max(minH, frameSize.height))
+        }
+    }
+
     /// Grip-driven resize: grow right/down, keep the top-left corner fixed.
     private func resizeBy(_ delta: CGSize) {
         guard let panel else { return }
         userResized = true
         var frame = panel.frame
         let newWidth = max(400, frame.width + delta.width)
-        let newHeight = max(240, frame.height + delta.height)
+        let newHeight = max(minContentHeight(atWidth: newWidth), frame.height + delta.height)
         frame.origin.y -= (newHeight - frame.height)
         frame.size = CGSize(width: newWidth, height: newHeight)
         panel.setFrame(frame, display: true)
@@ -46,9 +61,10 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     }
 
     private func presentPanel() {
-        let hosting = NSHostingView(rootView: ResultView(state: state) { [weak self] delta in
+        let controller = NSHostingController(rootView: ResultView(state: state) { [weak self] delta in
             self?.resizeBy(delta)
         })
+        hosting = controller
 
         let panel = NSPanel(
             contentRect: .zero,
@@ -57,7 +73,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
             defer: false
         )
         panel.delegate = self
-        panel.contentView = hosting
+        panel.contentView = controller.view
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.isOpaque = false

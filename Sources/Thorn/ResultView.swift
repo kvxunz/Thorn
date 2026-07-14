@@ -100,10 +100,10 @@ struct ResultView: View {
 
             Divider().padding(.horizontal, 12)
 
-            // Chunk cards, clause children indented beneath their clause
+            // Chunk cards; children nest under their parent with a guide line
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(flatten(result.chunks), id: \.chunk.id) { entry in
-                    chunkRow(entry.chunk, depth: entry.depth)
+                ForEach(result.chunks) { chunk in
+                    chunkTree(chunk, depth: 0)
                 }
             }
             .padding(.horizontal, 10)
@@ -138,10 +138,26 @@ struct ResultView: View {
         }
     }
 
-    private func flatten(_ chunks: [Chunk], depth: Int = 0) -> [(chunk: Chunk, depth: Int)] {
-        chunks.flatMap { chunk in
-            [(chunk, depth)] + flatten(chunk.children ?? [], depth: depth + 1)
-        }
+    /// Parent row, then children indented behind a guide line in the parent's color.
+    private func chunkTree(_ chunk: Chunk, depth: Int) -> AnyView {
+        AnyView(
+            VStack(alignment: .leading, spacing: 2) {
+                chunkRow(chunk, depth: depth)
+                if let kids = chunk.children {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(kids) { chunkTree($0, depth: depth + 1) }
+                    }
+                    .padding(.leading, 16)
+                    .overlay(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(chunk.role.color.opacity(0.25))
+                            .frame(width: 2)
+                            .padding(.leading, 7)
+                            .padding(.vertical, 3)
+                    }
+                }
+            }
+        )
     }
 
     private func chunkRow(_ chunk: Chunk, depth: Int = 0) -> some View {
@@ -153,7 +169,8 @@ struct ResultView: View {
 
             Text(chunk.text)
                 .font(.system(size: depth > 0 ? 11.5 : 12.5, design: .serif))
-                .foregroundStyle(.primary.opacity(depth > 0 ? 0.75 : 0.9))
+                // A chunk about to be decomposed below is a summary line: dim it.
+                .foregroundStyle(.primary.opacity(chunk.children != nil ? 0.55 : (depth > 0 ? 0.75 : 0.9)))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -171,8 +188,7 @@ struct ResultView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(width: 130, alignment: .leading)
         }
-        .padding(.leading, 6 + CGFloat(depth) * 18)
-        .padding(.trailing, 6)
+        .padding(.horizontal, 6)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)

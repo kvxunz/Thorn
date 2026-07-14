@@ -145,8 +145,9 @@ enum ParseService {
 
     private static let glossPrompt = """
     You annotate English sense-groups for Chinese learners. Given a sentence and its numbered chunks, output STRICT JSON only:
-    {"glosses": ["<中文释义>", ...], "translation": "<整句流畅中文翻译>"}
-    - glosses: one concise Chinese rendering per chunk, in the SAME order and count as given.
+    {"glosses": [{"n": 1, "g": "<中文释义>"}, ...], "translation": "<整句流畅中文翻译>"}
+    - One entry per chunk, "n" copied from the input chunk's "n". Do not skip, merge, or add entries.
+    - Gloss each chunk by its meaning IN THIS sentence. Idiom parts stay idiomatic: for "raised eyebrows", the object chunk "eyebrows" is glossed 表示惊讶/非议 (习语成分), never the literal 眉毛.
     - For role "relative", state what it refers to in THIS sentence: "指代前述" + the actual noun from the sentence. Never copy nouns that are not in the sentence.
     - translation: fluent Chinese of the whole input, not a gloss concatenation.
     """
@@ -174,9 +175,19 @@ enum ParseService {
                              encoding: .utf8) ?? sentence
         let raw = try await client.chat(system: glossPrompt, user: payload, jsonMode: true)
 
+        // Tolerant decoding: entries keyed by "n" so one miscount doesn't
+        // sink the whole batch; a plain string array is accepted as fallback.
+        struct Entry: Decodable {
+            let n: Int
+            let g: String
+        }
         struct GlossResponse: Decodable {
-            let glosses: [String]
-            let translation: String
+            let glosses: [Entry]?
+            let translation: String?
+        }
+        struct LegacyResponse: Decodable {
+            let glosses: [String]?
+            let translation: String?
         }
         var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.hasPrefix("```") {
@@ -184,23 +195,32 @@ enum ParseService {
                 .replacingOccurrences(of: "^```(json)?\\s*", with: "", options: .regularExpression)
                 .replacingOccurrences(of: "```\\s*$", with: "", options: .regularExpression)
         }
-        guard let data = text.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(GlossResponse.self, from: data),
-              decoded.glosses.count == nodes.count else {
+        guard let data = text.data(using: .utf8) else { throw LLMError.badJSON(raw) }
+
+        var byIndex: [Int: String] = [:]
+        var translation = ""
+        if let decoded = try? JSONDecoder().decode(GlossResponse.self, from: data), decoded.glosses != nil {
+            for e in decoded.glosses ?? [] { byIndex[e.n] = e.g }
+            translation = decoded.translation ?? ""
+        } else if let legacy = try? JSONDecoder().decode(LegacyResponse.self, from: data) {
+            for (i, g) in (legacy.glosses ?? []).enumerated() { byIndex[i + 1] = g }
+            translation = legacy.translation ?? ""
+        }
+        // Require the translation and at least half the glosses to call it a success.
+        guard !translation.isEmpty, byIndex.count * 2 >= nodes.count else {
             throw LLMError.badJSON(raw)
         }
 
         var index = 0
         func attach(_ chunks: [Chunk]) -> [Chunk] {
             chunks.map { c in
-                let gloss = decoded.glosses[index]
                 index += 1
-                return Chunk(text: c.text, role: c.role, gloss: gloss,
+                return Chunk(text: c.text, role: c.role, gloss: byIndex[index] ?? "",
                              children: c.children.map(attach))
             }
         }
         let glossed = attach(structure)
-        return ParseResult(chunks: glossed, translation: decoded.translation)
+        return ParseResult(chunks: glossed, translation: translation)
     }
 
     // MARK: - Streaming

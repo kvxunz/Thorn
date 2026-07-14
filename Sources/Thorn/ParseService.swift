@@ -18,6 +18,7 @@ enum ParseService {
     Rules:
     - "role" must be one of: subject, verb, object, complement, clause-relative, clause-adverbial, clause-noun, prep-phrase, insertion, conjunction, relative, adverbial, other
     - Split the MAIN clause backbone into separate chunks: subject / verb / object / complement each gets its own chunk. The verb chunk includes auxiliaries ("have to get used to" is ONE verb chunk).
+    - Linking verbs (be/become/seem/look/remain...) take a PREDICATIVE, not an object: "are" is the verb chunk, "volatile quantities" is a separate chunk with role "complement" — never merge them and never call the predicative an object.
     - Each modifier (prepositional phrase, subordinate clause, insertion) is its own chunk.
     - Use clause-* roles ONLY for real SUBORDINATE clauses containing their own subject and verb. "In other places" has no verb: it is prep-phrase, not a clause.
     - COORDINATE clauses (joined by and/but/or/so, often after a dash or semicolon) are MAIN clauses, never clause-*. Decompose EACH coordinate clause into its own subject/verb/object/complement chunks.

@@ -148,16 +148,28 @@ struct ResultView: View {
         return chunks
     }
 
-    /// Two weights only: trunk heavy and dark, everything else light gray —
-    /// the backbone should jump out at a glance.
+    /// Three tiers: S/V/O heaviest (near-black bold), complement middle, and
+    /// every other role in its fixed role color — same hues as the cards, so
+    /// the color itself teaches the component type.
     private func attributedSentence(_ chunks: [Chunk]) -> AttributedString {
         var out = AttributedString()
         for (index, chunk) in chunks.enumerated() {
             var piece = AttributedString(chunk.text)
-            piece.font = .system(size: 15, weight: chunk.role.isTrunk ? .bold : .regular, design: .serif)
-            piece.foregroundColor = chunk.role.isTrunk
-                ? Color.primary.opacity(0.95)
-                : Color.primary.opacity(0.38)
+            let weight: Font.Weight
+            let color: Color
+            switch chunk.role {
+            case .subject, .verb, .object:
+                weight = .bold
+                color = chunk.role.emphaticColor
+            case .complement:
+                weight = .medium
+                color = Color.primary.opacity(0.62)
+            default:
+                weight = .regular
+                color = chunk.role.color
+            }
+            piece.font = .system(size: 15, weight: weight, design: .serif)
+            piece.foregroundColor = color
             if state.hoveredChunkID == chunk.id {
                 piece.backgroundColor = chunk.role.color.opacity(0.22)
             }

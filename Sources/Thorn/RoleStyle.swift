@@ -1,4 +1,12 @@
 import SwiftUI
+import AppKit
+
+/// Appearance-adaptive color: deep tones for light mode, bright for dark.
+private func adaptive(light: NSColor, dark: NSColor) -> Color {
+    Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+    })
+}
 
 /// Muted, learner-friendly palette. Trunk roles saturated; modifiers softer.
 extension ChunkRole {
@@ -20,14 +28,21 @@ extension ChunkRole {
         }
     }
 
-    /// Deeper, saturated variants for the sentence header backbone (S/V/O).
+    /// Saturated variants for the sentence header backbone (S/V/O):
+    /// deep in light mode, brightened in dark mode for contrast.
     var emphaticColor: Color {
         switch self {
-        case .subject: return Color(hue: 0.58, saturation: 0.75, brightness: 0.52)
-        case .verb: return Color(hue: 0.10, saturation: 0.90, brightness: 0.60) // deep amber-yellow
-
-        case .object: return Color(hue: 0.38, saturation: 0.70, brightness: 0.45)
-        default: return color
+        case .subject:
+            return adaptive(light: NSColor(hue: 0.58, saturation: 0.75, brightness: 0.52, alpha: 1),
+                            dark: NSColor(hue: 0.58, saturation: 0.50, brightness: 0.88, alpha: 1))
+        case .verb: // amber-yellow
+            return adaptive(light: NSColor(hue: 0.10, saturation: 0.90, brightness: 0.60, alpha: 1),
+                            dark: NSColor(hue: 0.11, saturation: 0.75, brightness: 0.92, alpha: 1))
+        case .object:
+            return adaptive(light: NSColor(hue: 0.38, saturation: 0.70, brightness: 0.45, alpha: 1),
+                            dark: NSColor(hue: 0.38, saturation: 0.50, brightness: 0.82, alpha: 1))
+        default:
+            return color
         }
     }
 }

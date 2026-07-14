@@ -88,8 +88,13 @@ def chunk_roots(head, is_root_clause):
             roots.append((c, "clause-noun", True))
         elif d == "advcl":
             if c.pos_ not in ("VERB", "AUX"):
-                # advcl hung on a non-verb ("at worst"): plain adverbial, no expansion
-                roots.append((c, "adverbial", False))
+                # adjectival-predicate clauses ("however farfetched their
+                # principles may seem") still contain a verb: expand those;
+                # verbless fragments ("at worst") stay flat
+                if any(t.pos_ in ("VERB", "AUX") for t in c.subtree if t is not c):
+                    roots.append((c, "clause-adverbial", True))
+                else:
+                    roots.append((c, "adverbial", False))
             else:
                 # infinitive purpose phrases have no subject of their own:
                 # label them adverbial, not clause (still expanded)
@@ -116,6 +121,10 @@ def chunk_roots(head, is_root_clause):
             roots.append((c, "conjunction", False))
         elif d in ("intj", "parataxis", "appos"):
             roots.append((c, "insertion", contains_clause(c)))
+        elif c.lower_ == "for" and c.pos_ in ("ADP", "CCONJ", "SCONJ") and not any(
+                t.dep_ == "pobj" for t in c.children):
+            # bare coordinating "for" (= because) between clauses
+            roots.append((c, "conjunction", False))
         else:
             roots.append((c, None, contains_clause(c)))  # absorbed later
     return roots

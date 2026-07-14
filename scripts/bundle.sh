@@ -15,6 +15,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp .build/release/Thorn "$APP/Contents/MacOS/Thorn"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Stable identity so the TCC accessibility grant survives rebuilds.
 # Hash, not name: two same-named "DocR Dev" certs in keychain make the name ambiguous.

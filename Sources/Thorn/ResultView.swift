@@ -101,10 +101,13 @@ struct ResultView: View {
     }
 
     private func resultView(_ result: ParseResult) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let chunks = headerChunks(result)
+        let spans = ChunkSpanResolver.layout(for: chunks).spans
+
+        return VStack(alignment: .leading, spacing: 0) {
             // Sentence flows like the original text: trunk bold and dark,
             // modifiers in their role color — sense groups read by shade.
-            Text(attributedSentence(headerChunks(result)))
+            Text(attributedSentence(chunks))
                 .lineSpacing(5)
                 .lineLimit(12) // monster sentences: cap by lines, not by a greedy frame
                 .fixedSize(horizontal: false, vertical: true)
@@ -121,8 +124,8 @@ struct ResultView: View {
             // Same descent as the header: skip a single all-covering wrapper.
             // Deep trees scroll so the translation stays visible.
             let cards = VStack(alignment: .leading, spacing: 2) {
-                ForEach(headerChunks(result)) { chunk in
-                    chunkTree(chunk, depth: 0)
+                ForEach(chunks) { chunk in
+                    chunkTree(chunk, depth: 0, spans: spans)
                 }
             }
             .padding(.horizontal, 10)
@@ -237,20 +240,21 @@ struct ResultView: View {
                 out += AttributedString(" ")
             }
         }
-        // Hover from ANY tree depth lights up its exact span in the sentence.
-        // Word-boundary match, or "he" lands inside "then".
+        // Hover from ANY tree depth lights up its pre-resolved source span.
+        // Never search by text here: repeated words must remain distinct.
         if let highlight = state.hoveredHighlight {
-            var pattern = NSRegularExpression.escapedPattern(for: highlight.text)
-            if highlight.text.first?.isLetter == true || highlight.text.first?.isNumber == true {
-                pattern = "\\b" + pattern
-            }
-            if highlight.text.last?.isLetter == true || highlight.text.last?.isNumber == true {
-                pattern += "\\b"
-            }
-            let range = out.range(of: pattern, options: .regularExpression)
-                ?? out.range(of: highlight.text)
-            if let range {
-                out[range].backgroundColor = highlight.color.opacity(0.22)
+            let characters = out.characters
+            if highlight.range.lowerBound >= 0,
+               highlight.range.upperBound <= characters.count {
+                let lower = characters.index(
+                    characters.startIndex,
+                    offsetBy: highlight.range.lowerBound
+                )
+                let upper = characters.index(
+                    characters.startIndex,
+                    offsetBy: highlight.range.upperBound
+                )
+                out[lower..<upper].backgroundColor = highlight.color.opacity(0.22)
             }
         }
         return out
@@ -258,10 +262,14 @@ struct ResultView: View {
 
     /// Parent row, then children indented behind a guide line in the parent's
     /// color. Children start collapsed; clicking the parent row toggles them.
-    private func chunkTree(_ chunk: Chunk, depth: Int) -> AnyView {
+    private func chunkTree(
+        _ chunk: Chunk,
+        depth: Int,
+        spans: [UUID: Range<Int>]
+    ) -> AnyView {
         AnyView(
             VStack(alignment: .leading, spacing: 2) {
-                chunkRow(chunk, depth: depth)
+                chunkRow(chunk, depth: depth, span: spans[chunk.id])
                     .contentShape(Rectangle())
                     .onTapGesture {
                         guard chunk.children != nil else { return }
@@ -273,7 +281,7 @@ struct ResultView: View {
                     }
                 if let kids = chunk.children, state.expanded.contains(chunk.id) {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(kids) { chunkTree($0, depth: depth + 1) }
+                        ForEach(kids) { chunkTree($0, depth: depth + 1, spans: spans) }
                     }
                     .padding(.leading, 16)
                     .overlay(alignment: .leading) {
@@ -288,7 +296,11 @@ struct ResultView: View {
         )
     }
 
-    private func chunkRow(_ chunk: Chunk, depth: Int = 0) -> some View {
+    private func chunkRow(
+        _ chunk: Chunk,
+        depth: Int = 0,
+        span: Range<Int>?
+    ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(chunk.role.color.opacity(depth > 0 ? 0.55 : 1))
@@ -330,8 +342,13 @@ struct ResultView: View {
                 .fill(state.hoveredChunkID == chunk.id ? chunk.role.color.opacity(0.10) : Color.clear)
         )
         .onHover { hovering in
-            state.hoveredChunkID = hovering ? chunk.id : nil
-            state.hoveredHighlight = hovering ? (chunk.text, chunk.role.color) : nil
+            if hovering {
+                state.hoveredChunkID = chunk.id
+                state.hoveredHighlight = span.map { ($0, chunk.role.color) }
+            } else if state.hoveredChunkID == chunk.id {
+                state.hoveredChunkID = nil
+                state.hoveredHighlight = nil
+            }
         }
     }
 }

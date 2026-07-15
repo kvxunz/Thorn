@@ -29,6 +29,11 @@ import spacy
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from chunk_rules import (
+    is_concessive_however_clause,
+    is_fixed_adverbial_particle,
+)
+
 # UD dep label -> Thorn role, for clause-level constituents
 CLAUSE_ROLES = {
     "relcl": "clause-relative",
@@ -52,6 +57,22 @@ def load():
         nlp.add_pipe("benepar", config={"model": "benepar_en3"})
 
 
+def clause_role_for(head):
+    signals = [
+        (token.text, token.dep_, token.pos_, token.head.pos_, token.tag_)
+        for token in head.subtree
+    ]
+    if is_concessive_however_clause(head.dep_, signals):
+        return "clause-adverbial"
+
+    role = CLAUSE_ROLES.get(head.dep_, "clause-relative")
+    if role == "clause-relative" and any(
+            token.dep_ == "mark" and token.lower_ == "that"
+            for token in head.children):
+        return "clause-noun"
+    return role
+
+
 # ---------------------------------------------------------------- chunking
 
 def verb_group(head):
@@ -59,7 +80,8 @@ def verb_group(head):
     inside the auxiliary chain ('can hardly be classed' stays one chunk)."""
     toks = {head.i}
     for c in head.children:
-        if c.dep_ in ("aux", "auxpass", "neg", "prt"):
+        if c.dep_ in ("aux", "auxpass", "neg", "prt") or is_fixed_adverbial_particle(
+                head.lemma_, c.text, c.dep_):
             toks.add(c.i)
     if len(toks) > 1:
         lo, hi = min(toks), max(toks)
@@ -106,10 +128,7 @@ def chunk_roots(head, is_root_clause):
                     c.i > 0 and c.doc[c.i - 1].tag_ == "TO")
                 roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
         elif d in ("relcl", "acl"):
-            # "the fact that..." — introducer is a bare "that" mark, so the
-            # clause is appositive (noun clause), not relative
-            appositive = any(t.dep_ == "mark" and t.lower_ == "that" for t in c.children)
-            roots.append((c, "clause-noun" if appositive else "clause-relative", True))
+            roots.append((c, clause_role_for(c), True))
         elif d in ("prep", "agent"):
             # "agent" is the by-phrase of a passive
             roots.append((c, "prep-phrase", contains_clause(c)))
@@ -195,10 +214,7 @@ def np_expand(head, doc, role):
         if o is None:
             chunks.append({"text": text, "role": role, "gloss": "", "children": None})
         else:
-            crole = CLAUSE_ROLES.get(o.dep_, "clause-relative")
-            if crole == "clause-relative" and any(
-                    t.dep_ == "mark" and t.lower_ == "that" for t in o.children):
-                crole = "clause-noun"  # appositive "the fact that..."
+            crole = clause_role_for(o)
             kids = build_chunks(o, doc, clause_role_of_head=crole)
             chunks.append({"text": text, "role": crole, "gloss": "",
                            "children": kids if len(kids) >= 2 else None})

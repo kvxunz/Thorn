@@ -64,10 +64,20 @@ struct LLMClient {
         let choices: [Choice]
     }
 
-    func chat(system: String, user: String, jsonMode: Bool) async throws -> String {
+    func chat(
+        system: String,
+        user: String,
+        jsonMode: Bool,
+        temperature: Double = 0.2
+    ) async throws -> String {
         switch wireAPI {
         case .chatCompletions:
-            return try await chatCompletions(system: system, user: user, jsonMode: jsonMode)
+            return try await chatCompletions(
+                system: system,
+                user: user,
+                jsonMode: jsonMode,
+                temperature: temperature
+            )
         case .responses:
             return try await responses(system: system, user: user)
         }
@@ -100,14 +110,21 @@ struct LLMClient {
         return data
     }
 
-    private func chatCompletions(system: String, user: String, jsonMode: Bool) async throws -> String {
+    private func chatCompletions(
+        system: String,
+        user: String,
+        jsonMode: Bool,
+        temperature: Double
+    ) async throws -> String {
+        var messages: [ChatRequest.Message] = []
+        if !system.isEmpty {
+            messages.append(.init(role: "system", content: system))
+        }
+        messages.append(.init(role: "user", content: user))
         let body = ChatRequest(
             model: model,
-            messages: [
-                .init(role: "system", content: system),
-                .init(role: "user", content: user),
-            ],
-            temperature: 0.2,
+            messages: messages,
+            temperature: temperature,
             response_format: jsonMode ? .init(type: "json_object") : nil,
             stream: false
         )
@@ -172,12 +189,14 @@ struct LLMClient {
         if let apiKey {
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
+        var messages: [ChatRequest.Message] = []
+        if !system.isEmpty {
+            messages.append(.init(role: "system", content: system))
+        }
+        messages.append(.init(role: "user", content: user))
         let body = ChatRequest(
             model: model,
-            messages: [
-                .init(role: "system", content: system),
-                .init(role: "user", content: user),
-            ],
+            messages: messages,
             temperature: 0.2,
             response_format: jsonMode ? .init(type: "json_object") : nil,
             stream: true

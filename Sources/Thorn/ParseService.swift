@@ -1,6 +1,17 @@
 import Foundation
 
 enum ParseService {
+    private enum LocalPipelineError: LocalizedError {
+        case structureUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .structureUnavailable:
+                return "本地句法引擎暂不可用；HY-MT2 只负责翻译，不能代替句法拆分"
+            }
+        }
+    }
+
     private static let systemPrompt = """
     You are an English sentence-structure analyzer for Chinese learners doing intensive reading.
 
@@ -82,19 +93,25 @@ enum ParseService {
 
         let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey, wireAPI: ep.wireAPI)
 
-        // Local engine: deterministic structure from the sidecar, LLM only
-        // fills glosses + translation. Falls through to direct LLM parsing
-        // when the sidecar is unavailable.
-        if (provider ?? SettingsStore.shared.provider) == .ollama,
-           let structure = await Sidecar.shared.structure(for: normalized) {
+        // Local engine: deterministic structure from the sidecar, HY-MT2 only
+        // translates. A translation-specialized model must never be asked to
+        // invent sentence structure when the sidecar is unavailable.
+        if (provider ?? SettingsStore.shared.provider) == .ollama {
+            guard let structure = await Sidecar.shared.structure(for: normalized) else {
+                throw LocalPipelineError.structureUnavailable
+            }
             let bare = ParseResult(chunks: structure, translation: "")
             onPartial?(bare) // tree on screen immediately, glosses pending
             do {
-                let result = try await fillGlosses(structure: structure, sentence: normalized, client: client)
+                let result = try await translateStructure(
+                    structure: structure,
+                    sentence: normalized,
+                    client: client
+                )
                 ParseCache.set(model: ep.model, sentence: normalized, result: result)
                 return result
             } catch {
-                ThornLog.info("gloss fill failed: \(error.localizedDescription)")
+                ThornLog.info("local translation failed: \(error.localizedDescription)")
                 // Structure alone still beats nothing — but fill the translation
                 // slot so the panel doesn't spin forever waiting for one.
                 return ParseResult(chunks: structure,
@@ -141,80 +158,91 @@ enum ParseService {
         throw lastError
     }
 
-    // MARK: - Gloss filling (pipeline path)
+    // MARK: - Translation filling (local pipeline)
 
-    private static let glossPrompt = """
-    You annotate English sense-groups for Chinese learners. Given a sentence and its numbered chunks, output STRICT JSON only:
-    {"glosses": [{"n": 1, "g": "<中文释义>"}, ...], "translation": "<整句流畅中文翻译>"}
-    - One entry per chunk, "n" copied from the input chunk's "n". Do not skip, merge, or add entries.
-    - Gloss each chunk by its meaning IN THIS sentence. Idiom parts stay idiomatic: for "raised eyebrows", the object chunk "eyebrows" is glossed 表示惊讶/非议 (习语成分), never the literal 眉毛.
-    - For role "relative", state what it refers to in THIS sentence: "指代前述" + the actual noun from the sentence. Never copy nouns that are not in the sentence.
-    - translation: fluent Chinese of the whole input, not a gloss concatenation.
-    """
+    private struct TranslationNode {
+        let n: Int
+        let text: String
+        let role: String
+    }
 
-    private static func fillGlosses(structure: [Chunk], sentence: String, client: LLMClient) async throws -> ParseResult {
-        struct Node: Encodable {
-            let n: Int
-            let text: String
-            let role: String
-        }
+    private static let maxConcurrentGlossTranslations = 4
+
+    private static func translateStructure(
+        structure: [Chunk],
+        sentence: String,
+        client: LLMClient
+    ) async throws -> ParseResult {
         // Number every node in DFS order, but only send the ones the sidecar
-        // didn't already gloss deterministically (e.g. relative referents).
-        var nodes: [Node] = []
+        // did not already gloss deterministically (for example, referents).
+        var nodes: [TranslationNode] = []
+        var byIndex: [Int: String] = [:]
         var totalCount = 0
-        func collect(_ chunks: [Chunk]) {
-            for c in chunks {
+        func collect(_ chunks: [Chunk], parentRole: ChunkRole? = nil) {
+            for (position, c) in chunks.enumerated() {
                 totalCount += 1
                 if c.gloss.isEmpty {
-                    nodes.append(Node(n: totalCount, text: c.text, role: c.role.rawValue))
+                    let following = chunks.indices.contains(position + 1) ? chunks[position + 1] : nil
+                    let subsequent = chunks.indices.contains(position + 2) ? chunks[position + 2] : nil
+                    let governingVerb = chunks[..<position].last { $0.role == .verb }
+                    if let fixed = HYMT2TranslationPolicy.deterministicGloss(
+                        text: c.text,
+                        role: c.role,
+                        parentRole: parentRole,
+                        followingText: following?.text,
+                        followingRole: following?.role,
+                        subsequentRole: subsequent?.role,
+                        governingVerbText: governingVerb?.text
+                    ) {
+                        byIndex[totalCount] = fixed
+                    } else {
+                        nodes.append(TranslationNode(
+                            n: totalCount,
+                            text: c.text,
+                            role: c.role.rawValue
+                        ))
+                    }
                 }
-                collect(c.children ?? [])
+                collect(c.children ?? [], parentRole: c.role)
             }
         }
         collect(structure)
 
-        struct Payload: Encodable {
-            let sentence: String
-            let chunks: [Node]
-        }
-        let payload = String(data: try JSONEncoder().encode(Payload(sentence: sentence, chunks: nodes)),
-                             encoding: .utf8) ?? sentence
-        let raw = try await client.chat(system: glossPrompt, user: payload, jsonMode: true)
+        // Whole-sentence translation and chunk glosses are independent. Send
+        // only the exact source chunk per request so HY-MT2 cannot translate
+        // background text or reassign batched values across sense groups.
+        async let wholeTranslation = translateOnly(sentence: sentence, client: client)
+        await withTaskGroup(of: (Int, String?).self) { group in
+            var next = 0
 
-        // Tolerant decoding: entries keyed by "n" so one miscount doesn't
-        // sink the whole batch; a plain string array is accepted as fallback.
-        struct Entry: Decodable {
-            let n: Int
-            let g: String
-        }
-        struct GlossResponse: Decodable {
-            let glosses: [Entry]?
-            let translation: String?
-        }
-        struct LegacyResponse: Decodable {
-            let glosses: [String]?
-            let translation: String?
-        }
-        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("```") {
-            text = text
-                .replacingOccurrences(of: "^```(json)?\\s*", with: "", options: .regularExpression)
-                .replacingOccurrences(of: "```\\s*$", with: "", options: .regularExpression)
-        }
-        guard let data = text.data(using: .utf8) else { throw LLMError.badJSON(raw) }
+            func submit(_ node: TranslationNode) {
+                group.addTask {
+                    do {
+                        return (
+                            node.n,
+                            try await translateSingleGloss(
+                                node: node,
+                                client: client
+                            )
+                        )
+                    } catch {
+                        ThornLog.info("HY-MT2 chunk \(node.n) failed: \(error.localizedDescription)")
+                        return (node.n, nil)
+                    }
+                }
+            }
 
-        var byIndex: [Int: String] = [:]
-        var translation = ""
-        if let decoded = try? JSONDecoder().decode(GlossResponse.self, from: data), decoded.glosses != nil {
-            for e in decoded.glosses ?? [] { byIndex[e.n] = e.g }
-            translation = decoded.translation ?? ""
-        } else if let legacy = try? JSONDecoder().decode(LegacyResponse.self, from: data) {
-            for (i, g) in (legacy.glosses ?? []).enumerated() { byIndex[i + 1] = g }
-            translation = legacy.translation ?? ""
-        }
-        // Require the translation and at least half the glosses to call it a success.
-        guard !translation.isEmpty, byIndex.count * 2 >= nodes.count else {
-            throw LLMError.badJSON(raw)
+            while next < min(maxConcurrentGlossTranslations, nodes.count) {
+                submit(nodes[next])
+                next += 1
+            }
+            while let (id, gloss) = await group.next() {
+                if let gloss, !gloss.isEmpty { byIndex[id] = gloss }
+                if next < nodes.count {
+                    submit(nodes[next])
+                    next += 1
+                }
+            }
         }
 
         var index = 0
@@ -226,8 +254,86 @@ enum ParseService {
                              children: c.children.map(attach))
             }
         }
-        let glossed = attach(structure)
-        return ParseResult(chunks: glossed, translation: translation)
+        let glossed = GlossConsistency.reconcile(attach(structure))
+        return ParseResult(chunks: glossed, translation: try await wholeTranslation)
+    }
+
+    private static func translateSingleGloss(
+        node: TranslationNode,
+        client: LLMClient
+    ) async throws -> String {
+        let raw = try await client.chat(
+            system: "",
+            user: HYMT2TranslationPolicy.glossPrompt(source: node.text),
+            jsonMode: false,
+            temperature: HYMT2TranslationPolicy.temperature
+        )
+        let cleaned = cleanGlossOutput(raw, source: node.text)
+        guard let accepted = HYMT2TranslationPolicy.validatedGloss(
+            cleaned,
+            source: node.text,
+            role: ChunkRole(rawValue: node.role) ?? .other
+        ) else {
+            ThornLog.info(
+                "HY-MT2 gloss rejected outside source boundary "
+                    + "(sourceChars=\(node.text.count), outputChars=\(cleaned.count))"
+            )
+            throw LLMError.emptyResponse
+        }
+        return accepted
+    }
+
+    private static func translateOnly(sentence: String, client: LLMClient) async throws -> String {
+        let raw = try await client.chat(
+            system: "",
+            user: HYMT2TranslationPolicy.sentencePrompt(source: sentence),
+            jsonMode: false,
+            temperature: HYMT2TranslationPolicy.temperature
+        )
+        let cleaned = cleanTranslationOutput(raw)
+        guard !cleaned.isEmpty else { throw LLMError.emptyResponse }
+        return cleaned
+    }
+
+    /// Remove common wrappers a local translation model may add despite an
+    /// output-only instruction. Exposed internally for unit tests.
+    static func cleanTranslationOutput(_ raw: String) -> String {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = text
+            .replacingOccurrences(
+                of: "^```(?:text|markdown)?\\s*",
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            .replacingOccurrences(of: "```\\s*$", with: "", options: .regularExpression)
+            .replacingOccurrences(
+                of: "^\\s*<(?:target|translation)>\\s*",
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            .replacingOccurrences(
+                of: "\\s*</(?:target|translation)>\\s*$",
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            .replacingOccurrences(
+                of: "^\\s*(?:translation|chinese translation|译文|翻译)\\s*[:：]\\s*",
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func cleanGlossOutput(_ raw: String, source: String) -> String {
+        var text = cleanTranslationOutput(raw)
+        let sourceEnd = source.trimmingCharacters(in: .whitespacesAndNewlines).last
+        let sourceHasTerminalPunctuation = sourceEnd.map { ".!?;:。！？；：".contains($0) } ?? false
+        if !sourceHasTerminalPunctuation {
+            while let last = text.last, "。！？；".contains(last) {
+                text.removeLast()
+            }
+        }
+        return text
     }
 
     // MARK: - Streaming

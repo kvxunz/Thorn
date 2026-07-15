@@ -11,9 +11,9 @@ enum ParseCache {
     }()
 
     private static func key(model: String, sentence: String) -> String {
-        // "v3": local engine switched to the sidecar pipeline; older entries
-        // came from direct LLM parsing and must miss.
-        let digest = SHA256.hash(data: Data(("v3\n" + model + "\n" + sentence).utf8))
+        // "v7": concessive however clauses and abstract "lie in" predicates
+        // are role-aware; never reuse earlier misclassified or literal output.
+        let digest = SHA256.hash(data: Data(("v7-concessive-clause-roles\n" + model + "\n" + sentence).utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 

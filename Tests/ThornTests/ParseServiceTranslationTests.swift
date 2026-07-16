@@ -12,6 +12,16 @@ final class ParseServiceTranslationTests: XCTestCase {
             ParseService.normalizedInput("their customers’ misfortunes。"),
             "their customers’ misfortunes."
         )
+        // Invisible control/format characters (ZWSP, BOM, LRM) become tofu in
+        // the header — strip them without leaving a stray space.
+        XCTAssertEqual(
+            ParseService.normalizedInput("Futurist poetry\u{200B}, however"),
+            "Futurist poetry, however"
+        )
+        XCTAssertEqual(
+            ParseService.normalizedInput("\u{FEFF}the case\u{200E} is"),
+            "the case is"
+        )
     }
 
     func testCleansCommonTranslationWrappers() {

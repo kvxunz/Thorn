@@ -103,8 +103,21 @@ def verb_group(head):
 def chunk_roots(head, is_root_clause):
     """Decide the chunk-root tokens directly under a clause head.
     Returns list of (root_token, role, expand). expand=True -> recurse."""
+    # In inversions ("Nor, if …, is management to be blamed") spaCy hangs
+    # fronted conjunctions/clauses on the auxiliary, not the content verb.
+    # The verbal complex is one predicate: harvest dependents of every
+    # member, or those tokens become orphans swallowed by a neighbor chunk.
+    group = verb_group(head)
+    doc = head.doc
+    candidates = list(head.children)
+    for index in group:
+        if index == head.i:
+            continue
+        candidates.extend(
+            c for c in doc[index].children if c.i not in group
+        )
     roots = []
-    for c in sorted(head.children, key=lambda t: t.i):
+    for c in sorted(candidates, key=lambda t: t.i):
         d = c.dep_
         if d in ("aux", "auxpass", "neg", "prt", "punct"):
             continue  # part of the verb group / attached punctuation

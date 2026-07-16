@@ -59,3 +59,5 @@
 24. **pcomp 是被遗忘的从句类型**：contains_clause/np_expand 只认 relcl/acl/advcl/ccomp/csubj，介词的从句补语（"in how well…"、"for why…"）一直没展开。加 is_clausal_pcomp（pcomp+动词性+自带主语）门控后连带修好 "explanation for why…" 类结构；无主语动名词（"in doing so"）保持平铺不误伤。
 
 25. **双语材料复制的英文句常混全角标点，spaCy 英文模型直接挂错依存**："troubles，or so" 里 cc 被吞进介词短语、"or so" 惯用语拆散。修在唯一入口 ParseService.normalizedInput：全角，。、；：？！（）和全角空格转 ASCII；弯引号 ' " 是正常英文排版必须保留。header 文本由 chunk 拼接（ChunkSpanResolver），入口规范化后高亮天然不错位。
+
+26. **修补规则会毁掉本来正确的解析——删规则前先 dump 依存树定罪**：Coincident 倒装句 spaCy 解析全对（appreciation=nsubj、to 挂 importance），拆烂它的是给 BMW 列表句写的 split_false_list_appos_subject 正则（主语含逗号+后跟 the 就硬劈）。诊断路径：怀疑拆分错 → 先 dump spaCy 依存（uv 脚本 10 行）→ 树对则罪在 chunker 后处理规则，树错才是模型问题。本日第三条被处决的指纹规则。

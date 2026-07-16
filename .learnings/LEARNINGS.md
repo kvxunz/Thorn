@@ -61,3 +61,5 @@
 25. **双语材料复制的英文句常混全角标点，spaCy 英文模型直接挂错依存**："troubles，or so" 里 cc 被吞进介词短语、"or so" 惯用语拆散。修在唯一入口 ParseService.normalizedInput：全角，。、；：？！（）和全角空格转 ASCII；弯引号 ' " 是正常英文排版必须保留。header 文本由 chunk 拼接（ChunkSpanResolver），入口规范化后高亮天然不错位。
 
 26. **修补规则会毁掉本来正确的解析——删规则前先 dump 依存树定罪**：Coincident 倒装句 spaCy 解析全对（appreciation=nsubj、to 挂 importance），拆烂它的是给 BMW 列表句写的 split_false_list_appos_subject 正则（主语含逗号+后跟 the 就硬劈）。诊断路径：怀疑拆分错 → 先 dump spaCy 依存（uv 脚本 10 行）→ 树对则罪在 chunker 后处理规则，树错才是模型问题。本日第三条被处决的指纹规则。
+
+27. **倒装句 spaCy 会把前置成分挂在助动词上，chunk_roots 只收主动词孩子就会产孤儿**："Nor, if…, is management to be blamed" 的 Nor(cc) 和 if-advcl 全挂在 aux 'is' 上，孤儿 token 被就近吞并成巨型连词块。修法（通用非指纹）：谓语组是一个谓词整体，收割 verb_group 每个成员的孩子。ca358c9。

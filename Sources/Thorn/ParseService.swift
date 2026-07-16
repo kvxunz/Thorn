@@ -156,9 +156,11 @@ enum ParseService {
     }
 
     /// Text copied from bilingual reading material often carries CJK fullwidth
-    /// punctuation ("troubles，or so"). spaCy's English models misattach
-    /// dependencies around those tokens, so map them to ASCII before parsing.
-    /// Curly quotes/apostrophes are normal English typography and stay as-is.
+    /// punctuation ("troubles，or so") and invisible control/format characters
+    /// (zero-width spaces, bidi marks) wedged between words. spaCy's English
+    /// models misattach dependencies around the former and render the latter as
+    /// tofu boxes in the header, so clean both before parsing. Curly
+    /// quotes/apostrophes are normal English typography and stay as-is.
     /// Exposed internally for unit tests.
     static func normalizedInput(_ sentence: String) -> String {
         let cjkPunctuation: [Character: String] = [
@@ -170,6 +172,15 @@ enum ParseService {
         for character in sentence {
             if let replacement = cjkPunctuation[character] {
                 mapped += replacement
+            } else if character.unicodeScalars.allSatisfy({
+                // Strip Unicode control (Cc) and format (Cf) characters — e.g.
+                // U+200B zero-width space, U+FEFF BOM, U+200E LRM. Keep the
+                // whitespace we normalize below (space/tab/newline are Cc).
+                ($0.properties.generalCategory == .control
+                    || $0.properties.generalCategory == .format)
+                    && !$0.properties.isWhitespace
+            }) {
+                continue
             } else {
                 mapped.append(character)
             }

@@ -1,7 +1,5 @@
 """Small dependency-free lexical rules used by the structure sidecar."""
 
-import re
-
 
 # deps absorbed into the finite verbal complex (aux chain + mid-complex adverbs)
 VERB_GROUP_CORE_DEPS = frozenset({"aux", "auxpass", "neg", "prt"})
@@ -211,49 +209,3 @@ def is_clausal_pcomp(token):
         getattr(child, "dep_", "") in ("nsubj", "nsubjpass", "csubj", "csubjpass")
         for child in getattr(token, "children", []) or []
     )
-
-
-def split_false_list_appos_subject(chunks):
-    """Split 'summer homes, …, BMWs the locations, …' into examples + subject.
-
-    After a colon, parsers often appose a new definite NP (``the locations…``)
-    onto the last bare list item (``BMWs``), making one giant subject. The list
-    is typically an example insertion; the ``the …`` NP is the real subject of
-    the following verb.
-    """
-    out = []
-    for ch in chunks:
-        if ch.get("role") != "subject" or ch.get("children"):
-            out.append(ch)
-            continue
-        text = ch.get("text") or ""
-        m = re.match(
-            r"^(?P<examples>.+,.+?[A-Za-z0-9\"'\u201d])\s+"
-            r"(?P<head>the\s+\S[\s\S]*)$",
-            text,
-            flags=re.IGNORECASE,
-        )
-        if not m:
-            out.append(ch)
-            continue
-        examples = m.group("examples").strip()
-        head = m.group("head").strip()
-        if examples.lower().startswith("the "):
-            out.append(ch)
-            continue
-        if "," not in examples:
-            out.append(ch)
-            continue
-        out.append({
-            "text": examples,
-            "role": "insertion",
-            "gloss": "",
-            "children": None,
-        })
-        out.append({
-            "text": head,
-            "role": "subject",
-            "gloss": "",
-            "children": None,
-        })
-    return out

@@ -12,7 +12,6 @@ from chunk_rules import (
     is_left_edge_introducer,
     is_left_edge_introducer_token,
     merge_or_so,
-    split_false_list_appos_subject,
     verb_group_indices,
 )
 
@@ -183,38 +182,6 @@ class OrSoAndWhenTests(unittest.TestCase):
         self.assertEqual(out[0]["text"], "or so")
         self.assertEqual(out[0]["role"], "insertion")
         self.assertEqual(out[0]["gloss"], "")
-
-
-class SplitFalseListApposTests(unittest.TestCase):
-    def test_splits_bmw_list_from_the_locations_subject(self):
-        chunks = [
-            {
-                "text": "summer homes, European travel, BMWs the locations, "
-                        "place names and name brands",
-                "role": "subject",
-                "gloss": "",
-                "children": None,
-            },
-            {"text": "may change", "role": "verb", "gloss": "", "children": None},
-        ]
-        out = split_false_list_appos_subject(chunks)
-        self.assertEqual(len(out), 3)
-        self.assertEqual(out[0]["role"], "insertion")
-        self.assertEqual(out[0]["text"], "summer homes, European travel, BMWs")
-        self.assertEqual(out[1]["role"], "subject")
-        self.assertTrue(out[1]["text"].startswith("the locations"))
-        self.assertEqual(out[2]["role"], "verb")
-
-    def test_does_not_split_normal_coordinated_the_subjects(self):
-        chunks = [{
-            "text": "the locations, the names and the brands",
-            "role": "subject",
-            "gloss": "",
-            "children": None,
-        }]
-        out = split_false_list_appos_subject(chunks)
-        self.assertEqual(len(out), 1)
-        self.assertEqual(out[0]["role"], "subject")
 
 
 class _PcompTok:

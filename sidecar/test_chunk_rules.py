@@ -5,6 +5,7 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from chunk_rules import (
+    is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
     is_fixed_adverbial_particle,
@@ -214,6 +215,27 @@ class SplitFalseListApposTests(unittest.TestCase):
         out = split_false_list_appos_subject(chunks)
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["role"], "subject")
+
+
+class _PcompTok:
+    def __init__(self, dep, pos, child_deps=()):
+        self.dep_ = dep
+        self.pos_ = pos
+        self.children = [_FakeChild(dep, "") for dep in child_deps]
+
+
+class ClausalPcompTests(unittest.TestCase):
+    def test_pcomp_with_own_subject_is_a_clause(self):
+        # "in how well it can control expression" — control: pcomp, VERB, nsubj it
+        self.assertTrue(is_clausal_pcomp(_PcompTok("pcomp", "VERB", ("advmod", "nsubj", "dobj"))))
+
+    def test_subjectless_gerund_pcomp_stays_flat(self):
+        # "in doing so" — no own subject
+        self.assertFalse(is_clausal_pcomp(_PcompTok("pcomp", "VERB", ("dobj",))))
+
+    def test_non_pcomp_and_non_verbal_are_rejected(self):
+        self.assertFalse(is_clausal_pcomp(_PcompTok("pobj", "NOUN", ("nsubj",))))
+        self.assertFalse(is_clausal_pcomp(_PcompTok("pcomp", "NOUN", ("nsubj",))))
 
 
 if __name__ == "__main__":

@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field
 
 from alignment import annotate_chunk_spans
 from chunk_rules import (
+    is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
     is_left_edge_introducer,
@@ -192,14 +193,10 @@ def chunk_roots(head, is_root_clause):
 
 
 def contains_clause(tok):
-    return any(t.dep_ in ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
-               for t in tok.subtree if t is not tok)
-
-
-def relative_or_conjunction(tok):
-    if tok.tag_ in ("WDT", "WP", "WP$", "WRB") and tok.dep_ != "advmod":
-        return "relative"
-    return "conjunction"
+    return any(
+        t.dep_ in ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
+        or is_clausal_pcomp(t)
+        for t in tok.subtree if t is not tok)
 
 
 CLAUSE_DEPS = ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
@@ -229,7 +226,9 @@ def np_expand(head, doc, role):
     role. 'a decision that surprised...' -> core 'a decision' + that-clause."""
     subtree = sorted(head.subtree, key=lambda t: t.i)
     clause_heads = [t for t in subtree
-                    if t is not head and t.dep_ in CLAUSE_DEPS and t.head in subtree]
+                    if t is not head
+                    and (t.dep_ in CLAUSE_DEPS or is_clausal_pcomp(t))
+                    and t.head in subtree]
     # only direct clause attachments; nested ones handled by recursion
     clause_heads = [c for c in clause_heads
                     if not any(c is not o and c in o.subtree for o in clause_heads)]
@@ -258,7 +257,11 @@ def np_expand(head, doc, role):
                 t.dep_ in ("nsubj", "nsubjpass", "csubj", "csubjpass")
                 for t in o.children
             )
-            if has_to and not has_own_subject:
+            if o.dep_ == "pcomp":
+                # Clausal complement of a preposition ("in how well it can
+                # control expression"): a noun clause, never a relative.
+                crole = "clause-noun"
+            elif has_to and not has_own_subject:
                 crole = "adverbial"
             elif o.tag_ == "VBG" and has_own_subject:
                 crole = "insertion"
@@ -300,6 +303,13 @@ def build_chunks(head, doc, clause_role_of_head=None):
             t for t in raw_subtree
             if not is_left_edge_introducer(t, head)
         ]
+        # Misattached upper-clause when/if sit with a gap before the rest of
+        # the subtree ("when [juries began] holding…"). A genuine clause
+        # introducer (whether/how of a pcomp noun clause) is immediately
+        # adjacent — keep those, they belong to this clause's text.
+        stripped = [t for t in raw_subtree if t not in subtree]
+        while stripped and subtree and stripped[-1].i == subtree[0].i - 1:
+            subtree.insert(0, stripped.pop())
     else:
         subtree = raw_subtree
     if not subtree:

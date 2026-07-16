@@ -199,6 +199,21 @@ def is_comitative_participle(token):
     return False
 
 
+def is_clausal_pcomp(token):
+    """Whether a preposition's complement is a full clause: verbal head with
+    its own subject ("in how well it can control expression", "of whether it
+    works"). Expanded like other clauses. Subjectless gerunds ("in doing so")
+    stay flat."""
+    if getattr(token, "dep_", "") != "pcomp":
+        return False
+    if getattr(token, "pos_", "") not in ("VERB", "AUX"):
+        return False
+    return any(
+        getattr(child, "dep_", "") in ("nsubj", "nsubjpass", "csubj", "csubjpass")
+        for child in getattr(token, "children", []) or []
+    )
+
+
 def split_false_list_appos_subject(chunks):
     """Split 'summer homes, …, BMWs the locations, …' into examples + subject.
 

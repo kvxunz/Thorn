@@ -75,11 +75,14 @@ enum ParseService {
     Copy chunk text EXACTLY from the input sentence, word for word. Never drop or alter words. Do not reuse wording from the examples.
     """
 
-    /// Parse via given provider; cache hit returns instantly. Retries once on malformed JSON.
+    /// Parse via given provider. Every call runs the live pipeline (no disk
+    /// cache) so alignment/prompt changes are always visible on re-parse.
+    /// `force` is retained for call-site compatibility and ignored.
     /// `onPartial` receives progressively growing results while the model streams
     /// (Chat Completions wire only; Responses gateways deliver in one piece).
     static func parse(sentence: String, provider: Provider? = nil, force: Bool = false,
                       onPartial: (@Sendable (ParseResult) -> Void)? = nil) async throws -> ParseResult {
+        _ = force
         let ep = SettingsStore.shared.endpoint(for: provider)
         guard !ep.baseURL.isEmpty, !ep.model.isEmpty else {
             throw LLMError.notConfigured
@@ -87,34 +90,33 @@ enum ParseService {
         let normalized = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
 
-        if !force, let cached = ParseCache.get(model: ep.model, sentence: normalized) {
-            return cached
-        }
-
         let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey, wireAPI: ep.wireAPI)
 
         // Local engine: deterministic structure from the sidecar, HY-MT2 only
-        // translates. A translation-specialized model must never be asked to
-        // invent sentence structure when the sidecar is unavailable.
+        // translates the whole sentence. No per-chunk glosses: the alignment
+        // subsystem was removed, chunks carry only the syntax-derived glosses
+        // the parser itself produces (relative-pronoun referents).
         if (provider ?? SettingsStore.shared.provider) == .ollama {
+            // Parsing and whole-sentence translation are independent and run
+            // concurrently.
+            async let translated = translateOnly(sentence: normalized, client: client)
             guard let structure = await Sidecar.shared.structure(for: normalized) else {
                 throw LocalPipelineError.structureUnavailable
             }
-            let bare = ParseResult(chunks: structure, translation: "")
-            onPartial?(bare) // tree on screen immediately, glosses pending
+            try Task.checkCancellation()
+            let bare = ParseResult(chunks: structure.chunks, translation: "")
+            onPartial?(bare) // tree on screen immediately, translation pending
             do {
-                let result = try await translateStructure(
-                    structure: structure,
-                    sentence: normalized,
-                    client: client
-                )
-                ParseCache.set(model: ep.model, sentence: normalized, result: result)
-                return result
+                let translation = try await translated
+                try Task.checkCancellation()
+                return ParseResult(chunks: structure.chunks, translation: translation)
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 ThornLog.info("local translation failed: \(error.localizedDescription)")
                 // Structure alone still beats nothing — but fill the translation
                 // slot so the panel doesn't spin forever waiting for one.
-                return ParseResult(chunks: structure,
+                return ParseResult(chunks: structure.chunks,
                                    translation: "（中文释义暂缺：本地模型未响应，结构来自句法引擎）")
             }
         }
@@ -123,9 +125,7 @@ enum ParseService {
             do {
                 let raw = try await streamRaw(client: client, sentence: normalized, onPartial: onPartial)
                 ThornLog.info("model \(ep.model) streamed output: \(raw.prefix(4000))")
-                let result = try decode(raw)
-                ParseCache.set(model: ep.model, sentence: normalized, result: result)
-                return result
+                return try decode(raw)
             } catch let error as LLMError {
                 switch error {
                 case .badJSON, .emptyResponse:
@@ -143,9 +143,7 @@ enum ParseService {
             do {
                 let raw = try await client.chat(system: systemPrompt, user: normalized, jsonMode: true)
                 ThornLog.info("model \(ep.model) raw output: \(raw.prefix(4000))")
-                let result = try decode(raw)
-                ParseCache.set(model: ep.model, sentence: normalized, result: result)
-                return result
+                return try decode(raw)
             } catch let error as LLMError {
                 switch error {
                 case .badJSON, .emptyResponse:
@@ -158,130 +156,7 @@ enum ParseService {
         throw lastError
     }
 
-    // MARK: - Translation filling (local pipeline)
-
-    private struct TranslationNode {
-        let n: Int
-        let text: String
-        let role: String
-    }
-
-    private static let maxConcurrentGlossTranslations = 4
-
-    private static func translateStructure(
-        structure: [Chunk],
-        sentence: String,
-        client: LLMClient
-    ) async throws -> ParseResult {
-        // Number every node in DFS order, but only send the ones the sidecar
-        // did not already gloss deterministically (for example, referents).
-        var nodes: [TranslationNode] = []
-        var byIndex: [Int: String] = [:]
-        var totalCount = 0
-        func collect(_ chunks: [Chunk], parentRole: ChunkRole? = nil) {
-            for (position, c) in chunks.enumerated() {
-                totalCount += 1
-                if c.gloss.isEmpty {
-                    let following = chunks.indices.contains(position + 1) ? chunks[position + 1] : nil
-                    let subsequent = chunks.indices.contains(position + 2) ? chunks[position + 2] : nil
-                    let governingVerb = chunks[..<position].last { $0.role == .verb }
-                    if let fixed = HYMT2TranslationPolicy.deterministicGloss(
-                        text: c.text,
-                        role: c.role,
-                        parentRole: parentRole,
-                        followingText: following?.text,
-                        followingRole: following?.role,
-                        subsequentRole: subsequent?.role,
-                        governingVerbText: governingVerb?.text
-                    ) {
-                        byIndex[totalCount] = fixed
-                    } else {
-                        nodes.append(TranslationNode(
-                            n: totalCount,
-                            text: c.text,
-                            role: c.role.rawValue
-                        ))
-                    }
-                }
-                collect(c.children ?? [], parentRole: c.role)
-            }
-        }
-        collect(structure)
-
-        // Whole-sentence translation and chunk glosses are independent. Send
-        // only the exact source chunk per request so HY-MT2 cannot translate
-        // background text or reassign batched values across sense groups.
-        async let wholeTranslation = translateOnly(sentence: sentence, client: client)
-        await withTaskGroup(of: (Int, String?).self) { group in
-            var next = 0
-
-            func submit(_ node: TranslationNode) {
-                group.addTask {
-                    do {
-                        return (
-                            node.n,
-                            try await translateSingleGloss(
-                                node: node,
-                                client: client
-                            )
-                        )
-                    } catch {
-                        ThornLog.info("HY-MT2 chunk \(node.n) failed: \(error.localizedDescription)")
-                        return (node.n, nil)
-                    }
-                }
-            }
-
-            while next < min(maxConcurrentGlossTranslations, nodes.count) {
-                submit(nodes[next])
-                next += 1
-            }
-            while let (id, gloss) = await group.next() {
-                if let gloss, !gloss.isEmpty { byIndex[id] = gloss }
-                if next < nodes.count {
-                    submit(nodes[next])
-                    next += 1
-                }
-            }
-        }
-
-        var index = 0
-        func attach(_ chunks: [Chunk]) -> [Chunk] {
-            chunks.map { c in
-                index += 1
-                let gloss = c.gloss.isEmpty ? (byIndex[index] ?? "") : c.gloss
-                return Chunk(text: c.text, role: c.role, gloss: gloss,
-                             children: c.children.map(attach))
-            }
-        }
-        let glossed = GlossConsistency.reconcile(attach(structure))
-        return ParseResult(chunks: glossed, translation: try await wholeTranslation)
-    }
-
-    private static func translateSingleGloss(
-        node: TranslationNode,
-        client: LLMClient
-    ) async throws -> String {
-        let raw = try await client.chat(
-            system: "",
-            user: HYMT2TranslationPolicy.glossPrompt(source: node.text),
-            jsonMode: false,
-            temperature: HYMT2TranslationPolicy.temperature
-        )
-        let cleaned = cleanGlossOutput(raw, source: node.text)
-        guard let accepted = HYMT2TranslationPolicy.validatedGloss(
-            cleaned,
-            source: node.text,
-            role: ChunkRole(rawValue: node.role) ?? .other
-        ) else {
-            ThornLog.info(
-                "HY-MT2 gloss rejected outside source boundary "
-                    + "(sourceChars=\(node.text.count), outputChars=\(cleaned.count))"
-            )
-            throw LLMError.emptyResponse
-        }
-        return accepted
-    }
+    // MARK: - Translation (local pipeline)
 
     private static func translateOnly(sentence: String, client: LLMClient) async throws -> String {
         let raw = try await client.chat(
@@ -322,18 +197,6 @@ enum ParseService {
                 options: [.regularExpression, .caseInsensitive]
             )
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    static func cleanGlossOutput(_ raw: String, source: String) -> String {
-        var text = cleanTranslationOutput(raw)
-        let sourceEnd = source.trimmingCharacters(in: .whitespacesAndNewlines).last
-        let sourceHasTerminalPunctuation = sourceEnd.map { ".!?;:。！？；：".contains($0) } ?? false
-        if !sourceHasTerminalPunctuation {
-            while let last = text.last, "。！？；".contains(last) {
-                text.removeLast()
-            }
-        }
-        return text
     }
 
     // MARK: - Streaming

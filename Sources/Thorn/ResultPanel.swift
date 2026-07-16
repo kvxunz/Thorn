@@ -18,7 +18,9 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     let state = PanelState()
 
     func show(sentence: String) {
-        close()
+        // Tear down the panel UI only. `start` cancels any previous parse and
+        // begins a new one — do not cancel twice (that left empty partials).
+        hidePanel()
         userResized = false
         state.start(sentence: sentence)
         presentPanel()
@@ -41,7 +43,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         if case .result = state.status {
             presentPanel() // show as-is, no re-parse
         } else {
-            // was closed mid-parse or errored: run again (cache makes it cheap)
+            // was closed mid-parse or errored: run again
             state.start(sentence: state.sentence)
             presentPanel()
         }
@@ -75,7 +77,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
 
     /// Show a standalone message (e.g. selection too long) without parsing.
     func showError(_ message: String) {
-        close()
+        hidePanel()
         state.presentError(message)
         presentPanel()
     }
@@ -179,15 +181,19 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     }
 
     private func installMonitors() {
+        // Click *outside* the panel hides it. Clicks on the panel must not —
+        // otherwise expanding a clause or dragging cancels the in-flight
+        // HY-MT2 translation and freezes the UI on an empty-translation partial.
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             Task { @MainActor in
                 guard let self, !self.state.pinned else { return }
-                self.close()
+                if self.clickIsInsidePanel() { return }
+                self.hidePanel()
             }
         }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Esc
-                Task { @MainActor in self?.close() }
+                Task { @MainActor in self?.hidePanel() }
                 return nil
             }
             return event
@@ -197,13 +203,20 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         // (and a pinned panel would have no keyboard way to close).
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Esc
-                Task { @MainActor in self?.close() }
+                Task { @MainActor in self?.hidePanel() }
             }
         }
     }
 
-    func close() {
-        state.cancel()
+    private func clickIsInsidePanel() -> Bool {
+        guard let panel else { return false }
+        return panel.frame.contains(NSEvent.mouseLocation)
+    }
+
+    /// Hide the floating panel without cancelling an in-flight parse.
+    /// Parse continues so ⌥Z can recall a finished result; a new ⌥A still
+    /// cancels the previous run via `PanelState.start` → `run`.
+    func hidePanel() {
         statusObserver = nil
         expandObserver = nil
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
@@ -214,5 +227,11 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         globalKeyMonitor = nil
         panel?.orderOut(nil)
         panel = nil
+    }
+
+    /// Hide panel and cancel any in-flight parse (used on quit paths if needed).
+    func close() {
+        state.cancel()
+        hidePanel()
     }
 }

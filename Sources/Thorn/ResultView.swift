@@ -147,7 +147,7 @@ struct ResultView: View {
                 if result.translation.isEmpty {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.small)
-                        Text("拆解中…")
+                        Text("整句翻译中…")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
@@ -213,9 +213,8 @@ struct ResultView: View {
         return chunks
     }
 
-    /// Three tiers: S/V/O heaviest (near-black bold), complement middle, and
-    /// every other role in its fixed role color — same hues as the cards, so
-    /// the color itself teaches the component type.
+    /// Three tiers: S/V/O bold + emphatic; complement medium; modifiers in
+    /// their role color (not washed-out primary gray). Same hues as the cards.
     private func attributedSentence(_ chunks: [Chunk]) -> AttributedString {
         var out = AttributedString()
         for (index, chunk) in chunks.enumerated() {
@@ -227,10 +226,11 @@ struct ResultView: View {
                 weight = .bold
                 color = chunk.role.emphaticColor
             case .complement:
-                weight = .medium
-                color = Color.primary.opacity(0.62)
+                weight = .semibold
+                color = chunk.role.emphaticColor
             default:
-                weight = .regular
+                // Medium weight so modifier colors stay readable on material.
+                weight = .medium
                 color = chunk.role.color
             }
             piece.font = .system(size: 15, weight: weight, design: .serif)
@@ -254,7 +254,7 @@ struct ResultView: View {
                     characters.startIndex,
                     offsetBy: highlight.range.upperBound
                 )
-                out[lower..<upper].backgroundColor = highlight.color.opacity(0.22)
+                out[lower..<upper].backgroundColor = highlight.color.opacity(0.28)
             }
         }
         return out
@@ -316,30 +316,34 @@ struct ResultView: View {
 
             Text(chunk.text)
                 .font(.system(size: depth > 0 ? 11.5 : 12.5, design: .serif))
-                // A chunk about to be decomposed below is a summary line: dim it.
-                .foregroundStyle(.primary.opacity(chunk.children != nil ? 0.55 : (depth > 0 ? 0.75 : 0.9)))
+                // Keep English readable; only slightly dim expandable parents.
+                .foregroundStyle(.primary.opacity(chunk.children != nil ? 0.72 : (depth > 0 ? 0.88 : 0.95)))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(chunk.role.label)
-                .font(.system(size: 10))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(chunk.role.color)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(chunk.role.color.opacity(0.12), in: Capsule())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(chunk.role.badgeFill, in: Capsule())
                 .fixedSize()
 
-            Text(chunk.gloss)
-                .font(.system(size: depth > 0 ? 11 : 12))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(minWidth: 130, maxWidth: 260, alignment: .leading)
+            // Local pipeline delivers no per-chunk glosses; don't reserve a
+            // blank 130pt column for them.
+            if !chunk.gloss.isEmpty {
+                Text(chunk.gloss)
+                    .font(.system(size: depth > 0 ? 11 : 12))
+                    .foregroundStyle(.primary.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minWidth: 130, maxWidth: 260, alignment: .leading)
+            }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(state.hoveredChunkID == chunk.id ? chunk.role.color.opacity(0.10) : Color.clear)
+                .fill(state.hoveredChunkID == chunk.id ? chunk.role.color.opacity(0.14) : Color.clear)
         )
         .onHover { hovering in
             if hovering {

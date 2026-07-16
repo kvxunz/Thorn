@@ -1,32 +1,18 @@
 import Foundation
-import CryptoKit
 
-/// Disk cache: one JSON file per sentence, keyed by SHA-256 of model + sentence.
+/// Former on-disk parse cache. Disabled: every ⌥A runs the live pipeline so
+/// alignment/prompt changes are never masked by a stale JSON file.
+///
+/// `purge()` deletes any leftover files from earlier builds under
+/// Application Support/Thorn/cache.
 enum ParseCache {
     private static var dir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let url = base.appendingPathComponent("Thorn/cache", isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
+        return base.appendingPathComponent("Thorn/cache", isDirectory: true)
     }()
 
-    private static func key(model: String, sentence: String) -> String {
-        // "v7": concessive however clauses and abstract "lie in" predicates
-        // are role-aware; never reuse earlier misclassified or literal output.
-        let digest = SHA256.hash(data: Data(("v7-concessive-clause-roles\n" + model + "\n" + sentence).utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
-    }
-
-    static func get(model: String, sentence: String) -> ParseResult? {
-        let url = dir.appendingPathComponent(key(model: model, sentence: sentence) + ".json")
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(ParseResult.self, from: data)
-    }
-
-    static func set(model: String, sentence: String, result: ParseResult) {
-        let url = dir.appendingPathComponent(key(model: model, sentence: sentence) + ".json")
-        if let data = try? JSONEncoder().encode(result) {
-            try? data.write(to: url)
-        }
+    /// Remove historical cache files (best-effort).
+    static func purge() {
+        try? FileManager.default.removeItem(at: dir)
     }
 }

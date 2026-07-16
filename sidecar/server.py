@@ -39,7 +39,6 @@ from chunk_rules import (
     is_left_edge_introducer,
     is_left_edge_introducer_token,
     merge_or_so,
-    split_false_list_appos_subject,
     verb_group_indices,
 )
 
@@ -445,9 +444,7 @@ def build_chunks(head, doc, clause_role_of_head=None):
             run_key = key
         run.append(t.i)
     flush()
-    return merge_tiny(
-        merge_or_so(split_false_list_appos_subject(merge_idioms(chunks)))
-    )
+    return merge_tiny(merge_or_so(merge_idioms(chunks)))
 
 
 def merge_idioms(chunks):

@@ -1,8 +1,11 @@
 import XCTest
 @testable import Thorn
 
+/// Live smoke tests for the local pipeline: deterministic structure from the
+/// sidecar plus one whole-sentence HY-MT2 translation. Per-chunk glosses were
+/// removed; only syntax-derived glosses (relative-pronoun referents) remain.
 final class LiveHYMT2IntegrationTests: XCTestCase {
-    func testNotionSentenceUsesScopedGlossesEndToEnd() async throws {
+    func testNotionSentenceProducesStructureAndTranslation() async throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["THORN_LIVE_MODEL_TEST"] == "1",
             "Requires the local sidecar and HY-MT2 model"
@@ -15,68 +18,22 @@ final class LiveHYMT2IntegrationTests: XCTestCase {
             force: true
         )
         let chunks = flatten(result.chunks)
-        let glosses = Dictionary(chunks.map { ($0.text, $0.gloss) }) { first, _ in first }
 
-        XCTAssertEqual(glosses["The notion"], "这种观点")
-        XCTAssertEqual(glosses["is"], "是")
-        XCTAssertEqual(glosses["people"], "人们")
-        XCTAssertEqual(glosses["have failed"], "未能")
-        XCTAssertEqual(
-            glosses["to detect the massive changes which have happened in the ocean"],
-            "察觉到海洋中发生的巨大变化"
-        )
-        XCTAssertEqual(glosses["to detect"], "察觉到")
-        XCTAssertEqual(glosses["the massive changes"], "巨大的变化")
-        XCTAssertEqual(glosses["which have happened in the ocean"], "发生在海洋中的")
-        XCTAssertEqual(glosses["have happened"], "已经发生了")
-        XCTAssertEqual(glosses["in the ocean"], "在海洋中")
-        XCTAssertEqual(glosses["because"], "因为")
-        XCTAssertEqual(glosses["they"], "他们")
-        XCTAssertEqual(glosses["have been looking back"], "一直在回顾过去")
-        XCTAssertEqual(glosses["only a relatively short time"], "只有相对较短的时间")
-        XCTAssertEqual(glosses["into the past"], "向过去追溯")
-        XCTAssertNil(glosses["back"])
-        XCTAssertTrue(result.translation.contains("观点"))
-    }
+        // Backbone: subject + verb present, and the reassembled chunk text
+        // covers the whole input.
+        XCTAssertTrue(chunks.contains { $0.role == .subject })
+        XCTAssertTrue(chunks.contains { $0.role == .verb })
+        assertTopLevelTextCoversInput(result.chunks, sentence: sentence)
 
-    func testAdvertiserSentenceKeepsParentAndChildGlossesConsistent() async throws {
-        try XCTSkipUnless(
-            ProcessInfo.processInfo.environment["THORN_LIVE_MODEL_TEST"] == "1",
-            "Requires the local sidecar and HY-MT2 model"
-        )
+        // The which-clause survives as a relative clause with a deterministic
+        // referent gloss from the dependency tree.
+        XCTAssertTrue(chunks.contains { $0.role == .clauseRelative })
+        XCTAssertTrue(chunks.contains {
+            $0.role == .relative && $0.gloss.contains("指代前述的")
+        })
 
-        let sentence = "Apart from the fact that twenty-seven acts of Parliament govern the terms of advertising no regular advertiser dare promote a product that fails to live up to the promise of his advertisements"
-        let result = try await ParseService.parse(
-            sentence: sentence,
-            provider: .ollama,
-            force: true
-        )
-        let chunks = flatten(result.chunks)
-        let glosses = Dictionary(chunks.map { ($0.text, $0.gloss) }) { first, _ in first }
-
-        XCTAssertEqual(
-            glosses["that twenty-seven acts of Parliament govern the terms of advertising"],
-            "27项议会法案规定广告条款"
-        )
-        XCTAssertEqual(glosses["govern"], "规定")
-        XCTAssertEqual(glosses["no regular advertiser"], "没有哪家正规的广告商")
-        XCTAssertEqual(glosses["dare promote"], "敢于宣传")
-        XCTAssertEqual(
-            glosses["that fails to live up to the promise of his advertisements"],
-            "未能达到其广告宣传所承诺的水平"
-        )
-        XCTAssertEqual(glosses["fails"], "未能")
-        XCTAssertEqual(
-            glosses["to live up to the promise of his advertisements"],
-            "达到其广告宣传所承诺的水平"
-        )
-        XCTAssertEqual(glosses["to live up"], "达到承诺的标准")
-        XCTAssertEqual(
-            glosses["to the promise of his advertisements"],
-            "其广告宣传中所作的承诺"
-        )
-        XCTAssertTrue(result.translation.contains("正规"))
-        XCTAssertTrue(result.translation.contains("广告"))
+        XCTAssertFalse(result.translation.isEmpty)
+        XCTAssertTrue(result.translation.contains("观点") || result.translation.contains("观念"))
     }
 
     func testDemocraticSocietySentenceTreatsHoweverAsConcessiveClause() async throws {
@@ -95,16 +52,43 @@ final class LiveHYMT2IntegrationTests: XCTestCase {
         let howeverClause = try XCTUnwrap(chunks.first {
             $0.text == "however disputable or irritating the results may sometimes be"
         })
-        let liesNot = try XCTUnwrap(chunks.first { $0.text == "lies not" })
 
         XCTAssertEqual(howeverClause.role, .clauseAdverbial)
-        XCTAssertEqual(liesNot.gloss, "不在于")
-        XCTAssertNotEqual(liesNot.gloss, "不说谎")
-        XCTAssertTrue(result.translation.contains("不在于"))
-        XCTAssertTrue(result.translation.contains("而在于"))
+        XCTAssertFalse(result.translation.isEmpty)
+        XCTAssertTrue(result.translation.contains("在于"))
+    }
+
+    func testReorderedIdiomAndRelativeModifierStayInTheirOwnChunks() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["THORN_LIVE_MODEL_TEST"] == "1",
+            "Requires the local sidecar and HY-MT2 model"
+        )
+
+        let sentence = "Last year Mitsuo Setoyama, who was then education minister, raised eyebrows when he argued that reforms had weakened the morality."
+        let result = try await ParseService.parse(sentence: sentence, provider: .ollama, force: true)
+        let chunks = flatten(result.chunks)
+
+        XCTAssertNotNil(chunks.first { $0.text == "raised eyebrows" })
+        XCTAssertNotNil(chunks.first { $0.role == .clauseRelative })
+        XCTAssertFalse(result.translation.isEmpty)
     }
 
     private func flatten(_ chunks: [Chunk]) -> [Chunk] {
         chunks.flatMap { [$0] + flatten($0.children ?? []) }
+    }
+
+    private func assertTopLevelTextCoversInput(
+        _ chunks: [Chunk],
+        sentence: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let normalized = { (text: String) in text.filter { !$0.isWhitespace } }
+        XCTAssertEqual(
+            normalized(chunks.map(\.text).joined()),
+            normalized(sentence),
+            file: file,
+            line: line
+        )
     }
 }

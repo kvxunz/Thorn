@@ -22,6 +22,7 @@ final class PanelState: ObservableObject {
     var usingCloud: Bool { activeProvider == .custom }
 
     private var task: Task<Void, Never>?
+    private var activeRunID: UUID?
 
     func start(sentence: String) {
         self.sentence = sentence
@@ -35,12 +36,13 @@ final class PanelState: ObservableObject {
     /// Standalone message without any parse (e.g. selection too long).
     func presentError(_ message: String) {
         task?.cancel()
+        activeRunID = nil
         sentence = ""
         pinned = false
         status = .error(message)
     }
 
-    /// Toggle between engines; results are cached per model, so flipping back is instant.
+    /// Toggle between engines and re-run the live pipeline for the current sentence.
     func switchEngine(to provider: Provider) {
         guard provider != activeProvider else { return }
         activeProvider = provider
@@ -49,6 +51,8 @@ final class PanelState: ObservableObject {
 
     private func run(provider: Provider?, force: Bool) {
         task?.cancel()
+        let runID = UUID()
+        activeRunID = runID
         status = .loading
         hoveredChunkID = nil
         let sentence = self.sentence
@@ -56,16 +60,30 @@ final class PanelState: ObservableObject {
             do {
                 let result = try await ParseService.parse(sentence: sentence, provider: provider, force: force) { partial in
                     Task { @MainActor in
-                        guard self.task?.isCancelled == false else { return }
+                        guard self.activeRunID == runID else { return }
                         // Empty partial = stream fell back to a retry: show loading again.
                         self.status = partial.chunks.isEmpty ? .loading : .result(partial)
                     }
                 }
-                guard !Task.isCancelled else { return }
-                ThornLog.info("parse ok, \(result.chunks.count) chunks")
+                guard self.activeRunID == runID else {
+                    ThornLog.info("parse finished but run was superseded; dropping result")
+                    return
+                }
+                // Even if the Task was cancelled mid-flight, surface a finished
+                // result when this run is still the active one (hide ≠ cancel).
+                ThornLog.info("parse ok, \(result.chunks.count) chunks, translation=\(result.translation.isEmpty ? "empty" : "ok")")
                 self.status = .result(result)
+            } catch is CancellationError {
+                ThornLog.info("parse cancelled")
+                guard self.activeRunID == runID else { return }
+                if case .result(let partial) = self.status, partial.translation.isEmpty {
+                    self.status = .result(ParseResult(
+                        chunks: partial.chunks,
+                        translation: "（已取消：整句翻译未完成）"
+                    ))
+                }
             } catch {
-                guard !Task.isCancelled else { return }
+                guard self.activeRunID == runID else { return }
                 ThornLog.info("parse error: \(error.localizedDescription)")
                 self.status = .error(error.localizedDescription)
             }
@@ -74,5 +92,16 @@ final class PanelState: ObservableObject {
 
     func cancel() {
         task?.cancel()
+        activeRunID = nil
+        // Never leave the panel on a half-result spinner (structure without
+        // translation) after an intentional cancel.
+        if case .result(let result) = status, result.translation.isEmpty {
+            status = .result(ParseResult(
+                chunks: result.chunks,
+                translation: "（已取消：整句翻译未完成）"
+            ))
+        } else if case .loading = status {
+            status = .error("已取消")
+        }
     }
 }

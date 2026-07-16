@@ -10,28 +10,36 @@
 #     "fastapi>=0.110",
 #     "uvicorn>=0.29",
 #     "spacy-transformers>=1.3,<1.4",
+#     "numpy<2",
 #     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 # ]
 # ///
-"""Thorn structure sidecar: dual-tree (dependency + constituency) sentence
-chunking. Returns Thorn's Chunk JSON with empty glosses; the app fills
-glosses/translation with a local LLM.
+"""Thorn local language sidecar: deterministic sentence chunking.
 
 Run: uv run --script server.py [--port 48620] [--idle-exit 900]
 """
 import argparse
-import sys
+import hmac
+import os
+import re
+import signal
 import threading
 import time
 
 import benepar
 import spacy
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import Depends, FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
 
+from alignment import annotate_chunk_spans
 from chunk_rules import (
+    is_comitative_participle,
     is_concessive_however_clause,
-    is_fixed_adverbial_particle,
+    is_left_edge_introducer,
+    is_left_edge_introducer_token,
+    merge_or_so,
+    split_false_list_appos_subject,
+    verb_group_indices,
 )
 
 # UD dep label -> Thorn role, for clause-level constituents
@@ -46,7 +54,18 @@ CLAUSE_ROLES = {
 }
 
 nlp = None
+nlp_inference_lock = threading.Lock()
+# One request may wait behind the active inference; additional requests fail
+# fast instead of consuming every FastAPI worker while blocked on Torch.
+parse_slots = threading.BoundedSemaphore(2)
 last_request = time.time()
+auth_token = os.environ.get("THORN_SIDECAR_TOKEN", "")
+
+
+def require_auth(x_thorn_token: str | None = Header(default=None)):
+    if (not auth_token or not x_thorn_token
+            or not hmac.compare_digest(auth_token, x_thorn_token)):
+        raise HTTPException(status_code=401, detail="unauthorized sidecar request")
 
 
 def load():
@@ -76,19 +95,9 @@ def clause_role_for(head):
 # ---------------------------------------------------------------- chunking
 
 def verb_group(head):
-    """Verb + auxiliaries, negation, particles — plus adverbs sandwiched
-    inside the auxiliary chain ('can hardly be classed' stays one chunk)."""
-    toks = {head.i}
-    for c in head.children:
-        if c.dep_ in ("aux", "auxpass", "neg", "prt") or is_fixed_adverbial_particle(
-                head.lemma_, c.text, c.dep_):
-            toks.add(c.i)
-    if len(toks) > 1:
-        lo, hi = min(toks), max(toks)
-        for c in head.children:
-            if c.dep_ == "advmod" and lo < c.i < hi:
-                toks.add(c.i)
-    return toks
+    """Verb + auxiliaries, negation, particles — plus mid-complex adverbs
+    ('would almost certainly bring', 'can hardly be classed')."""
+    return verb_group_indices(head)
 
 
 def chunk_roots(head, is_root_clause):
@@ -128,11 +137,37 @@ def chunk_roots(head, is_root_clause):
                     c.i > 0 and c.doc[c.i - 1].tag_ == "TO")
                 roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
         elif d in ("relcl", "acl"):
-            roots.append((c, clause_role_for(c), True))
+            # Infinitival acl after adjectives/nouns ("enough to cover…",
+            # "a plan to expand") is purpose/complement, not a relative clause.
+            has_to = any(t.tag_ == "TO" for t in c.children) or (
+                c.i > 0 and c.doc[c.i - 1].tag_ == "TO"
+            )
+            has_own_subject = any(
+                t.dep_ in ("nsubj", "nsubjpass", "csubj", "csubjpass")
+                for t in c.children
+            )
+            if has_to and not has_own_subject:
+                roots.append((c, "adverbial", True))
+            elif c.tag_ == "VBG" and has_own_subject:
+                # Absolute / participial appositive: "everyone being the same…"
+                roots.append((c, "insertion", True))
+            elif is_comitative_participle(c):
+                # "coupled with…", "combined with…" — not a true relative clause
+                roots.append((c, "insertion", True))
+            else:
+                roots.append((c, clause_role_for(c), True))
         elif d in ("prep", "agent"):
-            # "agent" is the by-phrase of a passive
-            roots.append((c, "prep-phrase", contains_clause(c)))
+            # Comparative "than" is not a true preposition for teaching labels.
+            if c.lower_ == "than":
+                roots.append((c, "conjunction", contains_clause(c)))
+            else:
+                # "agent" is the by-phrase of a passive
+                roots.append((c, "prep-phrase", contains_clause(c)))
         elif d in ("advmod", "npadvmod"):
+            # Mid-complex adverbs already in the verbal complex stay off this list
+            # so they cannot steal nested degree modifiers (almost under certainly).
+            if c.i in verb_group(head):
+                continue
             roots.append((c, "adverbial", False))
         elif d == "cc":
             roots.append((c, "conjunction", False))
@@ -214,8 +249,27 @@ def np_expand(head, doc, role):
         if o is None:
             chunks.append({"text": text, "role": role, "gloss": "", "children": None})
         else:
-            crole = clause_role_for(o)
-            kids = build_chunks(o, doc, clause_role_of_head=crole)
+            # Infinitival acl ("enough to cover") is purpose, not a relative.
+            # VBG + own subject is absolute/appositive insertion, not relcl.
+            has_to = any(t.tag_ == "TO" for t in o.children) or (
+                o.i > 0 and doc[o.i - 1].tag_ == "TO"
+            )
+            has_own_subject = any(
+                t.dep_ in ("nsubj", "nsubjpass", "csubj", "csubjpass")
+                for t in o.children
+            )
+            if has_to and not has_own_subject:
+                crole = "adverbial"
+            elif o.tag_ == "VBG" and has_own_subject:
+                crole = "insertion"
+            elif is_comitative_participle(o):
+                crole = "insertion"
+            else:
+                crole = clause_role_for(o)
+            kids = build_chunks(
+                o, doc,
+                clause_role_of_head=crole if crole.startswith("clause") else None,
+            )
             chunks.append({"text": text, "role": crole, "gloss": "",
                            "children": kids if len(kids) >= 2 else None})
         run, run_owner = [], "__sentinel__"
@@ -235,11 +289,25 @@ def build_chunks(head, doc, clause_role_of_head=None):
     Every token is assigned to exactly one chunk root; chunks are contiguous
     runs of each assignment -> full coverage, and discontinuous constituents
     naturally become multiple chunks."""
-    subtree = sorted(head.subtree, key=lambda t: t.i)
+    raw_subtree = sorted(head.subtree, key=lambda t: t.i)
+    # spaCy often hangs left-edge when/if on a lower xcomp ("holding") even
+    # though the surface order is "when juries began holding…". Drop those
+    # introducers from the non-finite head entirely so they are not promoted
+    # as children of a complement whose text no longer contains them
+    # (annotate would raise "chunk text is outside its parent").
+    if getattr(head, "dep_", "") in ("xcomp", "ccomp", "pcomp", "acl"):
+        subtree = [
+            t for t in raw_subtree
+            if not is_left_edge_introducer(t, head)
+        ]
+    else:
+        subtree = raw_subtree
+    if not subtree:
+        subtree = raw_subtree
     lo, hi = subtree[0].i, subtree[-1].i
     assign = {}
-    for t in verb_group(head):
-        assign[t] = "verb"
+    for t_i in verb_group(head):
+        assign[t_i] = "verb"
 
     root_entries = {"verb": None}
     inline = set()
@@ -249,8 +317,24 @@ def build_chunks(head, doc, clause_role_of_head=None):
             inline.add(key)
         root_entries[key] = (c, role, expand)
         for t in c.subtree:
-            if t.i not in assign:
+            # Keep left-edge when/if out of lower xcomp/holding chunks so their
+            # text stays inside the finite clause parent (annotate-safe).
+            if t.i not in assign and not is_left_edge_introducer(t, c):
                 assign[t.i] = key
+
+    # Promote stranded left-edge introducers (when/if…) to their own chunk
+    # under the finite clause parent — never under the lower non-finite host
+    # (already stripped from that head's subtree above).
+    for t in subtree:
+        if t.i in assign:
+            continue
+        if is_left_edge_introducer_token(t) and t.i < head.i:
+            key = f"intro{t.i}"
+            intro_role = (
+                "relative" if clause_role_of_head == "clause-relative" else "conjunction"
+            )
+            root_entries[key] = (t, intro_role, False)
+            assign[t.i] = key
 
     # leftovers (punctuation, stray dets) -> nearest assigned neighbor,
     # preferring left, falling back right
@@ -351,7 +435,9 @@ def build_chunks(head, doc, clause_role_of_head=None):
             run_key = key
         run.append(t.i)
     flush()
-    return merge_tiny(merge_idioms(chunks))
+    return merge_tiny(
+        merge_or_so(split_false_list_appos_subject(merge_idioms(chunks)))
+    )
 
 
 def merge_idioms(chunks):
@@ -396,12 +482,15 @@ def merge_tiny(chunks):
 
 
 def parse_text(text):
-    doc = nlp(text)
+    with nlp_inference_lock:
+        doc = nlp(text)
     all_chunks = []
     for sent in doc.sents:
         root = sent.root
         all_chunks.extend(build_chunks(root, doc))
-    return all_chunks
+    offsets = [(token.idx, token.idx + len(token.text)) for token in doc]
+    chunks = annotate_chunk_spans(text, all_chunks, offsets)
+    return chunks, [token.text for token in doc]
 
 
 # ---------------------------------------------------------------- server
@@ -410,26 +499,42 @@ app = FastAPI()
 
 
 class ParseRequest(BaseModel):
-    text: str
+    text: str = Field(min_length=1, max_length=12000)
 
 
-@app.get("/health")
+@app.get("/health", dependencies=[Depends(require_auth)])
 def health():
-    return {"ok": nlp is not None}
+    return {
+        "ok": nlp is not None,
+        "protocolVersion": 3,
+    }
 
 
-@app.post("/parse")
+@app.post("/parse", dependencies=[Depends(require_auth)])
 def parse(req: ParseRequest):
     global last_request
     last_request = time.time()
-    return {"chunks": parse_text(req.text)}
+    # Reject oversized input before running the transformer/benepar pipeline.
+    if len(re.findall(r"\w+|[^\w\s]", req.text)) > 512:
+        raise HTTPException(status_code=422, detail="source token limit exceeded")
+    if not parse_slots.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="sentence parser is busy")
+    try:
+        chunks, source_tokens = parse_text(req.text)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        parse_slots.release()
+    return {"chunks": chunks, "sourceTokens": source_tokens}
 
 
 def idle_watchdog(limit):
     while True:
         time.sleep(30)
         if time.time() - last_request > limit:
-            sys.exit(0)
+            # sys.exit() would only stop this watchdog thread. Terminating the
+            # process is required to release spaCy and benepar memory.
+            os.kill(os.getpid(), signal.SIGTERM)
 
 
 if __name__ == "__main__":
@@ -438,6 +543,8 @@ if __name__ == "__main__":
     ap.add_argument("--port", type=int, default=48620)
     ap.add_argument("--idle-exit", type=int, default=900)
     args = ap.parse_args()
+    if not auth_token:
+        raise SystemExit("THORN_SIDECAR_TOKEN is required")
     load()
     threading.Thread(target=idle_watchdog, args=(args.idle_exit,), daemon=True).start()
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")

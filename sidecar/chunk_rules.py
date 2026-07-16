@@ -159,7 +159,6 @@ def merge_or_so(chunks):
             glue = "" if prev["text"].endswith(" ") or ch["text"].startswith(" ") else " "
             prev["text"] = prev["text"] + glue + ch["text"]
             prev["role"] = "insertion"
-            prev["gloss"] = "可以说"  # discourse hedge; may be overwritten by gloss stage
             continue
         out.append(ch)
     return out

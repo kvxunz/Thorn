@@ -87,8 +87,7 @@ enum ParseService {
         guard !ep.baseURL.isEmpty, !ep.model.isEmpty else {
             throw LLMError.notConfigured
         }
-        let normalized = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        let normalized = normalizedInput(sentence)
 
         let client = LLMClient(baseURL: ep.baseURL, model: ep.model, apiKey: ep.apiKey, wireAPI: ep.wireAPI)
 
@@ -154,6 +153,29 @@ enum ParseService {
             }
         }
         throw lastError
+    }
+
+    /// Text copied from bilingual reading material often carries CJK fullwidth
+    /// punctuation ("troubles，or so"). spaCy's English models misattach
+    /// dependencies around those tokens, so map them to ASCII before parsing.
+    /// Curly quotes/apostrophes are normal English typography and stay as-is.
+    /// Exposed internally for unit tests.
+    static func normalizedInput(_ sentence: String) -> String {
+        let cjkPunctuation: [Character: String] = [
+            "，": ", ", "。": ". ", "、": ", ", "；": "; ", "：": ": ",
+            "？": "? ", "！": "! ", "（": " (", "）": ") ", "\u{3000}": " ",
+        ]
+        var mapped = ""
+        mapped.reserveCapacity(sentence.count)
+        for character in sentence {
+            if let replacement = cjkPunctuation[character] {
+                mapped += replacement
+            } else {
+                mapped.append(character)
+            }
+        }
+        return mapped.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 
     // MARK: - Translation (local pipeline)

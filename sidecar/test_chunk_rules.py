@@ -182,7 +182,7 @@ class OrSoAndWhenTests(unittest.TestCase):
         self.assertEqual(len(out), 2)
         self.assertEqual(out[0]["text"], "or so")
         self.assertEqual(out[0]["role"], "insertion")
-        self.assertEqual(out[0]["gloss"], "可以说")
+        self.assertEqual(out[0]["gloss"], "")
 
 
 class SplitFalseListApposTests(unittest.TestCase):

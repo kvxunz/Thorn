@@ -53,3 +53,7 @@
 ## 2026-07-16 释义分配层整体移除
 
 22. **过拟合层的最优解可能是删除而非重构**：1904 行对齐启发式里 ~600 行是句子指纹修补。用户裁决：本地管线只要"精准拆分 + 整句翻译"，释义分配整层删除。alignment.py 1904→92 行（只留 /parse 的 span 标注），Swift 消费端 ~300 行同步清除。教训：先问"这个子系统的产出值不值它的复杂度"，再问"怎么修"。
+
+23. **左缘引导词剥离的误杀判据是"邻接性"**：is_left_edge_introducer 防 spaCy 把上层 when/if 误挂到下层 xcomp/pcomp，但把真属于 pcomp 宾语从句的 whether/how 也剥掉了（子块里凭空消失）。区分特征：误挂的引导词与剩余子树之间隔着上层从句词（索引有空隙），真引导词紧邻子树首 token。按邻接回补即两全。
+
+24. **pcomp 是被遗忘的从句类型**：contains_clause/np_expand 只认 relcl/acl/advcl/ccomp/csubj，介词的从句补语（"in how well…"、"for why…"）一直没展开。加 is_clausal_pcomp（pcomp+动词性+自带主语）门控后连带修好 "explanation for why…" 类结构；无主语动名词（"in doing so"）保持平铺不误伤。

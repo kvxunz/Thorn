@@ -1,8 +1,10 @@
 import XCTest
 @testable import Thorn
 
-final class AlignmentPipelineTests: XCTestCase {
-    func testChunkMetadataRoundTripsThroughSidecarJSON() throws {
+/// Wire-contract check for the sidecar /parse response: node identity (`id`)
+/// and source token span (`s`/`e`) must decode into Chunk metadata.
+final class SidecarProtocolTests: XCTestCase {
+    func testChunkMetadataDecodesFromSidecarJSON() throws {
         let json = """
         {
           "text": "that fails",
@@ -19,10 +21,5 @@ final class AlignmentPipelineTests: XCTestCase {
         XCTAssertEqual(decoded.nodeKey, "3")
         XCTAssertEqual(decoded.sourceStart, 7)
         XCTAssertEqual(decoded.sourceEnd, 9)
-
-        let encoded = try JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? [String: Any]
-        XCTAssertEqual(encoded?["id"] as? String, "3")
-        XCTAssertEqual(encoded?["s"] as? Int, 7)
-        XCTAssertEqual(encoded?["e"] as? Int, 9)
     }
 }

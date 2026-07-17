@@ -165,7 +165,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         panel.layoutIfNeeded()
         var size = panel.contentView?.fittingSize ?? .zero
         if size.width < 50 || size.height < 30 {
-            size = CGSize(width: 460, height: 64) // loading placeholder; resize() corrects it
+            size = CGSize(width: 460, height: 64) // loading placeholder; fitToContent() corrects it
         }
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
@@ -216,7 +216,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     /// Hide the floating panel without cancelling an in-flight parse.
     /// Parse continues so ⌥Z can recall a finished result; a new ⌥A still
     /// cancels the previous run via `PanelState.start` → `run`.
-    func hidePanel() {
+    private func hidePanel() {
         statusObserver = nil
         expandObserver = nil
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
@@ -227,11 +227,5 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         globalKeyMonitor = nil
         panel?.orderOut(nil)
         panel = nil
-    }
-
-    /// Hide panel and cancel any in-flight parse (used on quit paths if needed).
-    func close() {
-        state.cancel()
-        hidePanel()
     }
 }

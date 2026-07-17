@@ -66,6 +66,8 @@
 
 ## 2026-07-17 云端删除后的混排输入塌方
 
+30. **conj 兜底规则"动词的非动词并列项=宾语"会吞掉独立主格**："…returned to Ireland…, my sister, Margaret, dead and gone" 里 spaCy 正确给出 dead=conj(returned)+brother=nsubj(dead)（无动词并列分句），但 chunk 规则的 conj 分支按"head 是动词"一刀切标宾语，26 个 token 成了不及物动词的"宾语"。判据（通用）：非动词 conj 自带 nsubj = 省略 be 的独立主格，新增 "absolute" 角色并按动词头展开（形容词头照走 build_chunks，verb run 即省略的表语）。Swift 未知角色降级 .other，协议前向安全。2114593。
+
 29. **不连续的 conj 成分会被"按连续段拼接"逻辑整体复制**："where they met and married and where I was born" 里 spaCy 把 where(10) 挂到 married(14)，married 子树 {10,14} 被中间 token 切成两段，build_chunks 每段 flush 都触发一次 __coord_clause__ 整体内联 → married 从句拼两次、span 乱序、Swift 校验拒收整树（症状=同一句永远"引擎暂不可用"，而引擎明明是热的）。修法：左缘引导词剥离白名单加 "conj"，且 chunk_roots 的 token 归属和 build_chunks 的子树用同一个 constituent_token_indices 算——两处口径一致才杜绝复制。邻接判据（#23）继续兜住真引导词。诊断路径照旧：探针脚本 dump 依存树+chunk 树，一轮定罪。sidecar/probe_sentence.py 已留作常备工具。
 
 28. **纯英文句法引擎的输入门槛必须按"段"过滤，不能只看全局字母占比**：双语注释材料（"close to 是靠近的意思。15．Economists…"）ASCII 字母占比 85% 轻松过 0.5 门槛，但 spaCy 英文模型吃到汉字后整树报废（economies 成谓语、中文片段全成插入语）。云端 LLM 在时这种输入被它兜住，砍云端后裸奔。修法：按句末标点切段，含 CJK 的段整段丢弃（词汇注释必含中文）、不足三词的碎片丢弃（编号/习语残片），剩余英文句照常拆。全角句点 ．（编号 "15．" 专用）要进规范化表，否则粘连进主语块。6c7045d。

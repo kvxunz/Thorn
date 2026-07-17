@@ -80,9 +80,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            let letters = trimmed.unicodeScalars.filter { CharacterSet.letters.contains($0) }
-            guard !letters.isEmpty else {
+            guard trimmed.unicodeScalars.contains(where: { CharacterSet.letters.contains($0) }) else {
                 NSSound.beep()
+                return
+            }
+            // Bilingual study material: strip Chinese annotations, keep the
+            // English sentence(s). Pure-English text passes through unchanged.
+            let sentence = ParseService.extractEnglish(ParseService.normalizedInput(trimmed))
+            let letters = sentence.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+            guard !letters.isEmpty else {
+                panelController.showError("选中内容主要是中文注释，没有找到可拆解的英文句子。")
                 return
             }
             let asciiRatio = Double(letters.filter(\.isASCII).count) / Double(letters.count)
@@ -90,11 +97,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 panelController.showError("Thorn 只拆解英文文本，选中的内容主要是非英文字符。")
                 return
             }
-            guard trimmed.count <= 1200 else {
+            guard sentence.count <= 1200 else {
                 panelController.showError("选中内容过长（超过 1200 字符）。请划选一句或一小段。")
                 return
             }
-            panelController.show(sentence: trimmed)
+            panelController.show(sentence: sentence)
         }
     }
 

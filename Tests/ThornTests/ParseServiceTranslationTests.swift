@@ -24,6 +24,33 @@ final class ParseServiceTranslationTests: XCTestCase {
         )
     }
 
+    func testExtractsEnglishSentenceFromBilingualAnnotations() {
+        // Real material: vocabulary glosses and a 【翻译技巧】 header wrap the
+        // actual numbered sentence. Only the English sentence must survive.
+        let mixed = "【翻译技巧】the big seven industrial economies 是指西方 七大工业国。"
+            + "close to 是靠近的意思。fall to 是“跌落至……”的意思。"
+            + "15．Economists have been particularly surprised by favorable inflation "
+            + "figures in Britain and the United States, since conventional measures "
+            + "suggest that both economies, and especially America's, have little productive slack."
+
+        XCTAssertEqual(
+            ParseService.extractEnglish(ParseService.normalizedInput(mixed)),
+            "Economists have been particularly surprised by favorable inflation "
+                + "figures in Britain and the United States, since conventional measures "
+                + "suggest that both economies, and especially America's, have little productive slack."
+        )
+        // Nothing sentence-like left -> empty, caller shows a clear error.
+        XCTAssertEqual(
+            ParseService.extractEnglish(ParseService.normalizedInput("close to 是靠近的意思。")),
+            ""
+        )
+        // Pure English is untouched.
+        XCTAssertEqual(
+            ParseService.extractEnglish("He left early. It rained."),
+            "He left early. It rained."
+        )
+    }
+
     func testCleansCommonTranslationWrappers() {
         let raw = """
         ```text

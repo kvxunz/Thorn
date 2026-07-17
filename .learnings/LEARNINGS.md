@@ -66,6 +66,8 @@
 
 ## 2026-07-17 云端删除后的混排输入塌方
 
+31. **结构切对了还会在展示层翻车：新的多块拆分必须默认收拢**：分号列举拆成六个插入语项是对的，但拍平到顶层后主干淹没在 17 行里，用户直接开骂。本 app 的展示哲学是渐进披露（从句默认折叠、并列分句收大块）——任何让顶层行数膨胀的新拆分规则，都要包成单块 + children，点开再看。同一课用户教了两次（并列分句一次、列举一次），第三次之前先自查。2a58d6e。
+
 30. **conj 兜底规则"动词的非动词并列项=宾语"会吞掉独立主格**："…returned to Ireland…, my sister, Margaret, dead and gone" 里 spaCy 正确给出 dead=conj(returned)+brother=nsubj(dead)（无动词并列分句），但 chunk 规则的 conj 分支按"head 是动词"一刀切标宾语，26 个 token 成了不及物动词的"宾语"。判据（通用）：非动词 conj 自带 nsubj = 省略 be 的独立主格，新增 "absolute" 角色并按动词头展开（形容词头照走 build_chunks，verb run 即省略的表语）。Swift 未知角色降级 .other，协议前向安全。2114593。
 
 29. **不连续的 conj 成分会被"按连续段拼接"逻辑整体复制**："where they met and married and where I was born" 里 spaCy 把 where(10) 挂到 married(14)，married 子树 {10,14} 被中间 token 切成两段，build_chunks 每段 flush 都触发一次 __coord_clause__ 整体内联 → married 从句拼两次、span 乱序、Swift 校验拒收整树（症状=同一句永远"引擎暂不可用"，而引擎明明是热的）。修法：左缘引导词剥离白名单加 "conj"，且 chunk_roots 的 token 归属和 build_chunks 的子树用同一个 constituent_token_indices 算——两处口径一致才杜绝复制。邻接判据（#23）继续兜住真引导词。诊断路径照旧：探针脚本 dump 依存树+chunk 树，一轮定罪。sidecar/probe_sentence.py 已留作常备工具。

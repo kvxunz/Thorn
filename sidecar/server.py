@@ -33,10 +33,10 @@ from pydantic import BaseModel, Field
 
 from alignment import annotate_chunk_spans
 from chunk_rules import (
+    constituent_token_indices,
     is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
-    is_left_edge_introducer,
     is_left_edge_introducer_token,
     merge_or_so,
     verb_group_indices,
@@ -298,28 +298,13 @@ def build_chunks(head, doc, clause_role_of_head=None):
     Every token is assigned to exactly one chunk root; chunks are contiguous
     runs of each assignment -> full coverage, and discontinuous constituents
     naturally become multiple chunks."""
-    raw_subtree = sorted(head.subtree, key=lambda t: t.i)
-    # spaCy often hangs left-edge when/if on a lower xcomp ("holding") even
-    # though the surface order is "when juries began holding…". Drop those
-    # introducers from the non-finite head entirely so they are not promoted
-    # as children of a complement whose text no longer contains them
-    # (annotate would raise "chunk text is outside its parent").
-    if getattr(head, "dep_", "") in ("xcomp", "ccomp", "pcomp", "acl"):
-        subtree = [
-            t for t in raw_subtree
-            if not is_left_edge_introducer(t, head)
-        ]
-        # Misattached upper-clause when/if sit with a gap before the rest of
-        # the subtree ("when [juries began] holding…"). A genuine clause
-        # introducer (whether/how of a pcomp noun clause) is immediately
-        # adjacent — keep those, they belong to this clause's text.
-        stripped = [t for t in raw_subtree if t not in subtree]
-        while stripped and subtree and stripped[-1].i == subtree[0].i - 1:
-            subtree.insert(0, stripped.pop())
-    else:
-        subtree = raw_subtree
-    if not subtree:
-        subtree = raw_subtree
+    # spaCy often hangs left-edge when/if on a lower xcomp ("holding…") or a
+    # coordinated verb ("where they met and married") even though the token
+    # belongs to the clause above. constituent_token_indices strips stranded
+    # introducers (adjacency-checked) so they are neither promoted as children
+    # of a complement whose text no longer contains them, nor duplicated when
+    # a discontinuous conj constituent is spliced per contiguous run.
+    subtree = [head.doc[i] for i in constituent_token_indices(head)]
     lo, hi = subtree[0].i, subtree[-1].i
     assign = {}
     for t_i in verb_group_indices(head):
@@ -332,11 +317,12 @@ def build_chunks(head, doc, clause_role_of_head=None):
         if role == "__coord_clause__":
             inline.add(key)
         root_entries[key] = (c, role, expand)
-        for t in c.subtree:
-            # Keep left-edge when/if out of lower xcomp/holding chunks so their
-            # text stays inside the finite clause parent (annotate-safe).
-            if t.i not in assign and not is_left_edge_introducer(t, c):
-                assign[t.i] = key
+        # Same token set the spliced/expanded chunk will own: stranded
+        # left-edge when/where stay out (they belong to this clause, not the
+        # lower constituent) so runs and splices can never double-emit.
+        for t_i in constituent_token_indices(c):
+            if t_i not in assign:
+                assign[t_i] = key
 
     # Promote stranded left-edge introducers (when/if…) to their own chunk
     # under the finite clause parent — never under the lower non-finite host

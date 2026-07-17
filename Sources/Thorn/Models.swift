@@ -10,6 +10,7 @@ enum ChunkRole: String, Decodable, CaseIterable, Sendable {
     case clauseNoun = "clause-noun"
     case prepPhrase = "prep-phrase"
     case insertion
+    case absolute
     case conjunction
     case relative
     case adverbial
@@ -33,6 +34,7 @@ enum ChunkRole: String, Decodable, CaseIterable, Sendable {
         case .clauseNoun: return "名词性从句"
         case .prepPhrase: return "介词短语"
         case .insertion: return "插入语"
+        case .absolute: return "独立主格"
         case .conjunction: return "连词"
         case .relative: return "关系词"
         case .adverbial: return "状语"

@@ -60,6 +60,10 @@ extension ChunkRole {
         case .insertion:
             return roleColor(hue: 0.62, lightSat: 0.28, lightBri: 0.45,
                              darkSat: 0.22, darkBri: 0.78)
+        // 橄榄绿 — 独立主格（无动词伴随分句）
+        case .absolute:
+            return roleColor(hue: 0.24, lightSat: 0.55, lightBri: 0.44,
+                             darkSat: 0.45, darkBri: 0.78)
         // 金棕 — 连词
         case .conjunction:
             return roleColor(hue: 0.12, lightSat: 0.70, lightBri: 0.48,

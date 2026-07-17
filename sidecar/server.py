@@ -250,9 +250,11 @@ def np_expand(head, doc, role):
         if not run:
             return
         text = doc[run[0]: run[-1] + 1].text
+        bounds = {"_lo": run[0], "_hi": run[-1]}
         o = run_owner
         if o is None:
-            chunks.append({"text": text, "role": role, "gloss": "", "children": None})
+            chunks.append({"text": text, "role": role, "gloss": "",
+                           "children": None, **bounds})
         else:
             # Infinitival acl ("enough to cover") is purpose, not a relative.
             # VBG + own subject is absolute/appositive insertion, not relcl.
@@ -280,7 +282,7 @@ def np_expand(head, doc, role):
                 clause_role_of_head=crole if crole.startswith("clause") else None,
             )
             chunks.append({"text": text, "role": crole, "gloss": "",
-                           "children": kids if len(kids) >= 2 else None})
+                           "children": kids if len(kids) >= 2 else None, **bounds})
         run, run_owner = [], "__sentinel__"
 
     for t in subtree:
@@ -359,20 +361,39 @@ def build_chunks(head, doc, clause_role_of_head=None):
         nonlocal run, run_key
         if not run:
             return
-        text = doc[run[0]: run[-1] + 1].text
-        toks = [doc[i] for i in run]
-        key = run_key
         run_local = list(run)
+        key = run_key
         run, run_key = [], None
+        before = len(chunks)
+        emit(doc[run_local[0]: run_local[-1] + 1].text,
+             [doc[i] for i in run_local], key, run_local)
+        # Exact token bounds ride along internally: coordinate-clause grouping
+        # rebuilds wrapper texts from doc spans. Stripped before the response.
+        for ch in chunks[before:]:
+            ch.setdefault("_lo", run_local[0])
+            ch.setdefault("_hi", run_local[-1])
 
+    def emit(text, toks, key, run_local):
         if key == "verb":
             chunks.append({"text": text, "role": "verb", "gloss": "",
                            "children": None, "_lem": head.lemma_})
             return
         c, role, expand = root_entries[key]
         if key in inline:
-            # coordinate clause: splice its own backbone in at this level
-            chunks.extend(build_chunks(c, doc))
+            # Coordinate clause. With its own subject it is a full clause:
+            # inside a labeled clause it reads best as one collapsible block
+            # ("and where I was born"); subject-sharing VP coordination
+            # ("and married") splices flat. Top level always splices flat so
+            # the header keeps per-role colors on the whole backbone.
+            sub = build_chunks(c, doc)
+            own_subject = any(
+                t.dep_ in ("nsubj", "nsubjpass", "expl") for t in c.children
+            )
+            if clause_role_of_head is not None and own_subject and len(sub) >= 2:
+                chunks.append({"text": text, "role": clause_role_of_head,
+                               "gloss": "", "children": sub, "_coord": True})
+            else:
+                chunks.extend(sub)
             return
         # single introducing word inside a clause gets its true role:
         # wh-pronouns/adverbs -> relative (in relative clauses) or conjunction;
@@ -437,7 +458,33 @@ def build_chunks(head, doc, clause_role_of_head=None):
             run_key = key
         run.append(t.i)
     flush()
-    return merge_tiny(merge_or_so(merge_idioms(chunks)))
+    result = merge_tiny(merge_or_so(merge_idioms(chunks)))
+    if clause_role_of_head is not None:
+        result = group_coordinate_clauses(result, clause_role_of_head, doc)
+    for ch in result:
+        ch.pop("_coord", None)  # marker never escapes its own level
+    return result
+
+
+def group_coordinate_clauses(chunks, role, doc):
+    """Coordinated full clauses inside a labeled clause become sibling blocks:
+    "where they met and married and where I was born" shows as
+    [where they met and married] / and / [where I was born], each expandable,
+    instead of nine flat rows. Only the lead segment needs wrapping — the
+    coordinate ones arrive as blocks from emit."""
+    idx = next((i for i, c in enumerate(chunks) if c.get("_coord")), None)
+    if idx is None:
+        return chunks
+    lead_end = idx - 1 if idx >= 1 and chunks[idx - 1].get("role") == "conjunction" else idx
+    lead = chunks[:lead_end]
+    if len(lead) < 2 or any(c.get("_coord") for c in lead):
+        return chunks
+    if "_lo" not in lead[0] or "_hi" not in lead[-1]:
+        return chunks
+    text = doc[lead[0]["_lo"]: lead[-1]["_hi"] + 1].text
+    wrapper = {"text": text, "role": role, "gloss": "", "children": lead,
+               "_lo": lead[0]["_lo"], "_hi": lead[-1]["_hi"]}
+    return [wrapper] + chunks[lead_end:]
 
 
 def merge_idioms(chunks):
@@ -449,12 +496,16 @@ def merge_idioms(chunks):
                 and ch.get("_lem") and ch["role"] == "object"
                 and (out[-1]["_lem"], ch["_lem"]) in IDIOM_VO):
             out[-1]["text"] = out[-1]["text"] + " " + ch["text"]
+            if "_hi" in ch:
+                out[-1]["_hi"] = ch["_hi"]
             continue
         if (out and out[-1]["role"] in ("adverbial", "other")
                 and ch["role"] == "prep-phrase" and not out[-1].get("children")):
             first_prep = ch["text"].split()[0].lower() if ch["text"].split() else ""
             if (out[-1]["text"].strip(",").lower(), first_prep) in COMPOUND_ADV_PREP:
                 ch = dict(ch, text=out[-1]["text"] + " " + ch["text"])
+                if "_lo" in out[-1]:
+                    ch["_lo"] = out[-1]["_lo"]
                 out.pop()
         out.append(ch)
     for ch in out:
@@ -467,18 +518,34 @@ def merge_tiny(chunks):
     when they lead)."""
     out = []
     pending = ""
+    pending_lo = None
     for ch in chunks:
         if not any(c.isalnum() for c in ch["text"]):
             if out:
                 out[-1]["text"] = out[-1]["text"] + ch["text"]
+                if "_hi" in ch:
+                    out[-1]["_hi"] = ch["_hi"]
             else:
+                if pending_lo is None:
+                    pending_lo = ch.get("_lo")
                 pending += ch["text"]
         else:
             if pending:
                 ch = dict(ch, text=pending + ch["text"])
+                if pending_lo is not None:
+                    ch["_lo"] = pending_lo
                 pending = ""
+                pending_lo = None
             out.append(ch)
     return out
+
+
+def _strip_internal_keys(nodes):
+    for node in nodes:
+        for key in ("_lo", "_hi", "_coord", "_lem"):
+            node.pop(key, None)
+        if node.get("children"):
+            _strip_internal_keys(node["children"])
 
 
 def parse_text(text):
@@ -488,6 +555,7 @@ def parse_text(text):
     for sent in doc.sents:
         root = sent.root
         all_chunks.extend(build_chunks(root, doc))
+    _strip_internal_keys(all_chunks)
     offsets = [(token.idx, token.idx + len(token.text)) for token in doc]
     chunks = annotate_chunk_spans(text, all_chunks, offsets)
     return chunks, [token.text for token in doc]

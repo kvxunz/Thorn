@@ -179,6 +179,8 @@ def merge_or_so(chunks):
             glue = "" if prev["text"].endswith(" ") or ch["text"].startswith(" ") else " "
             prev["text"] = prev["text"] + glue + ch["text"]
             prev["role"] = "insertion"
+            if "_hi" in ch:  # keep internal token bounds exact after fusion
+                prev["_hi"] = ch["_hi"]
             continue
         out.append(ch)
     return out

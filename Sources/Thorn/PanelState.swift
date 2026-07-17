@@ -16,21 +16,17 @@ final class PanelState: ObservableObject {
     @Published var hoveredHighlight: (range: Range<Int>, color: Color)?
     /// Chunks whose children are currently shown; everything starts collapsed.
     @Published var expanded: Set<UUID> = []
-    @Published var activeProvider: Provider = .ollama
     @Published var pinned = false
-
-    var usingCloud: Bool { activeProvider == .custom }
 
     private var task: Task<Void, Never>?
     private var activeRunID: UUID?
 
     func start(sentence: String) {
         self.sentence = sentence
-        self.activeProvider = SettingsStore.shared.provider
         self.pinned = false
         self.expanded = []
         self.hoveredHighlight = nil
-        run(provider: activeProvider, force: false)
+        run()
     }
 
     /// Standalone message without any parse (e.g. selection too long).
@@ -42,14 +38,7 @@ final class PanelState: ObservableObject {
         status = .error(message)
     }
 
-    /// Toggle between engines and re-run the live pipeline for the current sentence.
-    func switchEngine(to provider: Provider) {
-        guard provider != activeProvider else { return }
-        activeProvider = provider
-        run(provider: provider, force: false)
-    }
-
-    private func run(provider: Provider?, force: Bool) {
+    private func run() {
         task?.cancel()
         let runID = UUID()
         activeRunID = runID
@@ -58,11 +47,11 @@ final class PanelState: ObservableObject {
         let sentence = self.sentence
         task = Task {
             do {
-                let result = try await ParseService.parse(sentence: sentence, provider: provider, force: force) { partial in
+                let result = try await ParseService.parse(sentence: sentence) { partial in
                     Task { @MainActor in
                         guard self.activeRunID == runID else { return }
-                        // Empty partial = stream fell back to a retry: show loading again.
-                        self.status = partial.chunks.isEmpty ? .loading : .result(partial)
+                        // Bare structure from the sidecar: tree now, translation later.
+                        self.status = .result(partial)
                     }
                 }
                 guard self.activeRunID == runID else {

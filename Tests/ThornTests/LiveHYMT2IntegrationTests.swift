@@ -12,11 +12,7 @@ final class LiveHYMT2IntegrationTests: XCTestCase {
         )
 
         let sentence = "The notion is that people have failed to detect the massive changes which have happened in the ocean because they have been looking back only a relatively short time into the past."
-        let result = try await ParseService.parse(
-            sentence: sentence,
-            provider: .ollama,
-            force: true
-        )
+        let result = try await ParseService.parse(sentence: sentence)
         let chunks = flatten(result.chunks)
 
         // Backbone: subject + verb present, and the reassembled chunk text
@@ -43,11 +39,7 @@ final class LiveHYMT2IntegrationTests: XCTestCase {
         )
 
         let sentence = "\"The test of any democratic society,\" he wrote in a Wall Street Journal column, \"lies not in how well it can control expression but in whether it gives freedom of thought and expression the widest possible latitude, however disputable or irritating the results may sometimes be"
-        let result = try await ParseService.parse(
-            sentence: sentence,
-            provider: .ollama,
-            force: true
-        )
+        let result = try await ParseService.parse(sentence: sentence)
         let chunks = flatten(result.chunks)
         let howeverClause = try XCTUnwrap(chunks.first {
             $0.text == "however disputable or irritating the results may sometimes be"
@@ -65,7 +57,7 @@ final class LiveHYMT2IntegrationTests: XCTestCase {
         )
 
         let sentence = "Last year Mitsuo Setoyama, who was then education minister, raised eyebrows when he argued that reforms had weakened the morality."
-        let result = try await ParseService.parse(sentence: sentence, provider: .ollama, force: true)
+        let result = try await ParseService.parse(sentence: sentence)
         let chunks = flatten(result.chunks)
 
         XCTAssertNotNil(chunks.first { $0.text == "raised eyebrows" })

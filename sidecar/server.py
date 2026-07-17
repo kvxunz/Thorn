@@ -94,20 +94,14 @@ def clause_role_for(head):
 
 # ---------------------------------------------------------------- chunking
 
-def verb_group(head):
-    """Verb + auxiliaries, negation, particles — plus mid-complex adverbs
-    ('would almost certainly bring', 'can hardly be classed')."""
-    return verb_group_indices(head)
-
-
-def chunk_roots(head, is_root_clause):
+def chunk_roots(head):
     """Decide the chunk-root tokens directly under a clause head.
     Returns list of (root_token, role, expand). expand=True -> recurse."""
     # In inversions ("Nor, if …, is management to be blamed") spaCy hangs
     # fronted conjunctions/clauses on the auxiliary, not the content verb.
     # The verbal complex is one predicate: harvest dependents of every
     # member, or those tokens become orphans swallowed by a neighbor chunk.
-    group = verb_group(head)
+    group = verb_group_indices(head)
     doc = head.doc
     candidates = list(head.children)
     for index in group:
@@ -179,7 +173,7 @@ def chunk_roots(head, is_root_clause):
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
-            if c.i in verb_group(head):
+            if c.i in group:
                 continue
             roots.append((c, "adverbial", False))
         elif d == "cc":
@@ -328,12 +322,12 @@ def build_chunks(head, doc, clause_role_of_head=None):
         subtree = raw_subtree
     lo, hi = subtree[0].i, subtree[-1].i
     assign = {}
-    for t_i in verb_group(head):
+    for t_i in verb_group_indices(head):
         assign[t_i] = "verb"
 
     root_entries = {"verb": None}
     inline = set()
-    for c, role, expand in chunk_roots(head, clause_role_of_head is None):
+    for c, role, expand in chunk_roots(head):
         key = f"n{c.i}"
         if role == "__coord_clause__":
             inline.add(key)

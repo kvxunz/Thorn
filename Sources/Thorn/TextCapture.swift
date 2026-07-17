@@ -83,7 +83,7 @@ enum TextCapture {
         } ?? []
         let savedChangeCount = pasteboard.changeCount
 
-        // The user is still holding ⌥ (and maybe D) from the hotkey; a synthetic ⌘C
+        // The user is still holding ⌥ (and maybe A) from the hotkey; a synthetic ⌘C
         // posted now arrives as ⌘⌥C and most apps ignore it. Wait for release.
         await waitForModifiersUp()
         postCmdC()

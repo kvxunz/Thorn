@@ -1,6 +1,6 @@
 import Foundation
 
-enum ChunkRole: String, Codable, CaseIterable, Sendable {
+enum ChunkRole: String, Decodable, CaseIterable, Sendable {
     case subject
     case verb
     case object
@@ -14,14 +14,6 @@ enum ChunkRole: String, Codable, CaseIterable, Sendable {
     case relative
     case adverbial
     case other
-
-    /// Trunk roles form the sentence backbone; everything else is a modifier.
-    var isTrunk: Bool {
-        switch self {
-        case .subject, .verb, .object, .complement: return true
-        default: return false
-        }
-    }
 
     var isClause: Bool {
         switch self {
@@ -49,7 +41,7 @@ enum ChunkRole: String, Codable, CaseIterable, Sendable {
     }
 }
 
-struct Chunk: Codable, Identifiable, Equatable, Sendable {
+struct Chunk: Decodable, Identifiable, Equatable, Sendable {
     let text: String
     let role: ChunkRole
     let gloss: String
@@ -102,22 +94,9 @@ struct Chunk: Codable, Identifiable, Equatable, Sendable {
         sourceStart = try c.decodeIfPresent(Int.self, forKey: .sourceStart)
         sourceEnd = try c.decodeIfPresent(Int.self, forKey: .sourceEnd)
     }
-
-    /// Explicit encode so sidecar metadata (`id`/`s`/`e`) survives re-encoding
-    /// (custom decode alone can leave synthesis incomplete for the private `uid`).
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(text, forKey: .text)
-        try c.encode(role.rawValue, forKey: .role)
-        try c.encode(gloss, forKey: .gloss)
-        try c.encodeIfPresent(children, forKey: .children)
-        try c.encodeIfPresent(nodeKey, forKey: .nodeKey)
-        try c.encodeIfPresent(sourceStart, forKey: .sourceStart)
-        try c.encodeIfPresent(sourceEnd, forKey: .sourceEnd)
-    }
 }
 
-struct ParseResult: Codable, Equatable, Sendable {
+struct ParseResult: Equatable, Sendable {
     let chunks: [Chunk]
     let translation: String
 }

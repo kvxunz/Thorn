@@ -38,6 +38,7 @@ from chunk_rules import (
     is_comitative_participle,
     is_concessive_however_clause,
     is_left_edge_introducer_token,
+    mark_discourse_insertions,
     merge_or_so,
     verb_group_indices,
 )
@@ -379,6 +380,30 @@ def build_chunks(head, doc, clause_role_of_head=None):
             ch.setdefault("_hi", run_local[-1])
 
     def emit(text, toks, key, run_local):
+        def splice_flat(sub, c):
+            """Extend with a constituent's own chunks, then glue back any run
+            tokens the constituent doesn't own — a colon the leftover pass
+            parked on this run would otherwise vanish with the run text."""
+            start_index = len(chunks)
+            chunks.extend(sub)
+            if not sub:
+                return
+            owned = constituent_token_indices(c)
+            suffix = [i for i in run_local if i > owned[-1]]
+            if suffix:
+                char_from = doc[owned[-1]].idx + len(doc[owned[-1]].text)
+                char_to = doc[suffix[-1]].idx + len(doc[suffix[-1]].text)
+                chunks[-1]["text"] += doc.text[char_from:char_to]
+                if "_hi" in chunks[-1]:
+                    chunks[-1]["_hi"] = suffix[-1]
+            prefix = [i for i in run_local if i < owned[0]]
+            if prefix:
+                first = chunks[start_index]
+                char_to = doc[owned[0]].idx
+                first["text"] = doc.text[doc[prefix[0]].idx: char_to] + first["text"]
+                if "_lo" in first:
+                    first["_lo"] = prefix[0]
+
         if key == "verb":
             chunks.append({"text": text, "role": "verb", "gloss": "",
                            "children": None, "_lem": head.lemma_})
@@ -398,7 +423,7 @@ def build_chunks(head, doc, clause_role_of_head=None):
                 chunks.append({"text": text, "role": clause_role_of_head,
                                "gloss": "", "children": sub, "_coord": True})
             else:
-                chunks.extend(sub)
+                splice_flat(sub, c)
             return
         # single introducing word inside a clause gets its true role:
         # wh-pronouns/adverbs -> relative (in relative clauses) or conjunction;
@@ -437,7 +462,7 @@ def build_chunks(head, doc, clause_role_of_head=None):
             # main clause ("..., for, ..."): splice its backbone in flat.
             # Right after a verb it's a bare object clause ("He said he would
             # come") and keeps its clause identity.
-            chunks.extend(build_chunks(c, doc, clause_role_of_head=clause_role_of_head))
+            splice_flat(build_chunks(c, doc, clause_role_of_head=clause_role_of_head), c)
         elif role == "object" and not expand:
             chunks.append({"text": text, "role": role, "gloss": "",
                            "children": None, "_lem": c.lemma_})
@@ -454,7 +479,7 @@ def build_chunks(head, doc, clause_role_of_head=None):
                 # nominal head embedding a clause: splice core + clause as
                 # siblings — no wrapper level, and the backbone highlight
                 # stays on the core noun only
-                chunks.extend(np_expand(c, doc, role))
+                splice_flat(np_expand(c, doc, role), c)
         else:
             chunks.append({"text": text, "role": role, "gloss": "", "children": None})
 
@@ -465,7 +490,7 @@ def build_chunks(head, doc, clause_role_of_head=None):
             run_key = key
         run.append(t.i)
     flush()
-    result = merge_tiny(merge_or_so(merge_idioms(chunks)))
+    result = mark_discourse_insertions(merge_tiny(merge_or_so(merge_idioms(chunks))))
     if clause_role_of_head is not None:
         result = group_coordinate_clauses(result, clause_role_of_head, doc)
     for ch in result:
@@ -559,9 +584,18 @@ def parse_text(text):
     with nlp_inference_lock:
         doc = nlp(text)
     all_chunks = []
+    last_end = None
     for sent in doc.sents:
-        root = sent.root
-        all_chunks.extend(build_chunks(root, doc))
+        sent_chunks = build_chunks(sent.root, doc)
+        if sent_chunks:
+            all_chunks.extend(sent_chunks)
+        elif all_chunks and last_end is not None:
+            # spaCy splits a bare colon/dash between clauses into its own
+            # "sentence"; its chunks all die as punctuation-only. Glue the
+            # exact source text onto the previous chunk so no character
+            # vanishes from the header.
+            all_chunks[-1]["text"] += doc.text[last_end: sent.end_char]
+        last_end = sent.end_char
     _strip_internal_keys(all_chunks)
     offsets = [(token.idx, token.idx + len(token.text)) for token in doc]
     chunks = annotate_chunk_spans(text, all_chunks, offsets)

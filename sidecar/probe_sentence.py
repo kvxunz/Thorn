@@ -31,6 +31,8 @@ sentence = sys.argv[1] if len(sys.argv) > 1 else (
 
 server.load()
 doc = server.nlp(sentence)
+for s in doc.sents:
+    print("SENT:", repr(s.text), "root:", s.root.text, s.root.i)
 for t in doc:
     print(f"{t.i:>3} {t.text:<10} dep={t.dep_:<10} head={t.head.i}:{t.head.text:<10} pos={t.pos_} tag={t.tag_}")
 try:

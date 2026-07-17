@@ -163,6 +163,26 @@ def is_left_edge_introducer_token(token):
     )
 
 
+# Comma-bounded prepositional discourse markers: pragmatic asides, not
+# structural prep-phrases. Closed list on purpose — anything else stays literal.
+DISCOURSE_MARKERS = frozenset({
+    "of course", "in fact", "after all", "at least", "for example",
+    "for instance", "in short", "in other words", "on the contrary",
+    "as a result", "in addition", "by contrast", "in contrast",
+    "on the other hand", "in general", "in particular", "above all",
+    "in a sense", "in essence", "to be sure",
+})
+
+
+def mark_discourse_insertions(chunks):
+    """Relabel childless prep-phrase chunks that are fixed discourse markers."""
+    for ch in chunks:
+        if (ch.get("role") == "prep-phrase" and not ch.get("children")
+                and ch.get("text", "").strip(" ,.;:").lower() in DISCOURSE_MARKERS):
+            ch["role"] = "insertion"
+    return chunks
+
+
 def merge_or_so(chunks):
     """Fuse discourse 'or so' (≈ roughly / 可以说) — not causal so."""
     out = []

@@ -285,7 +285,9 @@ struct ResultView: View {
                     .frame(width: 10)
             }
 
-            Text(chunk.text)
+            // Cards show clean phrases: sentence punctuation the data layer
+            // must keep (header reassembly + span math) is trimmed here only.
+            Text(chunk.text.trimmingCharacters(in: CharacterSet(charactersIn: ",.;:!? ")))
                 .font(.system(size: depth > 0 ? 11.5 : 12.5, design: .serif))
                 // Keep English readable; only slightly dim expandable parents.
                 .foregroundStyle(.primary.opacity(chunk.children != nil ? 0.72 : (depth > 0 ? 0.88 : 0.95)))

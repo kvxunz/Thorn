@@ -41,6 +41,13 @@ actor Sidecar {
         let sourceTokens: [String]
     }
 
+    /// The launch script path when it does not exist on disk — so the panel
+    /// can name the actual problem instead of a generic "engine unavailable".
+    func missingScriptPath() -> String? {
+        let script = sidecarScriptPath()
+        return FileManager.default.fileExists(atPath: script) ? nil : script
+    }
+
     /// Fetch the deterministic structure; nil if the sidecar is unavailable.
     func structure(for sentence: String) async -> SidecarStructure? {
         if !(await isHealthy()) {

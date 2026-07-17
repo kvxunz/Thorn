@@ -3,12 +3,16 @@ import Foundation
 enum ParseService {
     private enum LocalPipelineError: LocalizedError {
         case structureUnavailable
+        case sidecarScriptMissing(String)
         case noEnglishSentence
 
         var errorDescription: String? {
             switch self {
             case .structureUnavailable:
                 return "本地句法引擎暂不可用；HY-MT2 只负责翻译，不能代替句法拆分"
+            case .sidecarScriptMissing(let path):
+                return "句法引擎脚本不存在：\(path)\n仓库被移动或删除？可执行 "
+                    + "defaults write com.xvz.thorn sidecarScript /新路径/server.py 指定新位置。"
             case .noEnglishSentence:
                 return "选中内容主要是中文注释，没有找到可拆解的英文句子"
             }
@@ -40,6 +44,9 @@ enum ParseService {
         // concurrently.
         async let translated = translateOnly(sentence: normalized, client: client)
         guard let structure = await Sidecar.shared.structure(for: normalized) else {
+            if let missing = await Sidecar.shared.missingScriptPath() {
+                throw LocalPipelineError.sidecarScriptMissing(missing)
+            }
             throw LocalPipelineError.structureUnavailable
         }
         try Task.checkCancellation()

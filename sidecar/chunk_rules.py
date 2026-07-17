@@ -125,11 +125,33 @@ def is_left_edge_introducer(token, subtree_root):
         return False
     if getattr(token, "dep_", "") not in ("advmod", "mark"):
         return False
-    # Only strip from *lower* non-finite hosts. Keep if/when on advcl/relcl
-    # finite clauses so "if the doormat failed…" still owns its "if".
+    # Only strip from *lower* hosts that attract upper-clause introducers:
+    # non-finite complements, and coordinated verbs ("where they met and
+    # married" hangs the first "where" on "married"). Keep if/when on
+    # advcl/relcl finite clauses so "if the doormat failed…" owns its "if".
     return getattr(subtree_root, "dep_", "") in (
-        "xcomp", "ccomp", "pcomp", "acl",
+        "xcomp", "ccomp", "pcomp", "acl", "conj",
     )
+
+
+def constituent_token_indices(root):
+    """Ordered token indices a chunk rooted at ``root`` truly owns.
+
+    The subtree, minus stranded left-edge introducers: a when/where/if that
+    hangs on this root but sits detached from the root's contiguous span
+    belongs to the clause above (spaCy misattachment). An introducer directly
+    adjacent to the remainder is genuine and stays. Discontinuous coordinated
+    constituents otherwise get spliced once per contiguous run — duplicating
+    the whole clause (the "met and married and where I was born" bug).
+    """
+    raw = sorted(root.subtree, key=lambda t: t.i)
+    if getattr(root, "dep_", "") not in ("xcomp", "ccomp", "pcomp", "acl", "conj"):
+        return [t.i for t in raw]
+    kept = [t for t in raw if not is_left_edge_introducer(t, root)]
+    stripped = [t for t in raw if t not in kept]
+    while stripped and kept and stripped[-1].i == kept[0].i - 1:
+        kept.insert(0, stripped.pop())
+    return [t.i for t in kept] if kept else [t.i for t in raw]
 
 
 def is_left_edge_introducer_token(token):

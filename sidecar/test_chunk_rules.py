@@ -5,6 +5,7 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from chunk_rules import (
+    constituent_token_indices,
     is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
@@ -182,6 +183,44 @@ class OrSoAndWhenTests(unittest.TestCase):
         self.assertEqual(out[0]["text"], "or so")
         self.assertEqual(out[0]["role"], "insertion")
         self.assertEqual(out[0]["gloss"], "")
+
+
+class _SubTok:
+    """Token with an explicit subtree, for constituent_token_indices tests."""
+
+    def __init__(self, i, lower, dep):
+        self.i = i
+        self.lower_ = lower
+        self.text = lower
+        self.dep_ = dep
+        self.subtree = [self]
+
+
+class ConstituentTokenTests(unittest.TestCase):
+    def _root(self, i, dep, members):
+        root = _SubTok(i, "verb", dep)
+        root.subtree = sorted(members + [root], key=lambda t: t.i)
+        return root
+
+    def test_stranded_where_on_coordinated_verb_is_dropped(self):
+        # "where(10) they met and married(14)": married's subtree {10, 14} is
+        # discontinuous; the detached where belongs to the clause above.
+        where = _SubTok(10, "where", "advmod")
+        married = self._root(14, "conj", [where])
+        self.assertEqual(constituent_token_indices(married), [14])
+
+    def test_adjacent_where_on_coordinated_verb_is_kept(self):
+        # "and where(16) I(17) was(18) born(19)": introducer touches the rest.
+        where = _SubTok(16, "where", "advmod")
+        i_tok = _SubTok(17, "i", "nsubjpass")
+        was = _SubTok(18, "was", "auxpass")
+        born = self._root(19, "conj", [where, i_tok, was])
+        self.assertEqual(constituent_token_indices(born), [16, 17, 18, 19])
+
+    def test_non_conj_non_complement_root_keeps_whole_subtree(self):
+        where = _SubTok(10, "where", "advmod")
+        met = self._root(12, "relcl", [where])
+        self.assertEqual(constituent_token_indices(met), [10, 12])
 
 
 class _PcompTok:

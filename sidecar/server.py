@@ -248,6 +248,31 @@ def np_expand(head, doc, role):
     for c in clause_heads:
         for t in c.subtree:
             owner[t.i] = c
+
+    # Appositive enumeration ("the Irish version: the poverty; the father; …"):
+    # appos chain members hanging inside this NP. With two or more, the
+    # semicolon/colon-separated items are a list, not a continuation of the
+    # parent phrase — each becomes its own appositive chunk.
+    enum_members = set()
+    for t in subtree:
+        if t.dep_ == "appos":
+            enum_members.add(t.i)
+        elif t.dep_ == "conj" and t.head.i in enum_members:
+            enum_members.add(t.i)
+
+    def split_enumeration(run):
+        if len(enum_members) < 2:
+            return [run]
+        parts, current = [], []
+        for i in run:
+            current.append(i)
+            if doc[i].text in (";", ":"):
+                parts.append(current)
+                current = []
+        if current:
+            parts.append(current)
+        return parts if len(parts) > 1 else [run]
+
     chunks = []
     run_owner, run = "__sentinel__", []
 
@@ -259,8 +284,13 @@ def np_expand(head, doc, role):
         bounds = {"_lo": run[0], "_hi": run[-1]}
         o = run_owner
         if o is None:
-            chunks.append({"text": text, "role": role, "gloss": "",
-                           "children": None, **bounds})
+            for part in split_enumeration(run):
+                part_role = role
+                if any(i in enum_members for i in part):
+                    part_role = "insertion"  # 列举项＝同位语
+                chunks.append({"text": doc[part[0]: part[-1] + 1].text,
+                               "role": part_role, "gloss": "", "children": None,
+                               "_lo": part[0], "_hi": part[-1]})
         else:
             # Infinitival acl ("enough to cover") is purpose, not a relative.
             # VBG + own subject is absolute/appositive insertion, not relcl.

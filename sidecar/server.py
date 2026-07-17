@@ -328,7 +328,17 @@ def np_expand(head, doc, role):
             run_owner = o
         run.append(t.i)
     flush()
-    return merge_tiny(chunks)
+    result = merge_tiny(chunks)
+    if len(enum_members) >= 2 and len(result) >= 2:
+        # The whole enumeration collapses into ONE block under its parent
+        # role; items and their clauses are children revealed on expand.
+        # A flat splice would drown the sentence backbone in list rows.
+        return [{
+            "text": doc[subtree[0].i: subtree[-1].i + 1].text,
+            "role": role, "gloss": "", "children": result,
+            "_lo": subtree[0].i, "_hi": subtree[-1].i,
+        }]
+    return result
 
 
 def build_chunks(head, doc, clause_role_of_head=None):

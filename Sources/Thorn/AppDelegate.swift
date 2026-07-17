@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.styleMask = [.titled, .closable]
             window.title = "Thorn 设置"
             window.isReleasedWhenClosed = false
-            window.setContentSize(NSSize(width: 440, height: 500))
+            window.setContentSize(NSSize(width: 440, height: 300))
             window.center()
             settingsWindow = window
         }

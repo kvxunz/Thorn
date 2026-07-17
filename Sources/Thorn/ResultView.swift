@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ResultView: View {
     @ObservedObject var state: PanelState
-    @ObservedObject var settings = SettingsStore.shared
     var onResizeDrag: ((CGSize) -> Void)? = nil
     @State private var lastDrag: CGSize = .zero
 
@@ -28,11 +27,7 @@ struct ResultView: View {
         )
         .overlay(alignment: .topTrailing) {
             if case .result = state.status {
-                HStack(spacing: 10) {
-                    engineToggle
-                    pinButton
-                }
-                .padding(10)
+                pinButton.padding(10)
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -75,7 +70,7 @@ struct ResultView: View {
     private var loadingView: some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
-            Text(state.usingCloud ? "云端拆解中…" : "拆解中…")
+            Text("拆解中…")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
         }
@@ -85,12 +80,8 @@ struct ResultView: View {
 
     private func errorView(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("拆解失败", systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
-                engineToggle
-            }
+            Label("拆解失败", systemImage: "exclamationmark.triangle")
+                .font(.system(size: 13, weight: .semibold))
             Text(message)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -114,7 +105,7 @@ struct ResultView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
                 .padding(.leading, 16)
-                .padding(.trailing, 60) // room for cloud + pin in the corner
+                .padding(.trailing, 40) // room for the pin in the corner
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 
@@ -165,26 +156,6 @@ struct ResultView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-    }
-
-    /// Single cloud button that flips engines: filled = cloud active, outline = local.
-    @ViewBuilder
-    private var engineToggle: some View {
-        if settings.hasCustomEndpoint {
-            Button {
-                state.switchEngine(to: state.usingCloud ? .ollama : .custom)
-            } label: {
-                Image(systemName: state.usingCloud ? "cloud.fill" : "cloud")
-                    .font(.system(size: 12))
-                    .foregroundStyle(state.usingCloud ? Color.accentColor : Color.secondary.opacity(0.6))
-            }
-            .buttonStyle(.plain)
-            .help(state.usingCloud ? "当前：云端 — 点击切回本地" : "当前：本地 — 点击用云端拆")
-        }
-    }
-
-    private func nodeCount(_ chunks: [Chunk]) -> Int {
-        chunks.reduce(0) { $0 + 1 + nodeCount($1.children ?? []) }
     }
 
     /// Rough per-row estimate so the default panel height fits the content;

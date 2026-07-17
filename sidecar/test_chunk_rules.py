@@ -6,6 +6,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from chunk_rules import (
     constituent_token_indices,
+    mark_discourse_insertions,
     is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
@@ -221,6 +222,21 @@ class ConstituentTokenTests(unittest.TestCase):
         where = _SubTok(10, "where", "advmod")
         met = self._root(12, "relcl", [where])
         self.assertEqual(constituent_token_indices(met), [10, 12])
+
+
+class DiscourseMarkerTests(unittest.TestCase):
+    def test_of_course_becomes_insertion(self):
+        chunks = [{"text": "of course,", "role": "prep-phrase", "children": None}]
+        self.assertEqual(mark_discourse_insertions(chunks)[0]["role"], "insertion")
+
+    def test_structural_prep_phrases_stay(self):
+        chunks = [
+            {"text": "to Ireland", "role": "prep-phrase", "children": None},
+            {"text": "in fact-checking", "role": "prep-phrase", "children": None},
+        ]
+        out = mark_discourse_insertions(chunks)
+        self.assertEqual(out[0]["role"], "prep-phrase")
+        self.assertEqual(out[1]["role"], "prep-phrase")
 
 
 class _PcompTok:

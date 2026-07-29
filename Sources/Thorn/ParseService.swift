@@ -2,34 +2,39 @@ import Foundation
 
 enum ParseService {
     private enum LocalPipelineError: LocalizedError {
-        case structureUnavailable
+        case structureUnavailable(String)
         case sidecarScriptMissing(String)
         case noEnglishSentence
+        case modelNotConfigured
 
         var errorDescription: String? {
             switch self {
-            case .structureUnavailable:
-                return "本地句法引擎暂不可用；HY-MT2 只负责翻译，不能代替句法拆分"
+            case .structureUnavailable(let installCommand):
+                return "本地句法引擎暂不可用。若尚未安装 Benepar 模型，请执行：\n"
+                    + "\(installCommand)\n"
+                    + "启动应用不会自动下载模型。"
             case .sidecarScriptMissing(let path):
                 return "句法引擎脚本不存在：\(path)\n仓库被移动或删除？可执行 "
                     + "defaults write com.xvz.thorn sidecarScript /新路径/server.py 指定新位置。"
             case .noEnglishSentence:
                 return "选中内容主要是中文注释，没有找到可拆解的英文句子"
+            case .modelNotConfigured:
+                return "本地翻译模型未配置，请在设置里选择 Ollama 模型"
             }
         }
     }
 
-    /// Local pipeline: deterministic structure from the sidecar, HY-MT2 only
-    /// translates the whole sentence. No per-chunk glosses: chunks carry only
-    /// the syntax-derived glosses the parser itself produces
-    /// (relative-pronoun referents).
+    /// Local two-stage pipeline:
+    /// 1. Sidecar `/parse` — deterministic teaching chunk tree (no LLM)
+    /// 2. HY-MT2 whole-sentence translation only (no per-chunk glosses)
+    ///
     /// `onPartial` receives the bare structure as soon as the sidecar returns,
     /// before the translation lands.
     static func parse(sentence: String,
                       onPartial: (@Sendable (ParseResult) -> Void)? = nil) async throws -> ParseResult {
-        let ep = SettingsStore.shared.endpoint()
-        guard !ep.model.isEmpty else {
-            throw LLMError.notConfigured
+        let model = SettingsStore.shared.translationModel
+        guard !model.isEmpty else {
+            throw LocalPipelineError.modelNotConfigured
         }
         // Mixed bilingual selections keep only their English sentences; the
         // hotkey path pre-extracts too, so this is a backstop for direct calls.
@@ -38,16 +43,16 @@ enum ParseService {
             throw LocalPipelineError.noEnglishSentence
         }
 
-        let client = LLMClient(baseURL: ep.baseURL, model: ep.model)
-
         // Parsing and whole-sentence translation are independent and run
-        // concurrently.
-        async let translated = translateOnly(sentence: normalized, client: client)
+        // concurrently. Structure never waits on the translator.
+        async let translated = translateOnly(sentence: normalized, model: model)
         guard let structure = await Sidecar.shared.structure(for: normalized) else {
             if let missing = await Sidecar.shared.missingScriptPath() {
                 throw LocalPipelineError.sidecarScriptMissing(missing)
             }
-            throw LocalPipelineError.structureUnavailable
+            throw LocalPipelineError.structureUnavailable(
+                await Sidecar.shared.modelInstallCommand()
+            )
         }
         try Task.checkCancellation()
         let bare = ParseResult(chunks: structure.chunks, translation: "")
@@ -60,10 +65,12 @@ enum ParseService {
             throw CancellationError()
         } catch {
             ThornLog.info("local translation failed: \(error.localizedDescription)")
-            // Structure alone still beats nothing — but fill the translation
-            // slot so the panel doesn't spin forever waiting for one.
-            return ParseResult(chunks: structure.chunks,
-                               translation: "（中文释义暂缺：本地模型未响应，结构来自句法引擎）")
+            // Structure alone still beats nothing — fill the translation slot
+            // so the panel doesn't spin forever waiting for one.
+            return ParseResult(
+                chunks: structure.chunks,
+                translation: "（中文释义暂缺：本地模型未响应，结构来自句法引擎）"
+            )
         }
     }
 
@@ -94,12 +101,50 @@ enum ParseService {
                     && !$0.properties.isWhitespace
             }) {
                 continue
+            } else if character.unicodeScalars.allSatisfy({
+                $0.properties.generalCategory == .privateUse
+                    || $0.value == 0xFFFC // object replacement character
+                    || $0.value == 0xFFFD // leaked decode replacement
+            }) {
+                // Preserve a word boundary: deleting an inline attachment
+                // marker could fuse "Security" and "with".
+                mapped.append(" ")
             } else {
                 mapped.append(character)
             }
         }
-        return mapped.trimmingCharacters(in: .whitespacesAndNewlines)
+        // PDF / OCR junk: footnote-like [tObj] [cObj] glued to words, exotic
+        // spaces, soft hyphens, and dash runs that must not fuse with words.
+        var text = mapped
+            .replacingOccurrences(
+                of: "[\u{00A0}\u{1680}\u{2000}-\u{200A}\u{202F}\u{205F}]",
+                with: " ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(of: "\u{00AD}", with: "") // soft hyphen
+            .replacingOccurrences(of: "\u{2060}", with: "") // word joiner
+            .replacingOccurrences(
+                of: "\\[[A-Za-z0-9]{1,8}\\]",
+                with: "",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                // Preserve the visible dash glyph/run for the header; the
+                // sidecar owns a parser-only "--" view mapped to this text.
+                of: "\\s*([—–―]+|-{2,})\\s*",
+                with: " $1 ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(
+                // A missing space after strong ASCII punctuation is a safe
+                // copy/PDF repair. Do not guess inside words ("orall").
+                of: "([,;:!?])(?=[A-Za-z])",
+                with: "$1 ",
+                options: .regularExpression
+            )
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return text
     }
 
     /// Bilingual study material interleaves the English sentence with Chinese
@@ -151,14 +196,21 @@ enum ParseService {
 
     // MARK: - Translation
 
-    private static func translateOnly(sentence: String, client: LLMClient) async throws -> String {
-        let raw = try await client.chat(
-            system: "",
-            user: HYMT2TranslationPolicy.sentencePrompt(source: sentence),
-            temperature: HYMT2TranslationPolicy.temperature
+    private static func translateOnly(sentence: String, model: String) async throws -> String {
+        let raw = try await OllamaCoordinator.shared.chat(
+            model: model,
+            messages: [OllamaMessage(
+                role: "user",
+                content: HYMT2TranslationPolicy.sentencePrompt(source: sentence)
+            )],
+            temperature: HYMT2TranslationPolicy.temperature,
+            contextWindow: 8_192,
+            maximumOutputTokens: 1_024,
+            thinking: false,
+            timeout: 120
         )
         let cleaned = cleanTranslationOutput(raw)
-        guard !cleaned.isEmpty else { throw LLMError.emptyResponse }
+        guard !cleaned.isEmpty else { throw OllamaError.emptyResponse }
         return cleaned
     }
 

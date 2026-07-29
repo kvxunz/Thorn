@@ -59,6 +59,28 @@ class ChunkSpanContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "outside its parent"):
             annotate_chunk_spans(sentence, escaped_child, offsets)
 
+    def test_explicit_token_bounds_cannot_escape_their_parent(self):
+        sentence = "parent escaped"
+        offsets = source_offsets(sentence)
+        chunks = [{
+            "text": "parent",
+            "role": "other",
+            "gloss": "",
+            "_lo": 0,
+            "_hi": 1,
+            "children": [{
+                "text": "escaped",
+                "role": "other",
+                "gloss": "",
+                "_lo": 1,
+                "_hi": 2,
+                "children": None,
+            }],
+        }]
+
+        with self.assertRaisesRegex(ValueError, "outside its parent"):
+            annotate_chunk_spans(sentence, chunks, offsets)
+
 
 if __name__ == "__main__":
     unittest.main()

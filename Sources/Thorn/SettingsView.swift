@@ -3,21 +3,27 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings = SettingsStore.shared
     @State private var ollamaModels: [String] = []
+    @State private var modelListLoaded = false
 
     var body: some View {
         Form {
             Section("本地 Ollama") {
+                modelPicker("整句翻译", selection: $settings.translationModel)
                 HStack {
-                    if ollamaModels.isEmpty {
-                        TextField("模型", text: $settings.ollamaModel)
-                    } else {
-                        Picker("模型", selection: $settings.ollamaModel) {
-                            ForEach(ollamaModels, id: \.self) { Text($0).tag($0) }
-                        }
-                    }
-                    Button("刷新") { Task { await fetchOllamaModels() } }
+                    Text("端点固定为 \(SettingsStore.ollamaNativeBaseURL)")
+                    Spacer()
+                    Button("刷新模型") { Task { await fetchOllamaModels() } }
                 }
-                Text("端点固定为 \(SettingsStore.ollamaBaseURL)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                if modelListLoaded,
+                   !ollamaModels.contains(settings.translationModel) {
+                    Text("缺少翻译模型：ollama pull \(settings.translationModel)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
+                Text("句法拆分由本地 spaCy/Benepar 引擎完成，不经过大模型。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -34,11 +40,26 @@ struct SettingsView: View {
     }
 
     private func fetchOllamaModels() async {
-        let client = LLMClient(baseURL: SettingsStore.ollamaBaseURL, model: "")
-        if let models = try? await client.listModels(), !models.isEmpty {
+        if let models = try? await OllamaCoordinator.shared.listModels() {
             ollamaModels = models
-            if !models.contains(settings.ollamaModel), let first = models.first {
-                settings.ollamaModel = first
+            modelListLoaded = true
+        } else {
+            modelListLoaded = false
+        }
+    }
+
+    @ViewBuilder
+    private func modelPicker(_ title: String, selection: Binding<String>) -> some View {
+        if ollamaModels.isEmpty {
+            TextField(title, text: selection)
+        } else {
+            let choices = ollamaModels.contains(selection.wrappedValue)
+                ? ollamaModels
+                : [selection.wrappedValue] + ollamaModels
+            Picker(title, selection: selection) {
+                ForEach(choices, id: \.self) { model in
+                    Text(model + (ollamaModels.contains(model) ? "" : "（未安装）")).tag(model)
+                }
             }
         }
     }

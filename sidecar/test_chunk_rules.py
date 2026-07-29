@@ -5,15 +5,22 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
 from chunk_rules import (
-    constituent_token_indices,
+    coordinated_prep_conjuncts,
+    coordinating_ccs_before,
+    has_own_subject,
+    independent_verbal_conjuncts,
+    is_dash_appositive,
+    is_preposed_though_adjective,
+    is_wh_relative_pronoun,
     mark_discourse_insertions,
     is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
     is_fixed_adverbial_particle,
-    is_left_edge_introducer,
-    is_left_edge_introducer_token,
     merge_or_so,
+    normalize_parse_text,
+    prepare_parse_text,
+    though_clause_verb,
     verb_group_indices,
 )
 
@@ -140,39 +147,7 @@ class VerbGroupTests(unittest.TestCase):
         self.assertEqual(verb_group_indices(doc[2]), {2})
 
 
-class OrSoAndWhenTests(unittest.TestCase):
-    def test_when_is_left_edge_introducer_token(self):
-        class T:
-            lower_ = "when"
-            dep_ = "advmod"
-        self.assertTrue(is_left_edge_introducer_token(T()))
-
-    def test_when_left_of_xcomp_holding_is_stripped(self):
-        """when juries began holding… — when must not nest under holding."""
-        class Holding:
-            i = 19
-            dep_ = "xcomp"
-
-        class When:
-            i = 16
-            lower_ = "when"
-            dep_ = "advmod"
-
-        self.assertTrue(is_left_edge_introducer(When(), Holding()))
-
-    def test_when_on_finite_advcl_is_not_stripped_from_host(self):
-        class Began:
-            i = 18
-            dep_ = "advcl"
-
-        class When:
-            i = 16
-            lower_ = "when"
-            dep_ = "advmod"
-
-        # Finite advcl is not a lower non-finite host for the strip rule.
-        self.assertFalse(is_left_edge_introducer(When(), Began()))
-
+class OrSoTests(unittest.TestCase):
     def test_merge_or_so_fuses_discourse_hedge(self):
         chunks = [
             {"text": "or", "role": "conjunction", "gloss": "", "children": None},
@@ -184,44 +159,6 @@ class OrSoAndWhenTests(unittest.TestCase):
         self.assertEqual(out[0]["text"], "or so")
         self.assertEqual(out[0]["role"], "insertion")
         self.assertEqual(out[0]["gloss"], "")
-
-
-class _SubTok:
-    """Token with an explicit subtree, for constituent_token_indices tests."""
-
-    def __init__(self, i, lower, dep):
-        self.i = i
-        self.lower_ = lower
-        self.text = lower
-        self.dep_ = dep
-        self.subtree = [self]
-
-
-class ConstituentTokenTests(unittest.TestCase):
-    def _root(self, i, dep, members):
-        root = _SubTok(i, "verb", dep)
-        root.subtree = sorted(members + [root], key=lambda t: t.i)
-        return root
-
-    def test_stranded_where_on_coordinated_verb_is_dropped(self):
-        # "where(10) they met and married(14)": married's subtree {10, 14} is
-        # discontinuous; the detached where belongs to the clause above.
-        where = _SubTok(10, "where", "advmod")
-        married = self._root(14, "conj", [where])
-        self.assertEqual(constituent_token_indices(married), [14])
-
-    def test_adjacent_where_on_coordinated_verb_is_kept(self):
-        # "and where(16) I(17) was(18) born(19)": introducer touches the rest.
-        where = _SubTok(16, "where", "advmod")
-        i_tok = _SubTok(17, "i", "nsubjpass")
-        was = _SubTok(18, "was", "auxpass")
-        born = self._root(19, "conj", [where, i_tok, was])
-        self.assertEqual(constituent_token_indices(born), [16, 17, 18, 19])
-
-    def test_non_conj_non_complement_root_keeps_whole_subtree(self):
-        where = _SubTok(10, "where", "advmod")
-        met = self._root(12, "relcl", [where])
-        self.assertEqual(constituent_token_indices(met), [10, 12])
 
 
 class DiscourseMarkerTests(unittest.TestCase):
@@ -258,6 +195,114 @@ class ClausalPcompTests(unittest.TestCase):
     def test_non_pcomp_and_non_verbal_are_rejected(self):
         self.assertFalse(is_clausal_pcomp(_PcompTok("pobj", "NOUN", ("nsubj",))))
         self.assertFalse(is_clausal_pcomp(_PcompTok("pcomp", "NOUN", ("nsubj",))))
+
+
+class _ClauseTok:
+    """Minimal token graph for independent-conjunct promotion tests."""
+
+    def __init__(self, i, text, dep, pos, head=None, children=None):
+        self.i = i
+        self.text = text
+        self.dep_ = dep
+        self.pos_ = pos
+        self.head = head or self
+        self.children = list(children or [])
+
+
+class IndependentConjunctPromotionTests(unittest.TestCase):
+    def test_shared_subject_vp_coordination_is_not_promoted(self):
+        # "he came and left" — left has no own subject
+        came = _ClauseTok(1, "came", "ccomp", "VERB")
+        left = _ClauseTok(3, "left", "conj", "VERB", head=came)
+        came.children = [
+            _ClauseTok(0, "he", "nsubj", "PRON", head=came),
+            _ClauseTok(2, "and", "cc", "CCONJ", head=came),
+            left,
+        ]
+        self.assertEqual(list(independent_verbal_conjuncts(came)), [])
+
+    def test_conjunct_with_own_subject_is_promoted(self):
+        # "say [I curl …] and [I'll be tormented …]"
+        curl = _ClauseTok(2, "curl", "ccomp", "VERB")
+        tormented = _ClauseTok(6, "tormented", "conj", "VERB", head=curl)
+        and_cc = _ClauseTok(4, "and", "cc", "CCONJ", head=curl)
+        curl.children = [
+            _ClauseTok(1, "I", "nsubj", "PRON", head=curl),
+            and_cc,
+            tormented,
+        ]
+        tormented.children = [
+            _ClauseTok(5, "I", "nsubjpass", "PRON", head=tormented),
+        ]
+        promoted = list(independent_verbal_conjuncts(curl))
+        self.assertEqual(promoted, [tormented])
+        self.assertTrue(has_own_subject(tormented))
+        self.assertEqual(list(coordinating_ccs_before(curl, tormented)), [and_cc])
+
+
+class PrepConjunctAndThoughTests(unittest.TestCase):
+    def test_coordinated_by_phrases_are_detected(self):
+        first_by = _ClauseTok(4, "by", "agent", "ADP")
+        second_by = _ClauseTok(10, "by", "conj", "ADP", head=first_by)
+        and_cc = _ClauseTok(9, "and", "cc", "CCONJ", head=first_by)
+        first_by.children = [and_cc, second_by]
+        self.assertEqual(list(coordinated_prep_conjuncts(first_by)), [second_by])
+
+    def test_preposed_though_adjective(self):
+        odd = _ClauseTok(0, "Odd", "advcl", "ADJ")
+        sounds = _ClauseTok(3, "sounds", "advcl", "VERB", head=odd)
+        though = _ClauseTok(1, "though", "mark", "SCONJ", head=sounds)
+        sounds.children = [though, _ClauseTok(2, "it", "nsubj", "PRON", head=sounds)]
+        odd.children = [sounds]
+        # lower_ for mark check
+        though.lower_ = "though"
+        self.assertTrue(is_preposed_though_adjective(odd))
+        self.assertIs(though_clause_verb(odd), sounds)
+
+    def test_wh_relative_pronoun(self):
+        who = _ClauseTok(0, "who", "nsubj", "PRON")
+        who.tag_ = "WP"
+        who.lower_ = "who"
+        self.assertTrue(is_wh_relative_pronoun(who))
+
+    def test_dash_appositive_detects_em_dash_child(self):
+        institute = _ClauseTok(0, "Institute", "nsubj", "PROPN")
+        group = _ClauseTok(2, "group", "appos", "NOUN", head=institute)
+        dash = _ClauseTok(1, "—", "punct", "PUNCT", head=institute)
+        institute.children = [dash, group]
+        group.children = []
+        # Fake doc for index walk is optional; punct child on head is enough.
+        self.assertTrue(is_dash_appositive(group))
+
+
+class DashParentheticalRepairTests(unittest.TestCase):
+    def test_normalize_spaces_double_dashes_and_strips_pdf_brackets(self):
+        raw = "workplace--all that[tObj] reengineering--are only"
+        self.assertEqual(
+            normalize_parse_text(raw),
+            "workplace -- all that reengineering -- are only",
+        )
+
+    def test_parser_cleanup_maps_normalized_dashes_back_to_surface_text(self):
+        prepared = prepare_parse_text("workplace—aside—works")
+        self.assertEqual(prepared.surface, "workplace—aside—works")
+        self.assertEqual(prepared.parser, "workplace -- aside -- works")
+        parser_offsets = ((0, 9), (10, 12), (13, 18), (19, 21), (22, 27))
+        source_offsets = prepared.source_token_offsets(parser_offsets)
+        self.assertEqual(
+            [prepared.surface[start:end] for start, end in source_offsets],
+            ["workplace", "—", "aside", "—", "works"],
+        )
+
+    def test_surface_cleanup_drops_object_markers_without_guessing_word_breaks(self):
+        prepared = prepare_parse_text("Social Security\uFFFCwith much orall")
+        self.assertEqual(prepared.surface, "Social Security with much orall")
+        self.assertIn("orall", prepared.parser)
+
+    def test_artifact_only_input_has_no_parser_view(self):
+        prepared = prepare_parse_text("\uFFFC[tObj]\u2060")
+        self.assertEqual(prepared.surface, "")
+        self.assertEqual(prepared.parser, "")
 
 
 if __name__ == "__main__":

@@ -93,12 +93,13 @@ struct ResultView: View {
 
     private func resultView(_ result: ParseResult) -> some View {
         let chunks = headerChunks(result)
-        let spans = ChunkSpanResolver.layout(for: chunks).spans
+        let layout = ChunkSpanResolver.layout(for: chunks)
+        let spans = layout.spans
 
         return VStack(alignment: .leading, spacing: 0) {
             // Sentence flows like the original text: trunk bold and dark,
             // modifiers in their role color — sense groups read by shade.
-            Text(attributedSentence(chunks))
+            Text(attributedSentence(chunks, layout: layout))
                 .lineSpacing(5)
                 .lineLimit(12) // monster sentences: cap by lines, not by a greedy frame
                 .fixedSize(horizontal: false, vertical: true)
@@ -174,43 +175,74 @@ struct ResultView: View {
         return min(total, (NSScreen.main?.visibleFrame.height ?? 900) * 0.5)
     }
 
-    /// The level worth showing: descend while the model wrapped everything
-    /// into one container chunk (e.g. imperative "imagine that ...").
+    /// Descend through neutral all-covering wrappers only. A wrapper carrying
+    /// an explicit construction form is itself a teaching result and must
+    /// remain visible as a card even when it covers the whole selection.
     private func headerChunks(_ result: ParseResult) -> [Chunk] {
         var chunks = result.chunks
-        while chunks.count == 1, let kids = chunks[0].children, !kids.isEmpty {
+        while chunks.count == 1,
+              !chunks[0].preservesTeachingWrapper,
+              let kids = chunks[0].children,
+              !kids.isEmpty {
             chunks = kids
         }
         return chunks
     }
 
+    /// Clause / grouped-verb rows start collapsed; a chevron hints expandability.
+    private func isExpandableGroup(_ chunk: Chunk) -> Bool {
+        guard let kids = chunk.children, !kids.isEmpty else { return false }
+        switch chunk.role {
+        case .clauseRelative, .clauseAdverbial, .clauseNoun, .clause, .verb, .insertion, .appositive:
+            return true
+        default:
+            return kids.count >= 2
+        }
+    }
+
     /// Three tiers: S/V/O bold + emphatic; complement medium; modifiers in
     /// their role color (not washed-out primary gray). Same hues as the cards.
-    private func attributedSentence(_ chunks: [Chunk]) -> AttributedString {
-        var out = AttributedString()
-        for (index, chunk) in chunks.enumerated() {
-            var piece = AttributedString(chunk.text)
-            let weight: Font.Weight
-            let color: Color
-            switch chunk.role {
-            case .subject, .verb, .object:
-                weight = .bold
-                color = chunk.role.emphaticColor
-            case .complement:
-                weight = .semibold
-                color = chunk.role.emphaticColor
-            default:
-                // Medium weight so modifier colors stay readable on material.
-                weight = .medium
-                color = chunk.role.color
-            }
-            piece.font = .system(size: 15, weight: weight, design: .serif)
-            piece.foregroundColor = color
-            out += piece
-            if index < chunks.count - 1, !chunk.text.hasSuffix(" ") {
-                out += AttributedString(" ")
+    ///
+    /// Coloring keys off the *leaf* nodes and their pre-resolved character
+    /// spans, so a wrapper card (a coordinated clause block, an appositive
+    /// list) never repaints its whole span one flat color — the backbone keeps
+    /// its per-role hues at any nesting depth.
+    private func attributedSentence(_ chunks: [Chunk], layout: ChunkTextLayout) -> AttributedString {
+        var out = AttributedString(layout.text)
+        // Glue between leaves (spaces, semicolons, stray determiners) reads as
+        // quiet connective tissue.
+        out.font = .system(size: 15, weight: .medium, design: .serif)
+        out.foregroundColor = Color.primary.opacity(0.5)
+
+        func apply(_ range: Range<Int>, weight: Font.Weight, color: Color) {
+            let characters = out.characters
+            guard range.lowerBound >= 0, range.upperBound <= characters.count else { return }
+            let lower = characters.index(characters.startIndex, offsetBy: range.lowerBound)
+            let upper = characters.index(characters.startIndex, offsetBy: range.upperBound)
+            out[lower..<upper].font = .system(size: 15, weight: weight, design: .serif)
+            out[lower..<upper].foregroundColor = color
+        }
+
+        func colorLeaves(_ nodes: [Chunk]) {
+            for node in nodes {
+                if let kids = node.children, !kids.isEmpty {
+                    colorLeaves(kids)
+                    continue
+                }
+                guard let range = layout.spans[node.id] else { continue }
+                let displayRole = node.displayRole
+                switch displayRole {
+                case .subject, .verb, .object:
+                    apply(range, weight: .bold, color: displayRole.emphaticColor)
+                case .complement:
+                    apply(range, weight: .semibold, color: displayRole.emphaticColor)
+                default:
+                    apply(range, weight: .medium, color: displayRole.color)
+                }
             }
         }
+        colorLeaves(chunks)
+
         // Hover from ANY tree depth lights up its pre-resolved source span.
         // Never search by text here: repeated words must remain distinct.
         if let highlight = state.hoveredHighlight {
@@ -257,7 +289,7 @@ struct ResultView: View {
                     .padding(.leading, 16)
                     .overlay(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 1)
-                            .fill(chunk.role.color.opacity(0.25))
+                            .fill(chunk.displayRole.color.opacity(0.25))
                             .frame(width: 2)
                             .padding(.leading, 7)
                             .padding(.vertical, 3)
@@ -272,9 +304,10 @@ struct ResultView: View {
         depth: Int = 0,
         span: Range<Int>?
     ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        let displayRole = chunk.displayRole
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(chunk.role.color.opacity(depth > 0 ? 0.55 : 1))
+                .fill(displayRole.color.opacity(depth > 0 ? 0.55 : 1))
                 .frame(width: 3, height: 14)
                 .offset(y: 1)
 
@@ -287,19 +320,28 @@ struct ResultView: View {
 
             // Cards show clean phrases: sentence punctuation the data layer
             // must keep (header reassembly + span math) is trimmed here only.
-            Text(chunk.text.trimmingCharacters(in: CharacterSet(charactersIn: ",.;:!? ")))
+            Text(chunk.text.trimmingCharacters(
+                in: CharacterSet(charactersIn: ",.;:!?-—–― ")
+            ))
                 .font(.system(size: depth > 0 ? 11.5 : 12.5, design: .serif))
                 // Keep English readable; only slightly dim expandable parents.
                 .foregroundStyle(.primary.opacity(chunk.children != nil ? 0.72 : (depth > 0 ? 0.88 : 0.95)))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(chunk.role.label)
+            if let detail = chunk.secondaryLabel {
+                Text(detail)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+            }
+
+            Text(chunk.primaryLabel)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(chunk.role.color)
+                .foregroundStyle(displayRole.color)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(chunk.role.badgeFill, in: Capsule())
+                .background(displayRole.badgeFill, in: Capsule())
                 .fixedSize()
 
             // Local pipeline delivers no per-chunk glosses; don't reserve a
@@ -316,12 +358,12 @@ struct ResultView: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(state.hoveredChunkID == chunk.id ? chunk.role.color.opacity(0.14) : Color.clear)
+                .fill(state.hoveredChunkID == chunk.id ? displayRole.color.opacity(0.14) : Color.clear)
         )
         .onHover { hovering in
             if hovering {
                 state.hoveredChunkID = chunk.id
-                state.hoveredHighlight = span.map { ($0, chunk.role.color) }
+                state.hoveredHighlight = span.map { ($0, displayRole.color) }
             } else if state.hoveredChunkID == chunk.id {
                 state.hoveredChunkID = nil
                 state.hoveredHighlight = nil

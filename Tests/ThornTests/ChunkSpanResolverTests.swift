@@ -3,31 +3,31 @@ import XCTest
 
 final class ChunkSpanResolverTests: XCTestCase {
     func testRepeatedChildTextResolvesInsideItsOwnParent() throws {
-        let firstThat = Chunk(text: "that", role: .conjunction, gloss: "即")
+        let firstThat = Chunk(text: "that", role: .conjunction, gloss: "")
         let firstClause = Chunk(
             text: "that law governs",
             role: .clauseNoun,
-            gloss: "法律规定",
+            gloss: "",
             children: [
                 firstThat,
-                Chunk(text: "law", role: .subject, gloss: "法律"),
-                Chunk(text: "governs", role: .verb, gloss: "规定"),
+                Chunk(text: "law", role: .subject, gloss: ""),
+                Chunk(text: "governs", role: .verb, gloss: ""),
             ]
         )
-        let secondThat = Chunk(text: "that", role: .relative, gloss: "指代产品")
+        let secondThat = Chunk(text: "that", role: .relative, gloss: "指代前述的 product")
         let secondClause = Chunk(
             text: "that fails",
             role: .clauseRelative,
-            gloss: "未能做到的",
+            gloss: "",
             children: [
                 secondThat,
-                Chunk(text: "fails", role: .verb, gloss: "未能"),
+                Chunk(text: "fails", role: .verb, gloss: ""),
             ]
         )
         let chunks = [
-            Chunk(text: "the fact", role: .object, gloss: "事实"),
+            Chunk(text: "the fact", role: .object, gloss: ""),
             firstClause,
-            Chunk(text: "a product", role: .object, gloss: "一种产品"),
+            Chunk(text: "a product", role: .object, gloss: ""),
             secondClause,
         ]
 

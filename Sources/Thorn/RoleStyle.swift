@@ -52,6 +52,10 @@ extension ChunkRole {
         case .clauseNoun:
             return roleColor(hue: 0.88, lightSat: 0.50, lightBri: 0.52,
                              darkSat: 0.45, darkBri: 0.86)
+        // 雾紫灰 — 分号并列分句容器（低饱和，不与内部成分抢色）
+        case .clause:
+            return roleColor(hue: 0.72, lightSat: 0.26, lightBri: 0.48,
+                             darkSat: 0.20, darkBri: 0.80)
         // 琥珀 — 介词短语（与主语蓝明显分开）
         case .prepPhrase:
             return roleColor(hue: 0.10, lightSat: 0.75, lightBri: 0.52,
@@ -60,6 +64,10 @@ extension ChunkRole {
         case .insertion:
             return roleColor(hue: 0.62, lightSat: 0.28, lightBri: 0.45,
                              darkSat: 0.22, darkBri: 0.78)
+        // 靛蓝 — 同位语（插入语的高饱和近亲，仍是名词性复指）
+        case .appositive:
+            return roleColor(hue: 0.66, lightSat: 0.52, lightBri: 0.50,
+                             darkSat: 0.44, darkBri: 0.84)
         // 橄榄绿 — 独立主格（无动词伴随分句）
         case .absolute:
             return roleColor(hue: 0.24, lightSat: 0.55, lightBri: 0.44,

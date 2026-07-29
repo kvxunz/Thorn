@@ -14,12 +14,13 @@
 #     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 # ]
 # ///
-"""Thorn local language sidecar: deterministic sentence chunking.
+"""Thorn local language sidecar: raw spaCy + Benepar evidence.
 
 Run: uv run --script server.py [--port 48620] [--idle-exit 900]
 """
 import argparse
 import hmac
+import importlib.metadata
 import os
 import re
 import signal
@@ -33,15 +34,29 @@ from pydantic import BaseModel, Field
 
 from alignment import annotate_chunk_spans
 from chunk_rules import (
-    constituent_token_indices,
+    coordinated_prep_conjuncts,
+    coordinating_ccs_before,
+    has_own_subject,
+    independent_verbal_conjuncts,
     is_clausal_pcomp,
     is_comitative_participle,
     is_concessive_however_clause,
-    is_left_edge_introducer_token,
+    is_dash_appositive,
+    is_preposed_though_adjective,
+    is_wh_relative_pronoun,
     mark_discourse_insertions,
     merge_or_so,
+    prepare_parse_text,
+    though_clause_verb,
     verb_group_indices,
 )
+from constituency import ConstituencyIndex, TokenSpan
+from evidence import ANALYSIS_PROTOCOL_VERSION, build_analysis_evidence
+from teaching_tree import TeachingEvidence, TokenSource, compile_teaching_tree
+
+SPACY_MODEL = "en_core_web_trf"
+BENEPAR_MODEL = "benepar_en3"
+PARSE_PROTOCOL_VERSION = 4
 
 # UD dep label -> Thorn role, for clause-level constituents
 CLAUSE_ROLES = {
@@ -71,10 +86,11 @@ def require_auth(x_thorn_token: str | None = Header(default=None)):
 
 def load():
     global nlp
-    benepar.download("benepar_en3")
-    nlp = spacy.load("en_core_web_trf")
+    # Model installation is an explicit setup action.  Starting the app must
+    # never trigger a network download or mutate the user's model cache.
+    nlp = spacy.load(SPACY_MODEL)
     if "benepar" not in nlp.pipe_names:
-        nlp.add_pipe("benepar", config={"model": "benepar_en3"})
+        nlp.add_pipe("benepar", config={"model": BENEPAR_MODEL})
 
 
 def clause_role_for(head):
@@ -117,20 +133,36 @@ def chunk_roots(head):
         if d in ("aux", "auxpass", "neg", "prt", "punct"):
             continue  # part of the verb group / attached punctuation
         if d in ("nsubj", "nsubjpass", "expl"):
-            roots.append((c, "subject", contains_clause(c)))
+            # True clausal dependents expand; dash appositives are promoted as
+            # insertion siblings so the head noun keeps role=subject. A
+            # multi-item appositive list also expands into a revealable block.
+            roots.append((c, "subject",
+                          contains_clause(c) or has_appositive_enumeration(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
             # linking verbs never take an object: theirs is a predicative
             linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
                                       "look", "feel", "sound", "stay", "grow")
-            roots.append((c, "complement" if linking else "object", contains_clause(c)))
+            roots.append((c, "complement" if linking else "object",
+                          contains_clause(c) or has_appositive_enumeration(c)))
         elif d in ("attr", "acomp"):
-            roots.append((c, "complement", contains_clause(c)))
+            roots.append((c, "complement",
+                          contains_clause(c) or has_appositive_enumeration(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
         elif d in ("ccomp", "csubj", "csubjpass"):
+            # csubj/csubjpass are subject clauses ("How well… depends") — always
+            # expand as a wrapped noun clause, never flatten onto the matrix.
             roots.append((c, "clause-noun", True))
         elif d == "advcl":
-            if c.pos_ not in ("VERB", "AUX"):
+            if is_preposed_though_adjective(c):
+                # "Odd though it sounds": keep one clause block headed by the
+                # finite verb; the adjective is absorbed into that span.
+                verb = though_clause_verb(c)
+                if verb is not None:
+                    roots.append((verb, "clause-adverbial", True))
+                else:
+                    roots.append((c, "clause-adverbial", True))
+            elif c.pos_ not in ("VERB", "AUX"):
                 # adjectival-predicate clauses ("however farfetched their
                 # principles may seem") still contain a verb: expand those;
                 # verbless fragments ("at worst") stay flat
@@ -143,25 +175,43 @@ def chunk_roots(head):
                 # label them adverbial, not clause (still expanded)
                 has_to = any(t.tag_ == "TO" for t in c.children) or (
                     c.i > 0 and c.doc[c.i - 1].tag_ == "TO")
-                roots.append((c, "adverbial" if has_to else "clause-adverbial", True))
+                # "for NP to VP" purpose: for is mark on the infinitive
+                # A participial/depictive adjunct with no subject of its own and
+                # no inner finite verb ("slapped it, sizzling, on the chest";
+                # "born in 1990, he…") is a participial 状语, not a full 状语从句.
+                # spaCy may tag such a participle VBG/VBN or even JJ, so key off
+                # the absence of a subject and of any nested verb, not the tag.
+                reduced_participle = (
+                    not has_own_subject(c)
+                    and not any(
+                        t.pos_ in ("VERB", "AUX") for t in c.subtree if t is not c
+                    )
+                    and c.tag_ in ("VBG", "VBN", "JJ")
+                )
+                roots.append((
+                    c,
+                    "adverbial" if (has_to or reduced_participle) else "clause-adverbial",
+                    True,
+                ))
         elif d in ("relcl", "acl"):
             # Infinitival acl after adjectives/nouns ("enough to cover…",
             # "a plan to expand") is purpose/complement, not a relative clause.
             has_to = any(t.tag_ == "TO" for t in c.children) or (
                 c.i > 0 and c.doc[c.i - 1].tag_ == "TO"
             )
-            has_own_subject = any(
-                t.dep_ in ("nsubj", "nsubjpass", "csubj", "csubjpass")
-                for t in c.children
-            )
-            if has_to and not has_own_subject:
+            has_subj = has_own_subject(c)
+            if has_to and not has_subj:
                 roots.append((c, "adverbial", True))
-            elif c.tag_ == "VBG" and has_own_subject:
+            elif c.tag_ == "VBG" and has_subj and not has_relative_introducer(c):
                 # Absolute / participial appositive: "everyone being the same…"
                 roots.append((c, "insertion", True))
             elif is_comitative_participle(c):
                 # "coupled with…", "combined with…" — not a true relative clause
                 roots.append((c, "insertion", True))
+            elif c.dep_ == "acl" and c.head.dep_ in ("nsubj", "nsubjpass", "dobj", "pobj", "appos"):
+                # Reduced relative / inserted participle on a noun
+                # ("Big Bang, first put forward in the 1920s")
+                roots.append((c, "insertion" if not has_relative_introducer(c) else clause_role_for(c), True))
             else:
                 roots.append((c, clause_role_for(c), True))
         elif d in ("prep", "agent"):
@@ -169,8 +219,19 @@ def chunk_roots(head):
             if c.lower_ == "than":
                 roots.append((c, "conjunction", contains_clause(c)))
             else:
-                # "agent" is the by-phrase of a passive
-                roots.append((c, "prep-phrase", contains_clause(c)))
+                # Keep prep/agent as one contiguous card. Coordinated second
+                # preps ("and then by…") are promoted as sibling cards below.
+                # Exceptions that make the card expandable: a colon-introduced
+                # appositive list, or an embedded clause (participial/relative)
+                # inside the object — "with … smoke laced with … where many a
+                # man puked …" — so those layers surface as their own rows.
+                roots.append((
+                    c,
+                    "prep-phrase",
+                    prep_object_enumeration(c)
+                    or contains_clause(c)
+                    or is_adverbial_complex_prep(c),
+                ))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
@@ -179,8 +240,11 @@ def chunk_roots(head):
             roots.append((c, "adverbial", False))
         elif d == "cc":
             roots.append((c, "conjunction", False))
-        elif d == "conj":
-            # coordinate clause/phrase: same backbone treatment
+        elif d == "conj" or (d == "dep" and c.pos_ in ("VERB", "AUX")):
+            # coordinate clause/phrase: same backbone treatment. spaCy also
+            # falls back to the catch-all "dep" label for a coordinate verb it
+            # could not attach ("housed …, sometimes sprouted …"); a verbal
+            # "dep" hanging off the predicate is that same coordinate predicate.
             if c.pos_ in ("VERB", "AUX"):
                 roots.append((c, "__coord_clause__", True))
             elif any(t.dep_ in ("nsubj", "nsubjpass") for t in c.children):
@@ -193,7 +257,9 @@ def chunk_roots(head):
                               contains_clause(c)))
         elif d == "mark":
             roots.append((c, "conjunction", False))
-        elif d in ("intj", "parataxis", "appos"):
+        elif d == "appos":
+            roots.append((c, "insertion", contains_clause(c) or is_dash_appositive(c)))
+        elif d in ("intj", "parataxis"):
             roots.append((c, "insertion", contains_clause(c)))
         elif c.lower_ == "for" and c.pos_ in ("ADP", "CCONJ", "SCONJ") and not any(
                 t.dep_ == "pobj" for t in c.children):
@@ -201,7 +267,67 @@ def chunk_roots(head):
             roots.append((c, "conjunction", False))
         else:
             roots.append((c, None, contains_clause(c)))  # absorbed later
+
+    # Promote full-clause conjuncts nested under clausal complements so they
+    # become siblings (see independent_verbal_conjuncts). Without this, spaCy's
+    # "say → curl (ccomp) → tormented (conj+nsubj)" package keeps the second
+    # clause inside the reported content even when teaching wants it parallel.
+    seen = {token.i for token, _role, _expand in roots}
+    promoted = []
+    for token, role, expand in roots:
+        # Only noun-clause complements (ccomp/csubj). Promoting out of an
+        # adverbial clause head would lift "and why does he think…" out of a
+        # because-SBAR onto the matrix clause.
+        if expand and role == "clause-noun":
+            for conjunct in independent_verbal_conjuncts(token):
+                if conjunct.i in seen or not parent_contains_if_any(head, conjunct):
+                    continue
+                seen.add(conjunct.i)
+                promoted.append((conjunct, "__coord_clause__", True))
+                for cc in coordinating_ccs_before(token, conjunct):
+                    if cc.i in seen:
+                        continue
+                    seen.add(cc.i)
+                    promoted.append((cc, "conjunction", False))
+        # "first by X … and then by Y": second by is conj of the first prep.
+        if role == "prep-phrase":
+            for conjunct in coordinated_prep_conjuncts(token):
+                if conjunct.i in seen or not parent_contains_if_any(head, conjunct):
+                    continue
+                seen.add(conjunct.i)
+                promoted.append((
+                    conjunct,
+                    "prep-phrase",
+                    prep_object_enumeration(conjunct)
+                    or contains_clause(conjunct)
+                    or is_adverbial_complex_prep(conjunct),
+                ))
+                for cc in coordinating_ccs_before(token, conjunct):
+                    if cc.i in seen:
+                        continue
+                    seen.add(cc.i)
+                    promoted.append((cc, "conjunction", False))
+
+        # Dash appositive under a subject: surface as insertion sibling so the
+        # subject noun keeps role=subject ("Institute — a group — issued").
+        if role == "subject":
+            for child in token.children:
+                if child.i in seen:
+                    continue
+                if child.dep_ == "appos" or is_dash_appositive(child):
+                    seen.add(child.i)
+                    promoted.append(
+                        (child, "insertion", bool(contains_clause(child) or True))
+                    )
+    if promoted:
+        roots.extend(promoted)
+        roots.sort(key=lambda item: item[0].i)
     return roots
+
+
+def parent_contains_if_any(head, token):
+    """Guard so promotion never reaches outside the current head's projection."""
+    return token.i in {t.i for t in head.subtree}
 
 
 def contains_clause(tok):
@@ -211,8 +337,167 @@ def contains_clause(tok):
         for t in tok.subtree if t is not tok)
 
 
+def has_appositive_enumeration(noun):
+    """Whether a nominal heads a two-plus appositive list.
+
+    ``a cacophony of coughs, rattles, wheezes, croaks`` — the members hang off
+    the phrase as ``appos`` (and any ``conj`` coordinated onto one). With two or
+    more, the card should expand so np_expand can collapse the list into one
+    revealable block rather than one flat mega-card. Punctuation (colon,
+    semicolon, comma) is irrelevant; the dependency label marks the enumeration.
+    This must count members the same way np_expand does, or the expand gate and
+    the splitter disagree (parsers waver between appos and conj for the tail).
+    """
+    members = {t.i for t in noun.subtree if t.dep_ == "appos"}
+    changed = True
+    while changed:
+        changed = False
+        for t in noun.subtree:
+            if t.dep_ == "conj" and t.head.i in members and t.i not in members:
+                members.add(t.i)
+                changed = True
+    return len(members) >= 2
+
+
+def prep_object_enumeration(prep):
+    """Whether a prep's object carries an appositive list (see above)."""
+    pobj = next((c for c in prep.children if c.dep_ == "pobj"), None)
+    return pobj is not None and has_appositive_enumeration(pobj)
+
+
+# Complex/subordinating prepositions that head a reason/concession adjunct.
+# "because of", "despite", "regardless of", "instead of" — when they modify the
+# predicate the whole phrase is an adverbial (原因/让步状语), not a plain 介词短语.
+ADVERBIAL_PREP_HEADS = frozenset({
+    "because", "despite", "notwithstanding", "regardless",
+    "instead", "unlike", "besides", "barring",
+})
+
+
+def is_adverbial_complex_prep(prep):
+    """Whether a prep phrase functions as a sentence-level adverbial."""
+    if prep.dep_ not in ("prep", "agent"):
+        return False
+    if getattr(prep.head, "pos_", "") not in ("VERB", "AUX"):
+        return False  # attached to a noun -> a real postmodifying 介词短语
+    if prep.pos_ == "SCONJ" or prep.lower_ in ADVERBIAL_PREP_HEADS:
+        return True
+    # "instead of leaving": spaCy makes "of" the prep and hangs the marker
+    # ("instead") on it as an advmod. The leading adverb still flags an adjunct.
+    return any(
+        child.dep_ in ("advmod", "npadvmod") and child.lower_ in ADVERBIAL_PREP_HEADS
+        for child in prep.children
+    )
+
+
 CLAUSE_DEPS = ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
 WH_TAGS = ("WDT", "WP", "WP$")
+
+# Dependents that establish the semantic extent of a verbal constituent.  We
+# deliberately omit advmod/mark: those are the attachments that most often
+# strand a left-edge when/where on a lower predicate.  Benepar supplies their
+# actual SBAR/WH boundary instead.
+BOUNDARY_ANCHOR_DEPS = frozenset({
+    "nsubj", "nsubjpass", "expl", "dobj", "obj", "iobj", "dative", "oprd",
+    "attr", "acomp", "xcomp", "ccomp", "csubj", "csubjpass", "advcl",
+    "relcl", "acl", "prep", "agent", "conj",
+    # Noun-noun premodifiers ("tweed [and woolen] coats") are part of the NP;
+    # without them the resolver settles for the minimal inner NP and strands
+    # the modifier as a leftover glued onto the neighbouring predicate.
+    "nmod", "compound",
+})
+
+
+def boundary_anchors(root, expand, parent):
+    """Dependency anchors a compatible Benepar span must contain."""
+    anchors = {root.i}
+    if root.pos_ in ("VERB", "AUX"):
+        anchors.update(i for i in verb_group_indices(root) if parent.contains(i))
+    anchors.update(
+        child.i for child in root.children
+        if parent.contains(child.i)
+        and child.dep_ in BOUNDARY_ANCHOR_DEPS
+        # Independent full-clause conjuncts are promoted to sibling roots; if
+        # they remain required anchors here, blocked-token logic cannot cut
+        # them out of an overwide ccomp SBAR.
+        and not (
+            child.dep_ == "conj"
+            and child.pos_ in ("VERB", "AUX")
+            and has_own_subject(child)
+        )
+    )
+    if expand:
+        # An expandable nominal/PP owns its directly embedded clause even when
+        # Benepar also offers a smaller core NP. np_expand separates it later.
+        anchors.update(
+            token.i for token in root.subtree
+            if parent.contains(token.i)
+            and token is not root
+            and (token.dep_ in CLAUSE_DEPS or is_clausal_pcomp(token))
+        )
+    return anchors
+
+
+def dependency_indices(root, parent):
+    """Full dependency projection of ``root`` inside ``parent``."""
+    return {
+        token.i for token in root.subtree
+        if parent.contains(token.i)
+    }
+
+
+def _projection(token, parent_span):
+    return {
+        piece.i for piece in token.subtree if parent_span.contains(piece.i)
+    }
+
+
+def owned_dependency_indices(root, parent_span, root_specs):
+    """Dependency projection of ``root`` minus promoted descendant siblings.
+
+    A ccomp head still *dominates* an independent conj in spaCy; after we
+    promote that conj to a peer teaching root, the parent's owned tokens must
+    stop before the conj's projection.
+    """
+    own = _projection(root, parent_span)
+    for other, _role, _expand in root_specs:
+        if other.i == root.i:
+            continue
+        other_proj = _projection(other, parent_span)
+        if other.i in own:
+            own -= other_proj
+    return own
+
+
+def blocked_indices_for_root(root, head, root_specs, parent_span):
+    """Indices a span resolver must not swallow for ``root``.
+
+    Verb-complex members stay as single-token barriers. Sibling teaching roots
+    contribute their owned projections; ancestor siblings only contribute the
+    part *outside* this root (so a promoted conj is not blocked by its former
+    ccomp parent's full subtree).
+    """
+    blocked = set()
+    for index in verb_group_indices(head):
+        if index != root.i and parent_span.contains(index):
+            blocked.add(index)
+
+    own = owned_dependency_indices(root, parent_span, root_specs)
+    for other, _role, _expand in root_specs:
+        if other.i == root.i:
+            continue
+        other_owned = owned_dependency_indices(other, parent_span, root_specs)
+        blocked.update(other_owned)
+
+    blocked -= own
+    return blocked
+
+
+def has_relative_introducer(root):
+    return any(
+        token.tag_ in WH_TAGS or token.tag_ == "WRB"
+        for token in root.children
+    )
 
 # adverb+preposition compounds that read as one prep chunk
 COMPOUND_ADV_PREP = {
@@ -232,22 +517,80 @@ IDIOM_VO = {
 }
 
 
-def np_expand(head, doc, role):
+def np_expand(head, doc, role, constituency, parent_span):
     """Expand a noun-ish chunk that embeds clauses: the clause subtrees become
     child chunks (recursed); everything else is the core, keeping the parent
     role. 'a decision that surprised...' -> core 'a decision' + that-clause."""
-    subtree = sorted(head.subtree, key=lambda t: t.i)
+    subtree = [doc[index] for index in range(parent_span.start, parent_span.end)]
     clause_heads = [t for t in subtree
                     if t is not head
                     and (t.dep_ in CLAUSE_DEPS or is_clausal_pcomp(t))
-                    and t.head in subtree]
+                    and parent_span.contains(t.head.i)]
+    # A relative/adverbial head can coordinate a second full clause under
+    # ``conj`` ("where they met ... and where I was born").  Although the
+    # dependency projection nests the conjunct under the first clause, its own
+    # subject makes it a sibling teaching clause.  Promote it before ownership
+    # spans are resolved so the leftover pass cannot mislabel it as part of the
+    # surrounding noun/preposition phrase.
+    promoted_clause_ids = set()
+    for clause in list(clause_heads):
+        for conjunct in independent_verbal_conjuncts(clause):
+            if not parent_span.contains(conjunct.i):
+                continue
+            promoted_clause_ids.add(conjunct.i)
+            clause_heads.append(conjunct)
+    clause_heads = list({clause.i: clause for clause in clause_heads}.values())
     # only direct clause attachments; nested ones handled by recursion
     clause_heads = [c for c in clause_heads
-                    if not any(c is not o and c in o.subtree for o in clause_heads)]
+                    if c.i in promoted_clause_ids
+                    or not any(c is not o and c in o.subtree for o in clause_heads)]
+    clause_roles = {}
+    clause_spans = {}
     owner = {}
-    for c in clause_heads:
-        for t in c.subtree:
-            owner[t.i] = c
+    blocked_clause_roots = {head.i, *(clause.i for clause in clause_heads)}
+    for clause in clause_heads:
+        has_to = any(t.tag_ == "TO" for t in clause.children) or (
+            clause.i > 0 and doc[clause.i - 1].tag_ == "TO"
+        )
+        has_own_subject = any(
+            t.dep_ in ("nsubj", "nsubjpass", "csubj", "csubjpass")
+            for t in clause.children
+        )
+        if clause.dep_ == "pcomp":
+            crole = "clause-noun"
+        elif has_to and not has_own_subject:
+            crole = "adverbial"
+        elif (clause.tag_ == "VBG" and has_own_subject
+              and not has_relative_introducer(clause)):
+            crole = "insertion"
+        elif is_comitative_participle(clause):
+            crole = "insertion"
+        elif (
+            clause.dep_ == "acl"
+            and not has_relative_introducer(clause)
+            and not has_to
+        ):
+            # Reduced participle on a noun. Comma/dash-set-off is a
+            # non-restrictive aside ("Big Bang, first put forward…") and reads
+            # as an insertion; a tight, unpunctuated postmodifier ("the mother
+            # moaning by the fire") is a reduced relative — a 定语从句.
+            left = min(t.i for t in clause.subtree)
+            set_off = left > 0 and doc[left - 1].text in (",", "—", "–", "--")
+            crole = "insertion" if set_off else "clause-relative"
+        else:
+            crole = clause_role_for(clause)
+        clause_roles[clause.i] = crole
+        span = constituency.resolve(
+            root=clause.i,
+            role=crole,
+            parent=parent_span,
+            required=boundary_anchors(clause, True, parent_span),
+            blocked=blocked_clause_roots - {clause.i},
+            dependency_indices=dependency_indices(clause, parent_span),
+        )
+        clause_spans[clause.i] = span
+        for index in range(span.start, span.end):
+            owner.setdefault(index, clause)
 
     # Appositive enumeration ("the Irish version: the poverty; the father; …"):
     # appos chain members hanging inside this NP. With two or more, the
@@ -261,14 +604,38 @@ def np_expand(head, doc, role):
             enum_members.add(t.i)
 
     def split_enumeration(run):
+        # Split at each appositive member's own start so comma-, semicolon- and
+        # colon-separated lists all break into items. Punctuation is not a
+        # reliable separator (commas also fence off single amods); the member's
+        # leading determiner/adjective run is. Everything before the first
+        # member is the core ("a cacophony of hacking coughs").
         if len(enum_members) < 2:
             return [run]
+        run_set = set(run)
+        starts = set()
+        for member in enum_members:
+            start = member
+            while (
+                (start - 1) in run_set
+                and doc[start - 1].head.i == member
+                and (start - 1) not in enum_members
+            ):
+                start -= 1
+            # "the English and the terrible things" is one slot: a bare and/or
+            # (no comma before it) coordinates within an item, not between
+            # items. Only an and/or after a comma ("A, B, and C") opens a slot.
+            left = start - 1
+            if left in run_set and getattr(doc[left], "pos_", "") == "CCONJ":
+                prev = left - 1
+                if not (prev in run_set and doc[prev].text in (",", ";")):
+                    continue
+            starts.add(start)
         parts, current = [], []
         for i in run:
-            current.append(i)
-            if doc[i].text in (";", ":"):
+            if i in starts and current:
                 parts.append(current)
                 current = []
+            current.append(i)
         if current:
             parts.append(current)
         return parts if len(parts) > 1 else [run]
@@ -286,36 +653,32 @@ def np_expand(head, doc, role):
         if o is None:
             for part in split_enumeration(run):
                 part_role = role
-                if any(i in enum_members for i in part):
-                    part_role = "insertion"  # 列举项＝同位语
+                if (
+                    any(doc[index].dep_ == "cc" for index in part)
+                    and all(
+                        doc[index].dep_ in ("cc", "punct")
+                        for index in part
+                    )
+                ):
+                    part_role = "conjunction"
+                # Only multi-item appositive lists get the appositive role; a
+                # single appositive after "as a class, an element…" must not
+                # demote the whole object NP.
+                if (
+                    len(enum_members) >= 2
+                    and any(i in enum_members for i in part)
+                ):
+                    part_role = "appositive"
                 chunks.append({"text": doc[part[0]: part[-1] + 1].text,
                                "role": part_role, "gloss": "", "children": None,
                                "_lo": part[0], "_hi": part[-1]})
         else:
-            # Infinitival acl ("enough to cover") is purpose, not a relative.
-            # VBG + own subject is absolute/appositive insertion, not relcl.
-            has_to = any(t.tag_ == "TO" for t in o.children) or (
-                o.i > 0 and doc[o.i - 1].tag_ == "TO"
-            )
-            has_own_subject = any(
-                t.dep_ in ("nsubj", "nsubjpass", "csubj", "csubjpass")
-                for t in o.children
-            )
-            if o.dep_ == "pcomp":
-                # Clausal complement of a preposition ("in how well it can
-                # control expression"): a noun clause, never a relative.
-                crole = "clause-noun"
-            elif has_to and not has_own_subject:
-                crole = "adverbial"
-            elif o.tag_ == "VBG" and has_own_subject:
-                crole = "insertion"
-            elif is_comitative_participle(o):
-                crole = "insertion"
-            else:
-                crole = clause_role_for(o)
+            crole = clause_roles[o.i]
             kids = build_chunks(
                 o, doc,
                 clause_role_of_head=crole if crole.startswith("clause") else None,
+                constituency=constituency,
+                parent_span=clause_spans[o.i],
             )
             chunks.append({"text": text, "role": crole, "gloss": "",
                            "children": kids if len(kids) >= 2 else None, **bounds})
@@ -341,64 +704,155 @@ def np_expand(head, doc, role):
     return result
 
 
-def build_chunks(head, doc, clause_role_of_head=None):
+def build_chunks(
+    head,
+    doc,
+    clause_role_of_head=None,
+    constituency=None,
+    parent_span=None,
+):
     """Partition the subtree of `head` (a verbal head) into ordered chunks.
     Every token is assigned to exactly one chunk root; chunks are contiguous
     runs of each assignment -> full coverage, and discontinuous constituents
     naturally become multiple chunks."""
-    # spaCy often hangs left-edge when/if on a lower xcomp ("holding…") or a
-    # coordinated verb ("where they met and married") even though the token
-    # belongs to the clause above. constituent_token_indices strips stranded
-    # introducers (adjacency-checked) so they are neither promoted as children
-    # of a complement whose text no longer contains them, nor duplicated when
-    # a discontinuous conj constituent is spliced per contiguous run.
-    subtree = [head.doc[i] for i in constituent_token_indices(head)]
-    lo, hi = subtree[0].i, subtree[-1].i
+    if constituency is None:
+        constituency = ConstituencyIndex.from_doc(doc)
+    if parent_span is None:
+        owned = sorted(token.i for token in head.subtree)
+        parent_span = TokenSpan(owned[0], owned[-1] + 1)
+    if not parent_span.contains(head.i):
+        raise ValueError("dependency head is outside its Benepar parent span")
+
+    subtree = [doc[index] for index in range(parent_span.start, parent_span.end)]
+    lo, hi = parent_span.start, parent_span.end - 1
     assign = {}
     for t_i in verb_group_indices(head):
-        assign[t_i] = "verb"
+        if parent_span.contains(t_i):
+            assign[t_i] = "verb"
 
     root_entries = {"verb": None}
     inline = set()
+    root_specs = []
+    seen_roots = set()
     for c, role, expand in chunk_roots(head):
+        if not parent_span.contains(c.i) or c.i in seen_roots:
+            continue
+        seen_roots.add(c.i)
+        root_specs.append((c, role, expand))
+
+    # Constituency candidates may not reclaim any token already reserved for
+    # the finite verbal complex (e.g. ``is not [that …]``). Sibling clause
+    # roots block with their full dependency projection so a wide Benepar SBAR
+    # cannot keep a promoted independent conjunct inside a ccomp.
+    for c, role, expand in root_specs:
         key = f"n{c.i}"
         if role == "__coord_clause__":
             inline.add(key)
-        root_entries[key] = (c, role, expand)
-        # Same token set the spliced/expanded chunk will own: stranded
-        # left-edge when/where stay out (they belong to this clause, not the
-        # lower constituent) so runs and splices can never double-emit.
-        for t_i in constituent_token_indices(c):
+        owned_span = constituency.resolve(
+            root=c.i,
+            role=role,
+            parent=parent_span,
+            required=boundary_anchors(c, expand, parent_span),
+            blocked=blocked_indices_for_root(c, head, root_specs, parent_span),
+            dependency_indices=owned_dependency_indices(c, parent_span, root_specs),
+        )
+        root_entries[key] = (c, role, expand, owned_span)
+        for t_i in range(owned_span.start, owned_span.end):
             if t_i not in assign:
                 assign[t_i] = key
 
-    # Promote stranded left-edge introducers (when/if…) to their own chunk
-    # under the finite clause parent — never under the lower non-finite host
-    # (already stripped from that head's subtree above).
-    for t in subtree:
-        if t.i in assign:
+    # Degree/downtoning adverbs stranded between a copula and its predicative
+    # complement ("is hardly worth …") hang on the acomp adjective in the
+    # dependency parse, yet Benepar leaves them *outside* the complement's
+    # ADJP. Left alone they fall to the leftover pass and glue onto the verb
+    # ("is hardly"). When the complement's own span excludes such an adverb,
+    # promote it to its own adverbial card so the copula stays bare — matching
+    # how a lone "was" is shown for a complement with no stranded modifier.
+    for c, role, _expand in root_specs:
+        if c.dep_ not in ("acomp", "attr", "oprd"):
             continue
-        if is_left_edge_introducer_token(t) and t.i < head.i:
-            key = f"intro{t.i}"
-            intro_role = (
-                "relative" if clause_role_of_head == "clause-relative" else "conjunction"
-            )
-            root_entries[key] = (t, intro_role, False)
-            assign[t.i] = key
+        comp_span = root_entries[f"n{c.i}"][3]
+        for g in c.children:
+            if (
+                g.dep_ in ("advmod", "npadvmod")
+                and g.i < c.i
+                and parent_span.contains(g.i)
+                and not comp_span.contains(g.i)
+                and g.i not in assign
+            ):
+                adv_span = constituency.resolve(
+                    root=g.i,
+                    role="adverbial",
+                    parent=parent_span,
+                    dependency_indices=sorted(t.i for t in g.subtree),
+                )
+                if adv_span.contains(c.i):  # never swallow the complement head
+                    adv_span = TokenSpan(g.i, g.i + 1)
+                key = f"adv{g.i}"
+                root_entries[key] = (g, "adverbial", False, adv_span)
+                for t_i in range(adv_span.start, adv_span.end):
+                    if t_i not in assign:
+                        assign[t_i] = key
 
-    # leftovers (punctuation, stray dets) -> nearest assigned neighbor,
-    # preferring left, falling back right
+    # A WH constituent at the current SBAR edge belongs to this clause even
+    # when the dependency parser parked it on a lower xcomp/conj. This is the
+    # only promotion path: lexical when/where lists are intentionally gone.
     for t in subtree:
         if t.i in assign:
             continue
-        i = t.i - 1
-        while i >= lo and i not in assign:
-            i -= 1
-        if i < lo:
-            i = t.i + 1
-            while i <= hi and i not in assign:
-                i += 1
-        assign[t.i] = assign.get(i, "verb")
+        wh_span = constituency.leading_wh_span(t.i, parent_span)
+        if wh_span is None:
+            continue
+        key = f"intro{t.i}"
+        intro_role = (
+            "relative" if clause_role_of_head == "clause-relative" else "conjunction"
+        )
+        root_entries[key] = (t, intro_role, False, wh_span)
+        for t_i in range(wh_span.start, wh_span.end):
+            if t_i not in assign:
+                assign[t_i] = key
+
+    # leftovers (punctuation, stray dets) -> nearest assigned neighbor.
+    # Prefer the *adjacent* non-conjunction key (right if left is a pure
+    # conjunction). Never jump over an assigned conjunction to a distant
+    # earlier card — that created orphan fragments like a lone "then"
+    # between "and" and "by…".
+    def _role_of(key):
+        entry = root_entries.get(key)
+        return entry[1] if entry is not None else None
+
+    def _pick_side(start, step, limit):
+        i = start
+        conj_fallback = None
+        while lo <= i <= hi and ((step < 0 and i >= limit) or (step > 0 and i <= limit)):
+            if i in assign:
+                key = assign[i]
+                if _role_of(key) == "conjunction":
+                    if conj_fallback is None:
+                        conj_fallback = key
+                    i += step
+                    continue
+                return key
+            i += step
+        return conj_fallback
+
+    for t in subtree:
+        if t.i in assign:
+            continue
+        left = _pick_side(t.i - 1, -1, lo)
+        right = _pick_side(t.i + 1, 1, hi)
+        if left is not None and _role_of(left) != "conjunction":
+            # Adjacent left is real content only if no other key sits on i-1
+            # as conjunction; if left scan crossed a conj, prefer right.
+            if t.i - 1 in assign and _role_of(assign[t.i - 1]) == "conjunction" and right is not None:
+                chosen = right
+            else:
+                chosen = left
+        elif right is not None:
+            chosen = right
+        else:
+            chosen = left if left is not None else "verb"
+        assign[t.i] = chosen
 
     chunks = []
     run_key, run = None, []
@@ -420,7 +874,7 @@ def build_chunks(head, doc, clause_role_of_head=None):
             ch.setdefault("_hi", run_local[-1])
 
     def emit(text, toks, key, run_local):
-        def splice_flat(sub, c):
+        def splice_flat(sub, owned_span):
             """Extend with a constituent's own chunks, then glue back any run
             tokens the constituent doesn't own — a colon the leftover pass
             parked on this run would otherwise vanish with the run text."""
@@ -428,18 +882,18 @@ def build_chunks(head, doc, clause_role_of_head=None):
             chunks.extend(sub)
             if not sub:
                 return
-            owned = constituent_token_indices(c)
-            suffix = [i for i in run_local if i > owned[-1]]
+            suffix = [i for i in run_local if i >= owned_span.end]
             if suffix:
-                char_from = doc[owned[-1]].idx + len(doc[owned[-1]].text)
+                last_owned = owned_span.end - 1
+                char_from = doc[last_owned].idx + len(doc[last_owned].text)
                 char_to = doc[suffix[-1]].idx + len(doc[suffix[-1]].text)
                 chunks[-1]["text"] += doc.text[char_from:char_to]
                 if "_hi" in chunks[-1]:
                     chunks[-1]["_hi"] = suffix[-1]
-            prefix = [i for i in run_local if i < owned[0]]
+            prefix = [i for i in run_local if i < owned_span.start]
             if prefix:
                 first = chunks[start_index]
-                char_to = doc[owned[0]].idx
+                char_to = doc[owned_span.start].idx
                 first["text"] = doc.text[doc[prefix[0]].idx: char_to] + first["text"]
                 if "_lo" in first:
                     first["_lo"] = prefix[0]
@@ -448,33 +902,66 @@ def build_chunks(head, doc, clause_role_of_head=None):
             chunks.append({"text": text, "role": "verb", "gloss": "",
                            "children": None, "_lem": head.lemma_})
             return
-        c, role, expand = root_entries[key]
+        c, role, expand, owned_span = root_entries[key]
+        meaningful_extensions = [
+            index for index in run_local
+            if not owned_span.contains(index)
+            and any(character.isalnum() for character in doc[index].text)
+        ]
+        recursive_span = owned_span
+        if meaningful_extensions:
+            recursive_span = TokenSpan(
+                min(owned_span.start, meaningful_extensions[0]),
+                max(owned_span.end - 1, meaningful_extensions[-1]) + 1,
+                owned_span.labels,
+            )
         if key in inline:
             # Coordinate clause. With its own subject it is a full clause:
             # inside a labeled clause it reads best as one collapsible block
             # ("and where I was born"); subject-sharing VP coordination
             # ("and married") splices flat. Top level always splices flat so
             # the header keeps per-role colors on the whole backbone.
-            sub = build_chunks(c, doc)
+            sub = build_chunks(
+                c,
+                doc,
+                constituency=constituency,
+                parent_span=recursive_span,
+            )
             own_subject = any(
                 t.dep_ in ("nsubj", "nsubjpass", "expl") for t in c.children
             )
             if clause_role_of_head is not None and own_subject and len(sub) >= 2:
                 chunks.append({"text": text, "role": clause_role_of_head,
-                               "gloss": "", "children": sub, "_coord": True})
+                               "gloss": "", "children": sub})
             else:
-                splice_flat(sub, c)
+                splice_flat(sub, recursive_span)
             return
         # single introducing word inside a clause gets its true role:
         # wh-pronouns/adverbs -> relative (in relative clauses) or conjunction;
         # bare subordinators (when/if/because via "mark") -> conjunction.
         # For relatives the dependency tree already knows the referent
         # (the noun the clause hangs on), so the gloss is deterministic.
-        referent = head.head.text if clause_role_of_head == "clause-relative" else None
+        referent_head = head
+        while (
+            referent_head.dep_ == "conj"
+            and referent_head.head is not referent_head
+        ):
+            referent_head = referent_head.head
+        referent = (
+            referent_head.head.text
+            if clause_role_of_head == "clause-relative" else None
+        )
         if len(run_local) == 1 and clause_role_of_head is not None:
             tok = toks[0]
-            if tok.tag_ in WH_TAGS or tok.tag_ == "WRB":
-                if clause_role_of_head == "clause-relative":
+            if is_wh_relative_pronoun(tok) or tok.tag_ in WH_TAGS or tok.tag_ == "WRB":
+                # A WH word is a relation marker only inside a relative
+                # clause. In adverbial/noun clauses it introduces that clause
+                # ("When juries…", "how well it works") and must not be
+                # mislabeled merely because its dependency is an argument.
+                if (
+                    clause_role_of_head == "clause-relative"
+                    and tok.dep_ != "mark"
+                ):
                     gloss = f"指代前述的 {referent}" if referent else ""
                     chunks.append({"text": text, "role": "relative", "gloss": gloss, "children": None})
                 else:
@@ -483,7 +970,8 @@ def build_chunks(head, doc, clause_role_of_head=None):
             if tok.dep_ == "mark":
                 chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
                 return
-        if len(run_local) == 1 and toks[0].tag_ in WH_TAGS:
+        if len(run_local) == 1 and (toks[0].tag_ in WH_TAGS or is_wh_relative_pronoun(toks[0])):
+            tok = toks[0]
             if clause_role_of_head == "clause-relative":
                 gloss = f"指代前述的 {referent}" if referent else ""
                 chunks.append({"text": text, "role": "relative", "gloss": gloss, "children": None})
@@ -492,17 +980,40 @@ def build_chunks(head, doc, clause_role_of_head=None):
             return
         if role is None:
             chunks.append({"text": text, "role": "other", "gloss": "", "children": None})
+        elif role == "clause-noun" and c.dep_ in ("csubj", "csubjpass"):
+            # Subject clauses must stay one wrapped block ("How well… depends").
+            kids = build_chunks(
+                c,
+                doc,
+                clause_role_of_head="clause-noun",
+                constituency=constituency,
+                parent_span=recursive_span,
+            )
+            chunks.append({"text": text, "role": "clause-noun", "gloss": "",
+                           "children": kids if len(kids) >= 2 else None})
         elif (role == "clause-noun"
+              and c.dep_ not in ("csubj", "csubjpass")
               and not any(t.dep_ == "mark" and t.lower_ in
                           ("that", "whether", "if", "what", "whatever", "how", "why", "who")
                           for t in c.children)
+              and not any(
+                  t.dep_ in ("advmod", "npadvmod") and t.tag_ in WH_TAGS + ("WRB",)
+                  for t in c.children
+              )
               and not (chunks and chunks[-1]["role"] == "verb")):
             # A "noun clause" with no real subordinator that does NOT follow
             # its governing verb is almost always a misattached coordinate
             # main clause ("..., for, ..."): splice its backbone in flat.
             # Right after a verb it's a bare object clause ("He said he would
             # come") and keeps its clause identity.
-            splice_flat(build_chunks(c, doc, clause_role_of_head=clause_role_of_head), c)
+            # WH-adjunct subject clauses ("How well…") keep their wrapper.
+            splice_flat(build_chunks(
+                c,
+                doc,
+                clause_role_of_head=clause_role_of_head,
+                constituency=constituency,
+                parent_span=recursive_span,
+            ), recursive_span)
         elif role == "object" and not expand:
             chunks.append({"text": text, "role": role, "gloss": "",
                            "children": None, "_lem": c.lemma_})
@@ -511,15 +1022,108 @@ def build_chunks(head, doc, clause_role_of_head=None):
                 # verbal heads recurse fully, wrapped under their clause label;
                 # an absolute's adjectival head works the same way — its "verb"
                 # run is the elided-be predicate ("dead and gone").
-                kids = build_chunks(c, doc,
-                                    clause_role_of_head=role if role.startswith("clause") else None)
+                kids = build_chunks(
+                    c,
+                    doc,
+                    clause_role_of_head=role if role.startswith("clause") else None,
+                    constituency=constituency,
+                    parent_span=recursive_span,
+                )
                 chunks.append({"text": text, "role": role, "gloss": "",
                                "children": kids if len(kids) >= 2 else None})
+            elif role.startswith("clause"):
+                # Non-verbal clause head with an internal finite verb
+                # (preposed-adj path already rewrites to the verb; keep safe).
+                verbal = next(
+                    (t for t in c.subtree
+                     if t is not c and t.pos_ in ("VERB", "AUX")
+                     and t.dep_ in ("advcl", "xcomp", "ccomp", "ROOT")),
+                    None,
+                )
+                if verbal is not None:
+                    kids = build_chunks(
+                        verbal,
+                        doc,
+                        clause_role_of_head=role,
+                        constituency=constituency,
+                        parent_span=recursive_span,
+                    )
+                    chunks.append({"text": text, "role": role, "gloss": "",
+                                   "children": kids if len(kids) >= 2 else None})
+                else:
+                    chunks.append({"text": text, "role": role, "gloss": "",
+                                   "children": None})
+            elif role == "subject":
+                # Keep a single subject card; nested clauses/appos become children
+                # via np_expand but re-wrapped so the subject label is not lost.
+                sub = np_expand(
+                    c, doc, role, constituency, recursive_span,
+                )
+                if len(sub) == 1:
+                    chunks.append(sub[0])
+                else:
+                    chunks.append({
+                        "text": text, "role": "subject", "gloss": "",
+                        "children": sub if len(sub) >= 2 else None,
+                    })
+            elif role == "insertion":
+                kids = None
+                if c.pos_ in ("VERB", "AUX") or any(
+                    t.pos_ in ("VERB", "AUX") for t in c.subtree if t is not c
+                ):
+                    verbal = c if c.pos_ in ("VERB", "AUX") else next(
+                        (t for t in c.subtree if t.pos_ in ("VERB", "AUX")), c
+                    )
+                    kids = build_chunks(
+                        verbal,
+                        doc,
+                        clause_role_of_head=None,
+                        constituency=constituency,
+                        parent_span=recursive_span,
+                    )
+                chunks.append({
+                    "text": text, "role": "insertion", "gloss": "",
+                    "children": kids if kids and len(kids) >= 2 else None,
+                })
+            elif role == "prep-phrase":
+                # Keep prep as one card when simple; otherwise splice expanded
+                # material so annotate_chunk_spans always sees contiguous text.
+                # A complex/subordinating prep modifying the predicate reads as
+                # a 状语 ("Because of … he had to flee"); relabel the card while
+                # keeping the prep-phrase span geometry for np_expand.
+                card_role = "adverbial" if is_adverbial_complex_prep(c) else "prep-phrase"
+                sub = np_expand(c, doc, role, constituency, recursive_span)
+                if not sub:
+                    chunks.append({"text": text, "role": card_role, "gloss": "",
+                                   "children": None})
+                elif len(sub) == 1:
+                    # One card back: either a plain prep phrase or a single
+                    # collapsed block (e.g. an appositive enumeration) that
+                    # already carries its own children — keep them.
+                    sub[0]["role"] = card_role
+                    chunks.append(sub[0])
+                else:
+                    # Prefer a single prep wrapper only when the first sub-card
+                    # already carries the preposition text.
+                    first = sub[0].get("text", "")
+                    if first and text.startswith(first[: max(1, min(12, len(first)))]):
+                        chunks.append({
+                            "text": text, "role": card_role, "gloss": "",
+                            "children": sub if len(sub) >= 2 else None,
+                        })
+                    else:
+                        splice_flat(sub, recursive_span)
             else:
                 # nominal head embedding a clause: splice core + clause as
                 # siblings — no wrapper level, and the backbone highlight
                 # stays on the core noun only
-                splice_flat(np_expand(c, doc, role), c)
+                splice_flat(np_expand(
+                    c,
+                    doc,
+                    role,
+                    constituency,
+                    recursive_span,
+                ), recursive_span)
         else:
             chunks.append({"text": text, "role": role, "gloss": "", "children": None})
 
@@ -532,31 +1136,113 @@ def build_chunks(head, doc, clause_role_of_head=None):
     flush()
     result = mark_discourse_insertions(merge_tiny(merge_or_so(merge_idioms(chunks))))
     if clause_role_of_head is not None:
-        result = group_coordinate_clauses(result, clause_role_of_head, doc)
-    for ch in result:
-        ch.pop("_coord", None)  # marker never escapes its own level
+        result = group_constituency_clauses(
+            result,
+            clause_role_of_head,
+            doc,
+            constituency,
+            parent_span,
+        )
+    result = group_colon_enumerations(result, doc, parent_span)
     return result
 
 
-def group_coordinate_clauses(chunks, role, doc):
-    """Coordinated full clauses inside a labeled clause become sibling blocks:
-    "where they met and married and where I was born" shows as
-    [where they met and married] / and / [where I was born], each expandable,
-    instead of nine flat rows. Only the lead segment needs wrapping — the
-    coordinate ones arrive as blocks from emit."""
-    idx = next((i for i, c in enumerate(chunks) if c.get("_coord")), None)
-    if idx is None:
+def group_colon_enumerations(chunks, doc, parent_span):
+    """Collapse post-colon appositive lists into one expandable insertion.
+
+    ``…is pervasive: an aspirin…, some wine…, coffee…`` otherwise floods the
+    top level with insertion crumbs.
+    """
+    if len(chunks) < 3:
         return chunks
-    lead_end = idx - 1 if idx >= 1 and chunks[idx - 1].get("role") == "conjunction" else idx
-    lead = chunks[:lead_end]
-    if len(lead) < 2 or any(c.get("_coord") for c in lead):
+    colon_at = None
+    for index, chunk in enumerate(chunks):
+        text = chunk.get("text") or ""
+        if text.rstrip().endswith(":") or text.strip() == ":":
+            colon_at = index
+            break
+        # colon glued to previous card ("pervasive:")
+        if ":" in text and index + 1 < len(chunks):
+            # only treat as list opener when following cards look like list items
+            following = chunks[index + 1:]
+            if sum(1 for c in following if c.get("role") in ("insertion", "appositive", "adverbial", "other")) >= 2:
+                colon_at = index
+                break
+    if colon_at is None or colon_at >= len(chunks) - 1:
         return chunks
-    if "_lo" not in lead[0] or "_hi" not in lead[-1]:
+    head = chunks[: colon_at + 1]
+    tail = chunks[colon_at + 1:]
+    list_roles = {"insertion", "appositive", "adverbial", "other", "object", "complement"}
+    if sum(1 for c in tail if c.get("role") in list_roles) < 2:
         return chunks
-    text = doc[lead[0]["_lo"]: lead[-1]["_hi"] + 1].text
-    wrapper = {"text": text, "role": role, "gloss": "", "children": lead,
-               "_lo": lead[0]["_lo"], "_hi": lead[-1]["_hi"]}
-    return [wrapper] + chunks[lead_end:]
+    # Keep trailing non-list material (rare) outside the group.
+    cut = len(tail)
+    for i, chunk in enumerate(tail):
+        if chunk.get("role") in ("verb", "subject", "clause-noun", "clause-adverbial",
+                                   "clause-relative", "coordinator"):
+            cut = i
+            break
+    items = tail[:cut]
+    rest = tail[cut:]
+    if len(items) < 2:
+        return chunks
+    lo = items[0].get("_lo")
+    hi = items[-1].get("_hi")
+    if lo is not None and hi is not None and lo < hi <= len(doc):
+        text = doc[lo:hi].text
+    else:
+        text = " ".join(c.get("text", "") for c in items)
+    group = {
+        "text": text,
+        "role": "insertion",
+        "gloss": "",
+        "children": items,
+    }
+    if lo is not None:
+        group["_lo"] = lo
+    if hi is not None:
+        group["_hi"] = hi
+    return head + [group] + rest
+
+
+def group_constituency_clauses(chunks, role, doc, constituency, parent_span):
+    """Wrap coordinated clause siblings using Benepar's actual boundaries."""
+    clause_spans = constituency.coordinate_clause_children(parent_span)
+    if not clause_spans:
+        return chunks
+    for left, right in zip(clause_spans, clause_spans[1:]):
+        separators = [
+            chunk for chunk in chunks
+            if chunk.get("_lo", -1) >= left.end
+            and chunk.get("_hi", parent_span.end) < right.start
+        ]
+        if not any(chunk.get("role") == "conjunction" for chunk in separators):
+            return chunks
+    result = list(chunks)
+    for span in reversed(clause_spans):
+        positions = [
+            index for index, chunk in enumerate(result)
+            if chunk.get("_lo", -1) >= span.start
+            and chunk.get("_hi", parent_span.end) < span.end
+        ]
+        if not positions or positions != list(range(positions[0], positions[-1] + 1)):
+            continue
+        first, last = positions[0], positions[-1]
+        selected = result[first:last + 1]
+        if (len(selected) == 1
+                and selected[0].get("_lo") == span.start
+                and selected[0].get("_hi") == span.end - 1):
+            continue
+        wrapper = {
+            "text": doc[span.start:span.end].text,
+            "role": role,
+            "gloss": "",
+            "children": selected,
+            "_lo": span.start,
+            "_hi": span.end - 1,
+        }
+        result[first:last + 1] = [wrapper]
+    return result
 
 
 def merge_idioms(chunks):
@@ -612,21 +1298,32 @@ def merge_tiny(chunks):
     return out
 
 
-def _strip_internal_keys(nodes):
-    for node in nodes:
-        for key in ("_lo", "_hi", "_coord", "_lem"):
-            node.pop(key, None)
-        if node.get("children"):
-            _strip_internal_keys(node["children"])
+def _prepare_document(text):
+    prepared = prepare_parse_text(text)
+    if not prepared.parser:
+        raise ValueError("source contains no parseable text")
+    with nlp_inference_lock:
+        doc = nlp(prepared.parser)
+    parser_offsets = [
+        (token.idx, token.idx + len(token.text))
+        for token in doc
+    ]
+    offsets = prepared.source_token_offsets(parser_offsets)
+    return prepared, doc, offsets
 
 
 def parse_text(text):
-    with nlp_inference_lock:
-        doc = nlp(text)
+    prepared, doc, offsets = _prepare_document(text)
+    constituency = ConstituencyIndex.from_doc(doc)
     all_chunks = []
     last_end = None
     for sent in doc.sents:
-        sent_chunks = build_chunks(sent.root, doc)
+        sent_chunks = build_chunks(
+            sent.root,
+            doc,
+            constituency=constituency,
+            parent_span=constituency.sentence_span(sent.start, sent.end),
+        )
         if sent_chunks:
             all_chunks.extend(sent_chunks)
         elif all_chunks and last_end is not None:
@@ -635,11 +1332,33 @@ def parse_text(text):
             # exact source text onto the previous chunk so no character
             # vanishes from the header.
             all_chunks[-1]["text"] += doc.text[last_end: sent.end_char]
+            all_chunks[-1]["_hi"] = sent.end - 1
         last_end = sent.end_char
-    _strip_internal_keys(all_chunks)
-    offsets = [(token.idx, token.idx + len(token.text)) for token in doc]
-    chunks = annotate_chunk_spans(text, all_chunks, offsets)
-    return chunks, [token.text for token in doc]
+    source = TokenSource(text=prepared.surface, token_offsets=offsets)
+    teaching_chunks = compile_teaching_tree(
+        source,
+        all_chunks,
+        evidence=TeachingEvidence.from_doc(doc),
+    )
+    chunks = annotate_chunk_spans(prepared.surface, teaching_chunks, offsets)
+    return chunks, [
+        prepared.surface[start:end]
+        for start, end in offsets
+    ]
+
+
+def analyze_text(text):
+    """Return untouched parser evidence for the constrained Qwen stage."""
+    prepared, doc, offsets = _prepare_document(text)
+    return build_analysis_evidence(
+        doc,
+        prepared.surface,
+        spacy_model=SPACY_MODEL,
+        benepar_model=BENEPAR_MODEL,
+        spacy_version=spacy.__version__,
+        benepar_version=importlib.metadata.version("benepar"),
+        source_token_offsets=offsets,
+    )
 
 
 # ---------------------------------------------------------------- server
@@ -655,8 +1374,29 @@ class ParseRequest(BaseModel):
 def health():
     return {
         "ok": nlp is not None,
-        "protocolVersion": 3,
+        # Keep the legacy key for older app builds while advertising endpoint
+        # versions independently so an /analyze-only bump cannot disable
+        # otherwise compatible /parse clients.
+        "protocolVersion": PARSE_PROTOCOL_VERSION,
+        "parseProtocolVersion": PARSE_PROTOCOL_VERSION,
+        "analysisProtocolVersion": ANALYSIS_PROTOCOL_VERSION,
     }
+
+
+@app.post("/analyze", dependencies=[Depends(require_auth)])
+def analyze(req: ParseRequest):
+    global last_request
+    last_request = time.time()
+    if len(re.findall(r"\w+|[^\w\s]", req.text)) > 512:
+        raise HTTPException(status_code=422, detail="source token limit exceeded")
+    if not parse_slots.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="sentence parser is busy")
+    try:
+        return analyze_text(req.text)
+    except (AttributeError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        parse_slots.release()
 
 
 @app.post("/parse", dependencies=[Depends(require_auth)])
@@ -691,7 +1431,15 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=48620)
     ap.add_argument("--idle-exit", type=int, default=900)
+    ap.add_argument(
+        "--install-models",
+        action="store_true",
+        help="explicitly install Benepar data, then exit",
+    )
     args = ap.parse_args()
+    if args.install_models:
+        benepar.download(BENEPAR_MODEL)
+        raise SystemExit(0)
     if not auth_token:
         raise SystemExit("THORN_SIDECAR_TOKEN is required")
     load()

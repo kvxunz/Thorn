@@ -6,8 +6,8 @@ struct SidecarStructure: Sendable {
 }
 
 /// Client + lifecycle for the Python structure sidecar (spaCy + benepar).
-/// The sidecar delivers deterministic chunk trees; the whole-sentence
-/// translation comes separately from the local translation model.
+/// The sidecar delivers deterministic teaching chunk trees; whole-sentence
+/// translation comes separately from the local HY-MT2 model.
 actor Sidecar {
     static let shared = Sidecar()
 
@@ -15,6 +15,8 @@ actor Sidecar {
     private let authToken: String
     private var process: Process?
     private var launchAttempted = false
+    private var structureCache: [String: SidecarStructure] = [:]
+    private var structureOrder: [String] = []
 
     private var baseURL: String { "http://127.0.0.1:\(port)" }
 
@@ -48,29 +50,27 @@ actor Sidecar {
         return FileManager.default.fileExists(atPath: script) ? nil : script
     }
 
-    /// Fetch the deterministic structure; nil if the sidecar is unavailable.
+    func modelInstallCommand() -> String {
+        let quoted = "'" + sidecarScriptPath().replacingOccurrences(of: "'", with: "'\\''") + "'"
+        return "uv run --script \(quoted) --install-models"
+    }
+
+    /// Fetch the deterministic teaching tree; nil if the sidecar is unavailable.
     func structure(for sentence: String) async -> SidecarStructure? {
-        if !(await isHealthy()) {
-            launchIfNeeded()
-            // give a cold sidecar a moment; models take a few seconds to load
-            for _ in 0..<20 {
-                do {
-                    try await Task.sleep(nanoseconds: 500_000_000)
-                } catch {
-                    return nil
-                }
-                if await isHealthy() { break }
-            }
-            guard await isHealthy() else { return nil }
+        if let cached = structureCache[sentence] {
+            structureOrder.removeAll { $0 == sentence }
+            structureOrder.append(sentence)
+            return cached
         }
+        if !(await ensureHealthy()) { return nil }
         guard let url = URL(string: baseURL + "/parse") else { return nil }
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.timeoutInterval = 30
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        authorize(&req)
-        req.httpBody = try? JSONEncoder().encode(["text": sentence])
-        guard let (data, response) = try? await URLSession.shared.data(for: req),
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        authorize(&request)
+        request.httpBody = try? JSONEncoder().encode(["text": sentence])
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
               !Task.isCancelled,
               (response as? HTTPURLResponse)?.statusCode == 200,
               data.count <= 2_000_000,
@@ -80,12 +80,15 @@ actor Sidecar {
             ThornLog.info("sidecar parse failed")
             return nil
         }
-        return SidecarStructure(chunks: decoded.chunks, sourceTokens: decoded.sourceTokens)
+        let structure = SidecarStructure(chunks: decoded.chunks, sourceTokens: decoded.sourceTokens)
+        cache(structure, for: sentence)
+        return structure
     }
 
     private struct HealthResponse: Decodable {
         let ok: Bool
         let protocolVersion: Int?
+        let parseProtocolVersion: Int?
     }
 
     private func isHealthy() async -> Bool {
@@ -99,7 +102,28 @@ actor Sidecar {
               let health = try? JSONDecoder().decode(HealthResponse.self, from: data) else {
             return false
         }
-        return health.ok && health.protocolVersion == 3
+        // Structure compatibility is independent from the optional /analyze
+        // evidence schema. New sidecars advertise it explicitly; historical
+        // v3/v4 sidecars only have the legacy protocolVersion key.
+        guard health.ok,
+              let version = health.parseProtocolVersion ?? health.protocolVersion
+        else { return false }
+        return version == 3 || version == 4
+    }
+
+    private func ensureHealthy() async -> Bool {
+        if await isHealthy() { return true }
+        launchIfNeeded()
+        // Transformer + Benepar cold starts can exceed 10s. Poll up to 30s.
+        for _ in 0..<60 {
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+            } catch {
+                return false
+            }
+            if await isHealthy() { return true }
+        }
+        return false
     }
 
     private func authorize(_ request: inout URLRequest) {
@@ -146,6 +170,16 @@ actor Sidecar {
         }
         return !chunks.isEmpty
             && walk(chunks, parent: 0..<sourceTokens.count, path: [], depth: 1)
+    }
+
+    private func cache(_ structure: SidecarStructure, for sentence: String) {
+        structureCache[sentence] = structure
+        structureOrder.removeAll { $0 == sentence }
+        structureOrder.append(sentence)
+        if structureOrder.count > 128 {
+            let evicted = structureOrder.removeFirst()
+            structureCache.removeValue(forKey: evicted)
+        }
     }
 
     /// Spawn `uv run server.py` once per app session. The sidecar exits itself

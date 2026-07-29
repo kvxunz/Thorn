@@ -22,6 +22,25 @@ final class ParseServiceTranslationTests: XCTestCase {
             ParseService.normalizedInput("\u{FEFF}the case\u{200E} is"),
             "the case is"
         )
+        // Dash parentheticals must not glue to neighboring words; PDF junk
+        // brackets like [tObj] are stripped.
+        XCTAssertEqual(
+            ParseService.normalizedInput(
+                "New ways of organizing the workplace--all that reengineering--are only one"
+            ),
+            "New ways of organizing the workplace -- all that reengineering -- are only one"
+        )
+        XCTAssertEqual(
+            ParseService.normalizedInput("downsizing[tObj] --are"),
+            "downsizing -- are"
+        )
+        // Preserve meaningful dash typography, repair safe punctuation
+        // boundaries, and drop copied object placeholders. Never guess a
+        // missing space inside an alphabetic token such as "orall".
+        XCTAssertEqual(
+            ParseService.normalizedInput("model,with—Security\u{FFFC}retirees orall"),
+            "model, with — Security retirees orall"
+        )
     }
 
     func testExtractsEnglishSentenceFromBilingualAnnotations() {

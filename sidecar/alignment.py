@@ -61,22 +61,53 @@ def annotate_chunk_spans(
             text = original.get("text")
             if not isinstance(text, str) or not text:
                 raise ValueError("chunk text is missing")
-            char_start = sentence.find(text, cursor, parent_end)
-            if char_start < 0:
-                # A child can start before a previous, reordered child only in
-                # malformed structure output.  The fallback still stays inside
-                # the parent so repeated text cannot jump to another clause.
-                char_start = sentence.find(text, parent_start, parent_end)
-            if char_start < 0:
-                raise ValueError(f"chunk text is outside its parent: {text!r}")
-
-            char_end = char_start + len(text)
-            start_token, end_token = token_span(char_start, char_end)
+            # Prefer explicit token bounds when the builder already set them —
+            # safer than string search for cards whose display text was glued
+            # from non-contiguous repair passes.
+            lo = original.get("_lo")
+            hi = original.get("_hi")
+            if (
+                isinstance(lo, int)
+                and isinstance(hi, int)
+                and 0 <= lo < hi <= len(source_token_offsets)
+            ):
+                start_token, end_token = lo, hi
+                char_start = source_token_offsets[lo][0]
+                char_end = source_token_offsets[hi - 1][1]
+                if char_start < parent_start or char_end > parent_end:
+                    raise ValueError(
+                        f"chunk text is outside its parent: {text!r}"
+                    )
+            else:
+                char_start = sentence.find(text, cursor, parent_end)
+                if char_start < 0:
+                    # A child can start before a previous, reordered child only in
+                    # malformed structure output.  The fallback still stays inside
+                    # the parent so repeated text cannot jump to another clause.
+                    char_start = sentence.find(text, parent_start, parent_end)
+                if char_start < 0:
+                    # Soft recovery: locate by stripping trailing/leading punct glue.
+                    soft = text.strip(" ,;:—–-")
+                    if soft and soft != text:
+                        char_start = sentence.find(soft, parent_start, parent_end)
+                        if char_start >= 0:
+                            text = soft
+                if char_start < 0:
+                    raise ValueError(f"chunk text is outside its parent: {text!r}")
+                char_end = char_start + len(text)
+                start_token, end_token = token_span(char_start, char_end)
             node_path = path + (position,)
             node_id = ".".join(str(part) for part in node_path)
             children = original.get("children") or []
 
-            copied = dict(original)
+            # Builder/grouping metadata is strictly sidecar-internal.  The v4
+            # wire contract exposes stable id/s/e fields, never implementation
+            # keys such as _lo/_hi.
+            copied = {
+                key: value
+                for key, value in original.items()
+                if not key.startswith("_")
+            }
             copied["id"] = node_id
             copied["s"] = start_token
             copied["e"] = end_token

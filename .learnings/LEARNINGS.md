@@ -79,3 +79,11 @@
 29. **不连续的 conj 成分会被"按连续段拼接"逻辑整体复制**："where they met and married and where I was born" 里 spaCy 把 where(10) 挂到 married(14)，married 子树 {10,14} 被中间 token 切成两段，build_chunks 每段 flush 都触发一次 __coord_clause__ 整体内联 → married 从句拼两次、span 乱序、Swift 校验拒收整树（症状=同一句永远"引擎暂不可用"，而引擎明明是热的）。修法：左缘引导词剥离白名单加 "conj"，且 chunk_roots 的 token 归属和 build_chunks 的子树用同一个 constituent_token_indices 算——两处口径一致才杜绝复制。邻接判据（#23）继续兜住真引导词。诊断路径照旧：探针脚本 dump 依存树+chunk 树，一轮定罪。sidecar/probe_sentence.py 已留作常备工具。
 
 28. **纯英文句法引擎的输入门槛必须按"段"过滤，不能只看全局字母占比**：双语注释材料（"close to 是靠近的意思。15．Economists…"）ASCII 字母占比 85% 轻松过 0.5 门槛，但 spaCy 英文模型吃到汉字后整树报废（economies 成谓语、中文片段全成插入语）。云端 LLM 在时这种输入被它兜住，砍云端后裸奔。修法：按句末标点切段，含 CJK 的段整段丢弃（词汇注释必含中文）、不足三词的碎片丢弃（编号/习语残片），剩余英文句照常拆。全角句点 ．（编号 "15．" 专用）要进规范化表，否则粘连进主语块。6c7045d。
+
+## 2026-07-30 ⌥S 框选 OCR 静默失效排查
+
+34. **`screencapture` 拒绝 `/dev/fd/1` 与 `/dev/stdout` 目标，且失败时 exit 0 + 0 字节**："把 PNG 通过匿名管道直接进内存、不落盘"的设计（`screencapture -i -x -tpng /dev/fd/1` + Pipe）在本机（Darwin 27）根本不成立：screencapture 需要可 seek 的普通文件，对 `/dev/fd/*`、`/dev/stdout` 一律 stderr 报 `cannot write file to intended destination` 并**以退出码 0 返回 0 字节**。代码 `guard terminationStatus == 0, !data.isEmpty else { return nil }` 把这个「成功退出但空输出」判成用户取消，于是每次截图都静默无反应、无日志。修法：写 0700 临时 PNG、读完即 `unlink`（隐私目标退而求其次，像素只在磁盘存在一瞬）。诊断关键：在普通 shell 里原样跑一遍 screencapture 命令看 exit code+字节数+stderr，一次就证伪管道方案——别信「exit 0 == 成功」。
+
+35. **"按了没反应、debugLog 开着却零日志" = 命中了 handler 的静默 return 分支**：`handleOCRHotkey` 只在 OCR 成功后才打日志，失败/取消路径直接 return，而 `⌥A` 的 handler 有入口日志。对照之下「⌥A 有日志、⌥S 全无」就锁定问题在 OCR 入口到成功之间的静默 return，而非热键没注册（再用 `nm` 确认二进制里有 `handleOCRHotkey` 符号排除「代码没编进去」）。教训：每个用户可触发的入口都要有一行入口日志；且**捕获失败必须和主动取消区分**（stderr 有内容=真失败要弹错，stderr 空=Esc 取消才静默），否则一切失败都伪装成"用户取消"。
+
+36. **改完装不上的坑：`open` 不会重启已在运行的 app，`cp` 覆盖不了正在执行的可执行文件**：`bundle.sh && cp -r build/Thorn.app /Applications/ && open …` 看似成功，但旧进程还在跑时 `cp` 覆盖 Mach-O 会 Text file busy（且 `cp -r dir /Applications/` 在目标已存在时是嵌套拷贝而非覆盖），`open` 又只是把旧进程调到前台——结果跑的还是旧二进制。判据：`stat` 已装二进制的 mtime + `strings` 找新符号 + `ps -o lstart` 看进程启动时间，三者对不上就是没装上。修法：先 `osascript -e 'quit app'`/`pkill -x`，再 `rm -rf` 旧 app、`cp -R` 新的、`codesign --verify`，最后 `open`。

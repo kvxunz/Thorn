@@ -58,6 +58,48 @@ def self_test():
         "correlative": "The harder he worked, the less he achieved.",
         "sooner": "The sooner we start, the sooner we finish.",
         "fronted-degree": "Much as I admire him, I cannot agree.",
+        "elided-as": (
+            "I have discovered, as perhaps Kelsey will after her much-publicized "
+            "resignation from the editorship of She after a build-up of stress, "
+            "that abandoning the doctrine of \"juggling your life\", and making "
+            "the alternative move into downshifting brings with it far greater "
+            "rewards than financial success and social status."
+        ),
+        "explanatory-for": (
+            "When a new movement in art attains a certain fashion, it is advisable "
+            "to find out what its advocates are aiming at, for, however farfetched "
+            "and unreasonable their principles may seem today, it is possible that "
+            "in years to come they may be regarded as normal."
+        ),
+        "railway-insertion": (
+            "The railroad industry as a whole, despite its brightening fortunes, "
+            "still does not earn enough to cover the cost of the capital it must "
+            "invest to keep up with its surging traffic."
+        ),
+        "dash-parenthetical": (
+            "This development--and its strong implication for US politics and "
+            "economy in years ahead--has enthroned the South."
+        ),
+        "dash-em": (
+            "The grand mediocrity of today—everyone being the same in survival "
+            "and number of off-spring—means that natural selection has lost 80% "
+            "of its power in upper-middle-class India compared to the tribe."
+        ),
+        "dash-while": (
+            "While warnings are often appropriate and necessary--the dangers of "
+            "drug interactions, for example--and many are required by state or "
+            "federal regulations, it isn't clear that they actually protect the "
+            "manufacturers and sellers from liability if a customer is injured."
+        ),
+        "gerund-internal-coordinate": (
+            "Comparing cats and dogs and making careful notes improves observation."
+        ),
+        "for-with-following-coordinate": (
+            "When a new movement in art attains a certain fashion, it is advisable "
+            "to find out what its advocates are aiming at, for, however farfetched "
+            "and unreasonable their principles may seem today, it is possible that "
+            "they may be regarded as normal, but critics disagree."
+        ),
     }.items():
         cases[name], _tokens = server.parse_text(sentence)
 
@@ -119,7 +161,52 @@ def self_test():
     assert sooner["children"][0]["text"] == "The sooner"
     fronted_degree = cases["fronted-degree"][0]
     assert fronted_degree["text"].startswith("Much ")
-    print("12 live spaCy+Benepar integration probes passed")
+
+    elided_as = cases["elided-as"]
+    as_clause = next(chunk for chunk in elided_as if chunk["text"].startswith("as perhaps"))
+    assert as_clause["text"].endswith("after a build-up of stress,")
+    assert not any(
+        chunk["role"] == "prep-phrase" and chunk["text"].startswith("after her")
+        for chunk in elided_as
+    )
+    coordinated_subject = next(
+        chunk for chunk in flatten(elided_as)
+        if chunk["role"] == "subject" and chunk["text"].startswith("abandoning the doctrine")
+    )
+    assert [child["text"].strip(" ,") for child in coordinated_subject["children"]] == [
+        'abandoning the doctrine of "juggling your life"',
+        "and",
+        "making the alternative move into downshifting",
+    ]
+    explanatory = next(
+        chunk for chunk in cases["explanatory-for"]
+        if chunk["role"] == "clause" and chunk["text"].lstrip(", ").startswith("for,")
+    )
+    assert any(child["role"] == "clause-adverbial" for child in explanatory["children"])
+    assert any(child["role"] == "subject" and child["text"] == "it"
+               for child in explanatory["children"])
+    assert cases["railway-insertion"]
+    assert cases["dash-parenthetical"]
+    assert cases["dash-em"]
+    assert cases["dash-while"]
+    gerund = cases["gerund-internal-coordinate"][0]
+    assert [child["text"] for child in gerund["children"]] == [
+        "Comparing cats and dogs",
+        "and",
+        "making careful notes",
+    ]
+    for_followed = cases["for-with-following-coordinate"]
+    for_branch = next(
+        chunk for chunk in for_followed
+        if chunk["role"] == "clause" and chunk["text"].lstrip(", ").startswith("for,")
+    )
+    assert "but critics disagree" not in for_branch["text"]
+    assert any(
+        chunk["role"] == "conjunction"
+        and chunk["text"].strip(" ,") == "but"
+        for chunk in for_followed
+    )
+    print("20 live spaCy+Benepar integration probes passed")
 
 
 sentence = sys.argv[1] if len(sys.argv) > 1 else (

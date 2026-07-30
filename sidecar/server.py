@@ -50,7 +50,7 @@ from chunk_rules import (
     though_clause_verb,
     verb_group_indices,
 )
-from constituency import ConstituencyIndex, TokenSpan
+from constituency import CLAUSE_LABELS, ConstituencyIndex, TokenSpan
 from evidence import ANALYSIS_PROTOCOL_VERSION, build_analysis_evidence
 from teaching_tree import TeachingEvidence, TokenSource, compile_teaching_tree
 
@@ -493,6 +493,60 @@ def blocked_indices_for_root(root, head, root_specs, parent_span):
     return blocked
 
 
+def absorb_misattached_roots_into_clauses(
+    root_specs,
+    head,
+    constituency,
+    parent_span,
+):
+    """Trust a tight Benepar clause over a dependency edge that escaped it.
+
+    Elliptical clauses such as ``as Kelsey will after ...`` may attach the
+    trailing PP to the matrix verb even though Benepar correctly includes it
+    in the SBAR. Keeping that PP as a matrix sibling blocks the clause span
+    resolver and destroys the nesting. Only non-clause roots inside a clause
+    constituent that excludes the matrix head are absorbed.
+    """
+    absorbed = set()
+    absorbed_by_clause = {}
+    clauses = [
+        (root, role)
+        for root, role, _expand in root_specs
+        if role and role.startswith("clause-")
+        # This recovery is for genuinely elliptical auxiliary predicates
+        # ("as Kelsey will [discover]"), not ordinary lexical verbs whose
+        # broad Benepar SBAR may contain a following discourse coordinator.
+        and root.pos_ == "AUX"
+        and any(child.dep_ == "mark" for child in root.children)
+    ]
+    for clause, _role in clauses:
+        clause_spans = [
+            span for span in constituency.spans
+            if span.inside(parent_span)
+            and span.labels.intersection(CLAUSE_LABELS)
+            and span.contains(clause.i)
+            and not span.contains(head.i)
+        ]
+        for other, other_role, _expand in root_specs:
+            if other.i == clause.i or (
+                other_role and other_role.startswith("clause-")
+            ):
+                continue
+            projection = _projection(other, parent_span)
+            if projection and any(
+                span.contains_all(projection) for span in clause_spans
+            ):
+                absorbed.add(other.i)
+                absorbed_by_clause.setdefault(clause.i, set()).update(projection)
+    return (
+        [
+            spec for spec in root_specs
+            if spec[0].i not in absorbed
+        ],
+        absorbed_by_clause,
+    )
+
+
 def has_relative_introducer(root):
     return any(
         token.tag_ in WH_TAGS or token.tag_ == "WRB"
@@ -739,6 +793,12 @@ def build_chunks(
             continue
         seen_roots.add(c.i)
         root_specs.append((c, role, expand))
+    root_specs, absorbed_by_clause = absorb_misattached_roots_into_clauses(
+        root_specs,
+        head,
+        constituency,
+        parent_span,
+    )
 
     # Constituency candidates may not reclaim any token already reserved for
     # the finite verbal complex (e.g. ``is not [that …]``). Sibling clause
@@ -752,7 +812,10 @@ def build_chunks(
             root=c.i,
             role=role,
             parent=parent_span,
-            required=boundary_anchors(c, expand, parent_span),
+            required=(
+                boundary_anchors(c, expand, parent_span)
+                | absorbed_by_clause.get(c.i, set())
+            ),
             blocked=blocked_indices_for_root(c, head, root_specs, parent_span),
             dependency_indices=owned_dependency_indices(c, parent_span, root_specs),
         )
@@ -980,6 +1043,26 @@ def build_chunks(
             return
         if role is None:
             chunks.append({"text": text, "role": "other", "gloss": "", "children": None})
+        elif (
+            role == "clause-noun"
+            and c.dep_ in ("csubj", "csubjpass")
+            and (gerund_children := coordinated_gerund_subject_children(
+                c,
+                doc,
+                constituency,
+                recursive_span,
+            )) is not None
+        ):
+            # spaCy occasionally reads the noun ``move`` as a verb in
+            # ``abandoning X and making the alternative move``. Benepar still
+            # exposes the coordinated VPs, so present the whole construction
+            # as one subject instead of fabricating a nested finite clause.
+            chunks.append({
+                "text": text,
+                "role": "subject",
+                "gloss": "",
+                "children": gerund_children,
+            })
         elif role == "clause-noun" and c.dep_ in ("csubj", "csubjpass"):
             # Subject clauses must stay one wrapped block ("How well… depends").
             kids = build_chunks(
@@ -1101,7 +1184,7 @@ def build_chunks(
                     # collapsed block (e.g. an appositive enumeration) that
                     # already carries its own children — keep them.
                     sub[0]["role"] = card_role
-                    chunks.append(sub[0])
+                    splice_flat(sub, recursive_span)
                 else:
                     # Prefer a single prep wrapper only when the first sub-card
                     # already carries the preposition text.
@@ -1144,7 +1227,136 @@ def build_chunks(
             parent_span,
         )
     result = group_colon_enumerations(result, doc, parent_span)
+    if clause_role_of_head is None:
+        result = group_explanatory_for_clause(
+            result,
+            doc,
+            constituency,
+            parent_span,
+        )
     return result
+
+
+def coordinated_gerund_subject_children(
+    root,
+    doc,
+    constituency,
+    parent_span,
+):
+    """Return coarse children for a Benepar-backed coordinated VBG subject."""
+    if root.tag_ != "VBG" or root.i != parent_span.start:
+        return None
+    for connector_index in range(root.i + 1, parent_span.end - 1):
+        connector = doc[connector_index]
+        if connector.pos_ != "CCONJ":
+            continue
+        if connector.dep_ != "cc":
+            continue
+        later = next((
+            doc[index]
+            for index in range(connector_index + 1, parent_span.end)
+            if (
+                doc[index].tag_ == "VBG"
+                and doc[index].dep_ == "conj"
+                and connector.head.i in (doc[index].head.i, doc[index].i)
+            )
+        ), None)
+        if later is None:
+            continue
+        later_is_vp = any(
+            span.start == later.i
+            and span.end == parent_span.end
+            and "VP" in span.labels
+            for span in constituency.spans
+        )
+        whole_is_clause = any(
+            span.start == parent_span.start
+            and span.end == parent_span.end
+            and span.labels.intersection({"S", "VP"})
+            for span in constituency.spans
+        )
+        if not (later_is_vp and whole_is_clause):
+            continue
+        return [
+            {
+                "text": doc[parent_span.start:connector_index].text,
+                "role": "subject",
+                "gloss": "",
+                "children": None,
+                "_lo": parent_span.start,
+                "_hi": connector_index - 1,
+            },
+            {
+                "text": doc[connector_index:later.i].text,
+                "role": "conjunction",
+                "gloss": "",
+                "children": None,
+                "_lo": connector_index,
+                "_hi": later.i - 1,
+            },
+            {
+                "text": doc[later.i:parent_span.end].text,
+                "role": "subject",
+                "gloss": "",
+                "children": None,
+                "_lo": later.i,
+                "_hi": parent_span.end - 1,
+            },
+        ]
+    return None
+
+
+def group_explanatory_for_clause(chunks, doc, constituency, parent_span):
+    """Keep a comma-introduced explanatory ``for`` clause as one branch."""
+    for index, chunk in enumerate(chunks):
+        if (
+            chunk.get("role") != "conjunction"
+            or chunk.get("text", "").strip(" ,;:").lower() != "for"
+        ):
+            continue
+        before = chunks[:index]
+        after = chunks[index + 1:]
+        if not (
+            any(item.get("role") == "subject" for item in before)
+            and any(item.get("role") == "verb" for item in before)
+            and any(item.get("role") == "subject" for item in after)
+            and any(item.get("role") == "verb" for item in after)
+        ):
+            continue
+        cut = len(chunks)
+        # When Benepar exposes coordinated top-level S children, use the
+        # constituent containing ``for`` as the authoritative endpoint. With
+        # no such boundary, keep the entire tail: guessing from a later "and"
+        # would wrongly eject a coordinate clause that is still inside for.
+        coordinate_spans = constituency.coordinate_clause_children(parent_span)
+        for span in coordinate_spans:
+            if not span.contains(chunk.get("_lo", -1)):
+                continue
+            cut = next(
+                (
+                    position
+                    for position in range(index + 1, len(chunks))
+                    if chunks[position].get("_lo", parent_span.end) >= span.end
+                    and chunks[position].get("role") == "conjunction"
+                ),
+                len(chunks),
+            )
+            break
+        tail = chunks[index:cut]
+        rest = chunks[cut:]
+        lo = tail[0].get("_lo")
+        hi = tail[-1].get("_hi")
+        if lo is None or hi is None:
+            return chunks
+        return before + [{
+            "text": doc[lo:hi + 1].text,
+            "role": "clause",
+            "gloss": "",
+            "children": tail,
+            "_lo": lo,
+            "_hi": hi,
+        }] + rest
+    return chunks
 
 
 def group_colon_enumerations(chunks, doc, parent_span):

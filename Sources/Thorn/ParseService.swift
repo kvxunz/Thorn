@@ -46,13 +46,18 @@ enum ParseService {
         // Parsing and whole-sentence translation are independent and run
         // concurrently. Structure never waits on the translator.
         async let translated = translateOnly(sentence: normalized, model: model)
-        guard let structure = await Sidecar.shared.structure(for: normalized) else {
+        let structure: SidecarStructure
+        do {
+            structure = try await Sidecar.shared.structure(for: normalized)
+        } catch SidecarFailure.unavailable {
             if let missing = await Sidecar.shared.missingScriptPath() {
                 throw LocalPipelineError.sidecarScriptMissing(missing)
             }
             throw LocalPipelineError.structureUnavailable(
                 await Sidecar.shared.modelInstallCommand()
             )
+        } catch {
+            throw error
         }
         try Task.checkCancellation()
         let bare = ParseResult(chunks: structure.chunks, translation: "")
@@ -114,7 +119,9 @@ enum ParseService {
             }
         }
         // PDF / OCR junk: footnote-like [tObj] [cObj] glued to words, exotic
-        // spaces, soft hyphens, and dash runs that must not fuse with words.
+        // spaces, soft hyphens, and line-wrapped hyphenated words. Dash runs
+        // stay byte-for-byte intact here: the sidecar creates its own
+        // parser-only spaced view while retaining source offsets.
         var text = mapped
             .replacingOccurrences(
                 of: "[\u{00A0}\u{1680}\u{2000}-\u{200A}\u{202F}\u{205F}]",
@@ -129,10 +136,10 @@ enum ParseService {
                 options: .regularExpression
             )
             .replacingOccurrences(
-                // Preserve the visible dash glyph/run for the header; the
-                // sidecar owns a parser-only "--" view mapped to this text.
-                of: "\\s*([—–―]+|-{2,})\\s*",
-                with: " $1 ",
+                // Conservative dehyphenation: only join a letter + hyphen at
+                // a line break to a lowercase continuation.
+                of: "([A-Za-z])-\\s+(?=[a-z])",
+                with: "$1-",
                 options: .regularExpression
             )
             .replacingOccurrences(

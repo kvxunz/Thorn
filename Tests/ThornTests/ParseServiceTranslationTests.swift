@@ -22,24 +22,30 @@ final class ParseServiceTranslationTests: XCTestCase {
             ParseService.normalizedInput("\u{FEFF}the case\u{200E} is"),
             "the case is"
         )
-        // Dash parentheticals must not glue to neighboring words; PDF junk
-        // brackets like [tObj] are stripped.
+        // Preserve dash runs exactly in the display/source string. The
+        // sidecar owns parser-only spacing; doing it in both layers creates
+        // zero-width whitespace tokens and makes otherwise valid input fail.
         XCTAssertEqual(
             ParseService.normalizedInput(
                 "New ways of organizing the workplace--all that reengineering--are only one"
             ),
-            "New ways of organizing the workplace -- all that reengineering -- are only one"
+            "New ways of organizing the workplace--all that reengineering--are only one"
         )
         XCTAssertEqual(
             ParseService.normalizedInput("downsizing[tObj] --are"),
-            "downsizing -- are"
+            "downsizing --are"
         )
         // Preserve meaningful dash typography, repair safe punctuation
         // boundaries, and drop copied object placeholders. Never guess a
         // missing space inside an alphabetic token such as "orall".
         XCTAssertEqual(
             ParseService.normalizedInput("model,with—Security\u{FFFC}retirees orall"),
-            "model, with — Security retirees orall"
+            "model, with—Security retirees orall"
+        )
+        // PDF/OCR line wrapping may split a genuinely hyphenated word.
+        XCTAssertEqual(
+            ParseService.normalizedInput("off-\n spring and upper-\ncase"),
+            "off-spring and upper-case"
         )
     }
 
@@ -82,6 +88,21 @@ final class ParseServiceTranslationTests: XCTestCase {
         XCTAssertEqual(
             ParseService.cleanTranslationOutput(raw),
             "这款产品没有兑现广告中的承诺。"
+        )
+    }
+
+    func testSidecarFailuresKeepSentenceErrorsDistinctFromStartupFailures() {
+        XCTAssertEqual(
+            SidecarFailure.unavailable.localizedDescription,
+            "本地句法引擎暂不可用。"
+        )
+        XCTAssertTrue(
+            SidecarFailure.rejected("token 11 未覆盖")
+                .localizedDescription.contains("token 11 未覆盖")
+        )
+        XCTAssertNotEqual(
+            SidecarFailure.invalidStructure.localizedDescription,
+            SidecarFailure.unavailable.localizedDescription
         )
     }
 }

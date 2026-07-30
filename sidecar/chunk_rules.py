@@ -393,13 +393,18 @@ def prepare_parse_text(text: str) -> PreparedParseText:
         dash = _DASH_RUN.match(surface, index)
         if dash is not None:
             start, end = dash.span()
-            parser_chars.extend((" ", "-", "-", " "))
-            source_spans.extend((
-                (start, start),
-                (start, end),
-                (start, end),
-                (end, end),
-            ))
+            # Be idempotent when the surface already contains whitespace
+            # around the dash. A second pair of synthetic spaces made spaCy
+            # emit whitespace tokens whose old zero-width mapping could not
+            # be projected back to source text.
+            if not parser_chars or parser_chars[-1] != " ":
+                parser_chars.append(" ")
+                source_spans.append((start, end))
+            parser_chars.extend(("-", "-"))
+            source_spans.extend(((start, end), (start, end)))
+            if end >= len(surface) or not surface[end].isspace():
+                parser_chars.append(" ")
+                source_spans.append((start, end))
             index = end
             continue
         if surface[index].isspace():

@@ -294,6 +294,19 @@ class DashParentheticalRepairTests(unittest.TestCase):
             ["workplace", "—", "aside", "—", "works"],
         )
 
+    def test_parser_cleanup_is_idempotent_for_pre_spaced_dashes(self):
+        for raw in (
+            "workplace -- aside -- works",
+            "workplace-- aside--works",
+            "workplace — aside — works",
+        ):
+            with self.subTest(raw=raw):
+                prepared = prepare_parse_text(raw)
+                self.assertEqual(prepared.parser, "workplace -- aside -- works")
+                offsets = ((0, 9), (10, 12), (13, 18), (19, 21), (22, 27))
+                mapped = prepared.source_token_offsets(offsets)
+                self.assertTrue(all(end > start for start, end in mapped))
+
     def test_surface_cleanup_drops_object_markers_without_guessing_word_breaks(self):
         prepared = prepare_parse_text("Social Security\uFFFCwith much orall")
         self.assertEqual(prepared.surface, "Social Security with much orall")

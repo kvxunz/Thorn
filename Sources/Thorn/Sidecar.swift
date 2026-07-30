@@ -5,6 +5,29 @@ struct SidecarStructure: Sendable {
     let sourceTokens: [String]
 }
 
+enum SidecarFailure: LocalizedError, Sendable {
+    case unavailable
+    case rejected(String)
+    case busy
+    case invalidResponse
+    case invalidStructure
+
+    var errorDescription: String? {
+        switch self {
+        case .unavailable:
+            return "本地句法引擎暂不可用。"
+        case .rejected(let detail):
+            return "这段文字未能完成句法拆解：\(detail)"
+        case .busy:
+            return "本地句法引擎正忙，请稍后再试。"
+        case .invalidResponse:
+            return "本地句法引擎返回了无法读取的结果。"
+        case .invalidStructure:
+            return "句法结果未通过完整性校验，请缩短文本后重试。"
+        }
+    }
+}
+
 /// Client + lifecycle for the Python structure sidecar (spaCy + benepar).
 /// The sidecar delivers deterministic teaching chunk trees; whole-sentence
 /// translation comes separately from the local HY-MT2 model.
@@ -43,6 +66,10 @@ actor Sidecar {
         let sourceTokens: [String]
     }
 
+    private struct ErrorResponse: Decodable {
+        let detail: String
+    }
+
     /// The launch script path when it does not exist on disk — so the panel
     /// can name the actual problem instead of a generic "engine unavailable".
     func missingScriptPath() -> String? {
@@ -55,30 +82,59 @@ actor Sidecar {
         return "uv run --script \(quoted) --install-models"
     }
 
-    /// Fetch the deterministic teaching tree; nil if the sidecar is unavailable.
-    func structure(for sentence: String) async -> SidecarStructure? {
+    /// Fetch the deterministic teaching tree while preserving the distinction
+    /// between startup/model failures and sentence-specific parse failures.
+    func structure(for sentence: String) async throws -> SidecarStructure {
         if let cached = structureCache[sentence] {
             structureOrder.removeAll { $0 == sentence }
             structureOrder.append(sentence)
             return cached
         }
-        if !(await ensureHealthy()) { return nil }
-        guard let url = URL(string: baseURL + "/parse") else { return nil }
+        if !(await ensureHealthy()) { throw SidecarFailure.unavailable }
+        guard let url = URL(string: baseURL + "/parse") else {
+            throw SidecarFailure.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         authorize(&request)
-        request.httpBody = try? JSONEncoder().encode(["text": sentence])
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              !Task.isCancelled,
-              (response as? HTTPURLResponse)?.statusCode == 200,
-              data.count <= 2_000_000,
-              let decoded = try? JSONDecoder().decode(StructureResponse.self, from: data),
-              !decoded.chunks.isEmpty,
+        request.httpBody = try JSONEncoder().encode(["text": sentence])
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            ThornLog.info("sidecar request failed: \(error.localizedDescription)")
+            throw SidecarFailure.unavailable
+        }
+        try Task.checkCancellation()
+        guard data.count <= 2_000_000,
+              let http = response as? HTTPURLResponse else {
+            throw SidecarFailure.invalidResponse
+        }
+        switch http.statusCode {
+        case 200:
+            break
+        case 422:
+            let detail = (try? JSONDecoder().decode(ErrorResponse.self, from: data).detail)
+                ?? "解析器无法覆盖完整句子"
+            throw SidecarFailure.rejected(detail)
+        case 429:
+            throw SidecarFailure.busy
+        default:
+            ThornLog.info("sidecar returned HTTP \(http.statusCode)")
+            throw SidecarFailure.invalidResponse
+        }
+        guard let decoded = try? JSONDecoder().decode(StructureResponse.self, from: data) else {
+            throw SidecarFailure.invalidResponse
+        }
+        guard !decoded.chunks.isEmpty,
               validate(chunks: decoded.chunks, sourceTokens: decoded.sourceTokens) else {
-            ThornLog.info("sidecar parse failed")
-            return nil
+            throw SidecarFailure.invalidStructure
         }
         let structure = SidecarStructure(chunks: decoded.chunks, sourceTokens: decoded.sourceTokens)
         cache(structure, for: sentence)

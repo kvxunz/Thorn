@@ -73,7 +73,7 @@ final class PanelState: ObservableObject {
                 }
             } catch {
                 guard self.activeRunID == runID else { return }
-                ThornLog.info("parse error: \(error.localizedDescription)")
+                ThornLog.info("parse error type: \(String(describing: type(of: error)))")
                 self.status = .error(error.localizedDescription)
             }
         }

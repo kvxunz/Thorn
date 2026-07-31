@@ -57,7 +57,6 @@ final class WordCardMeasurementTests: XCTestCase {
             let fitting = hosting.view.fittingSize
             panel.setFrame(CGRect(origin: .zero, size: fitting), display: true)
             hosting.view.layoutSubtreeIfNeeded()
-            print("PROBE[\(label)] frame=\(panel.frame.size) fitting=\(fitting)")
             XCTAssertEqual(panel.frame.size.width, fitting.width, accuracy: 1.0, label)
             XCTAssertEqual(panel.frame.size.height, fitting.height, accuracy: 1.0, label)
             // The re-measure at the fitted width must not report extra rows.

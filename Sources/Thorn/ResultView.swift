@@ -354,6 +354,26 @@ struct ResultView: View {
         )
     }
 
+    /// Sentence punctuation the data layer must keep (span math) but a card
+    /// should not show.
+    private static let cardTrim = CharacterSet(charactersIn: ",.;:!?-—–― ")
+
+    /// How much of an expanded parent survives as a label.
+    private static let leadWords = 4
+
+    /// Every word of an expanded parent reappears in the rows beneath it, and
+    /// again in the header above — three copies of the same clause, which is
+    /// what makes deep trees so tall. Expanded, the row keeps only enough of
+    /// the phrase to stay identifiable; collapsed, it still carries the whole
+    /// phrase, because there it is the only copy on screen.
+    static func rowText(_ chunk: Chunk, expanded: Bool) -> String {
+        let clean = chunk.text.trimmingCharacters(in: cardTrim)
+        guard expanded, chunk.children != nil else { return clean }
+        let words = clean.split(separator: " ")
+        guard words.count > leadWords else { return clean }
+        return words.prefix(leadWords).joined(separator: " ") + "…"
+    }
+
     private func chunkRow(
         _ chunk: Chunk,
         depth: Int = 0,
@@ -378,11 +398,7 @@ struct ResultView: View {
                     .frame(width: 10)
             }
 
-            // Cards show clean phrases: sentence punctuation the data layer
-            // must keep (header reassembly + span math) is trimmed here only.
-            Text(chunk.text.trimmingCharacters(
-                in: CharacterSet(charactersIn: ",.;:!?-—–― ")
-            ))
+            Text(Self.rowText(chunk, expanded: expanded))
                 .font(ThornType.english(depth > 0 ? ThornType.small : ThornType.body))
                 // Keep English readable; only slightly dim expandable parents.
                 .foregroundStyle(.primary.opacity(chunk.children != nil ? 0.72 : (depth > 0 ? 0.88 : 0.95)))

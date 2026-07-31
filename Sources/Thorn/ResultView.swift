@@ -14,10 +14,12 @@ struct ResultView: View {
                 errorView(message)
             case .result(let result):
                 resultView(result)
+            case .word(let result):
+                wordView(result)
             }
         }
-        .frame(minWidth: 400, idealWidth: 460, maxWidth: .infinity,
-               maxHeight: .infinity, alignment: .topLeading)
+        .frame(minWidth: minPanelWidth, idealWidth: idealPanelWidth,
+               maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
         // Whatever squeezing happens, the panel silhouette stays rounded.
         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -26,14 +28,14 @@ struct ResultView: View {
                 .strokeBorder(Color.primary.opacity(0.08))
         )
         .overlay(alignment: .topTrailing) {
-            if case .result = state.status {
+            if hasContent {
                 pinButton.padding(10)
             }
         }
         .overlay(alignment: .bottomTrailing) {
             // Dedicated resize grip: the borderless window's system resize
             // border is only ~4px and hard to grab.
-            if case .result = state.status {
+            if hasContent {
                 Image(systemName: "line.3.horizontal.decrease")
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
@@ -53,6 +55,25 @@ struct ResultView: View {
                     )
             }
         }
+    }
+
+    private var hasContent: Bool {
+        switch state.status {
+        case .result, .word: return true
+        default: return false
+        }
+    }
+
+    /// Word results are compact; forcing the sentence panel's 400/460pt
+    /// footprint leaves a sea of empty glass to the right of the blocks.
+    private var minPanelWidth: CGFloat {
+        state.wordMode ? 220 : 400
+    }
+
+    /// Word cards take their natural content width (the flow layout caps
+    /// monster words at 560pt internally); sentences keep the fixed ideal.
+    private var idealPanelWidth: CGFloat? {
+        state.wordMode ? nil : 460
     }
 
     private var pinButton: some View {
@@ -369,5 +390,181 @@ struct ResultView: View {
                 state.hoveredHighlight = nil
             }
         }
+    }
+
+    // MARK: - Single-word phonics view
+
+    /// Rotating syllable hues: adjacent syllables must contrast, exact color
+    /// carries no meaning (unlike the sentence role palette).
+    private static let syllablePalette: [Color] = [
+        .blue, .orange, .teal, .purple, .pink, .indigo,
+    ]
+
+    private func wordView(_ result: PhonicsResult) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Wrap at syllable boundaries; long words must not force a
+                // panel wider than the screen.
+                PhonicsFlowLayout(spacing: 7) {
+                    ForEach(Array(result.syllables.enumerated()), id: \.offset) { index, syllable in
+                        syllableBlock(
+                            syllable,
+                            color: Self.syllablePalette[index % Self.syllablePalette.count],
+                            trailingDot: index < result.syllables.count - 1
+                        )
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { WordSpeaker.speak(result.word) }
+                .help("点击朗读")
+
+                HStack(spacing: 6) {
+                    if let ipa = result.ipa {
+                        Text("/\(ipa)/")
+                            .font(.system(size: 12, design: .serif))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                    Button {
+                        WordSpeaker.speak(result.word)
+                    } label: {
+                        Image(systemName: "speaker.wave.2")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("朗读（本机系统语音）")
+                }
+
+                if result.approximate {
+                    Label("近似拆分（词典未收录，不含发音）",
+                          systemImage: "questionmark.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 36) // room for the pin in the corner
+            .padding(.top, 13)
+            .padding(.bottom, 9)
+
+            Divider().padding(.horizontal, 10)
+
+            // Chinese meaning (arrives after the blocks, like the sentence
+            // translation).
+            Group {
+                if result.meaning.isEmpty {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("查询中文词义…")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    // The meaning is the card's payload — a notch larger
+                    // than the 19pt phonics graphemes, never smaller.
+                    Text(result.meaning)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.primary.opacity(0.9))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+    }
+
+    /// One syllable, dictionary-card style: colored graphemes over a thin
+    /// underline that visually binds each chunk, IPA in small type below.
+    /// No boxes — light and compact.
+    private func syllableBlock(
+        _ syllable: PhonicsSyllable,
+        color: Color,
+        trailingDot: Bool
+    ) -> some View {
+        HStack(alignment: .top, spacing: 4) {
+            if syllable.stress != .none {
+                Text(syllable.stress.mark)
+                    .font(.system(size: 12, weight: .bold, design: .serif))
+                    .foregroundStyle(color)
+                    .padding(.top, 2)
+            }
+            ForEach(Array(syllable.chunks.enumerated()), id: \.offset) { _, chunk in
+                VStack(spacing: 2) {
+                    Text(chunk.grapheme)
+                        .font(.system(
+                            size: 19,
+                            weight: syllable.stress == .primary ? .bold : .semibold,
+                            design: .serif
+                        ))
+                        .foregroundStyle(color)
+                        .padding(.horizontal, 1)
+                    Capsule()
+                        .fill(color.opacity(syllable.stress == .primary ? 0.55 : 0.35))
+                        .frame(height: 2)
+                    // Reserve the row even without IPA so graphemes of
+                    // approximate splits still baseline-align.
+                    Text(chunk.ipa ?? " ")
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if trailingDot {
+                // Vertically centered against the grapheme line, not floating
+                // at the top of the block like a stray speck.
+                Text("·")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(height: 26, alignment: .center)
+            }
+        }
+        .fixedSize()
+    }
+}
+
+/// Minimal left-to-right wrapping layout: rows break when the next item
+/// exceeds the proposed width. Used for syllable blocks of long words.
+struct PhonicsFlowLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize,
+                       subviews: Subviews, cache: inout ()) {
+        for (subview, position) in zip(subviews, arrange(proposal: proposal, subviews: subviews).positions) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func arrange(proposal: ProposedViewSize,
+                         subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        // Cap even the unproposed ideal: the panel hugs this natural width,
+        // and a monster word must wrap instead of spanning the screen.
+        let maxWidth = min(proposal.width ?? 560, 560)
+        var positions: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            positions.append(CGPoint(x: x, y: y))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            totalWidth = max(totalWidth, x - spacing)
+        }
+        return (CGSize(width: totalWidth, height: y + rowHeight), positions)
     }
 }

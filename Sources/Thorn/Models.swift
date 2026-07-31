@@ -214,3 +214,46 @@ struct ParseResult: Equatable, Sendable {
     let chunks: [Chunk]
     let translation: String
 }
+
+// MARK: - Phonics (single-word input path)
+
+enum PhonicsStress: Equatable, Sendable {
+    case none
+    case primary
+    case secondary
+
+    var mark: String {
+        switch self {
+        case .none: return ""
+        case .primary: return "ˈ"
+        case .secondary: return "ˌ"
+        }
+    }
+}
+
+/// One phonics block: a grapheme (letter group) and the IPA it spells.
+/// `ipa` is nil for heuristic splits, where the pronunciation is unknown.
+struct PhonicsChunk: Equatable, Sendable {
+    let grapheme: String
+    let ipa: String?
+}
+
+struct PhonicsSyllable: Equatable, Sendable {
+    let chunks: [PhonicsChunk]
+    let stress: PhonicsStress
+}
+
+/// Phonics decomposition of a single word. `approximate` marks the
+/// rule-based fallback used when the word is not in the bundled dictionary.
+struct PhonicsResult: Equatable, Sendable {
+    let word: String
+    let ipa: String?
+    let syllables: [PhonicsSyllable]
+    let approximate: Bool
+    let meaning: String
+
+    func withMeaning(_ text: String) -> PhonicsResult {
+        PhonicsResult(word: word, ipa: ipa, syllables: syllables,
+                      approximate: approximate, meaning: text)
+    }
+}

@@ -194,6 +194,22 @@ enum ParseService {
             .joined(separator: " ")
     }
 
+    /// A capture that is one English word — letters with optional internal
+    /// apostrophe/hyphen — once surrounding punctuation is stripped. Such
+    /// input goes to the phonics path instead of the sentence parser.
+    /// Returns the cleaned word, or nil for anything sentence-like.
+    static func singleWord(in text: String) -> String? {
+        let surrounding = CharacterSet(charactersIn: "\"“”„«»‘’'()[]{}<>.,;:!?¡¿…·•*_—–- \t\n")
+        let trimmed = text.trimmingCharacters(in: surrounding)
+        guard !trimmed.isEmpty, !trimmed.contains(where: \.isWhitespace) else { return nil }
+        let normalized = trimmed.replacingOccurrences(of: "’", with: "'")
+        guard normalized.range(
+            of: "^[A-Za-z][A-Za-z'\\-]*$",
+            options: .regularExpression
+        ) != nil else { return nil }
+        return normalized
+    }
+
     private static func isCJKScalar(_ scalar: Unicode.Scalar) -> Bool {
         scalar.properties.isIdeographic
             || (0x3000...0x303F).contains(scalar.value) // CJK punctuation 【】、

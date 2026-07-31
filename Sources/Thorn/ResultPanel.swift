@@ -26,6 +26,14 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         presentPanel()
     }
 
+    /// Single-word capture: phonics decomposition instead of a parse tree.
+    func show(word: String) {
+        hidePanel()
+        userResized = false
+        state.start(word: word)
+        presentPanel()
+    }
+
     nonisolated func windowDidEndLiveResize(_ notification: Notification) {
         Task { @MainActor in self.userResized = true }
     }
@@ -40,26 +48,34 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
             panel.orderFrontRegardless()
             return
         }
-        if case .result = state.status {
+        switch state.status {
+        case .result, .word:
             presentPanel() // show as-is, no re-parse
-        } else {
+        default:
             // was closed mid-parse or errored: run again
-            state.start(sentence: state.sentence)
+            state.restart()
             presentPanel()
         }
     }
 
+    /// Word results are compact; the sentence panel's 400pt/240pt floors
+    /// would pad them with empty glass.
+    private var minPanelWidth: CGFloat { state.wordMode ? 220 : 400 }
+    private var minPanelHeight: CGFloat { state.wordMode ? 100 : 240 }
+
     /// The content's true minimum height at a given width: the window must
     /// never go below it, or SwiftUI overflows and the window clips corners.
     private func minContentHeight(atWidth width: CGFloat) -> CGFloat {
-        guard let hosting else { return 240 }
-        return max(240, hosting.sizeThatFits(in: CGSize(width: width, height: 1)).height)
+        guard let hosting else { return minPanelHeight }
+        return max(minPanelHeight,
+                   hosting.sizeThatFits(in: CGSize(width: width, height: 1)).height)
     }
 
     nonisolated func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
         MainActor.assumeIsolated {
-            let minH = minContentHeight(atWidth: max(400, frameSize.width))
-            return NSSize(width: max(400, frameSize.width), height: max(minH, frameSize.height))
+            let minW = minPanelWidth
+            let minH = minContentHeight(atWidth: max(minW, frameSize.width))
+            return NSSize(width: max(minW, frameSize.width), height: max(minH, frameSize.height))
         }
     }
 
@@ -68,7 +84,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         guard let panel else { return }
         userResized = true
         var frame = panel.frame
-        let newWidth = max(400, frame.width + delta.width)
+        let newWidth = max(minPanelWidth, frame.width + delta.width)
         let newHeight = max(minContentHeight(atWidth: newWidth), frame.height + delta.height)
         frame.origin.y -= (newHeight - frame.height)
         frame.size = CGSize(width: newWidth, height: newHeight)
@@ -86,6 +102,14 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         let controller = NSHostingController(rootView: ResultView(state: state) { [weak self] delta in
             self?.resizeBy(delta)
         })
+        // fitToContent owns the window size. Keep .intrinsicContentSize —
+        // fittingSize measures through it — but drop .preferredContentSize:
+        // that option lets the hosting controller resize the window itself
+        // using the ideal height at the *current* width, so a narrow panel
+        // wraps the phonics blocks, the window grows for two rows, and the
+        // phantom height survives after fitToContent widens the panel back
+        // to a single row.
+        controller.sizingOptions = [.intrinsicContentSize]
         hosting = controller
 
         let panel = NSPanel(
@@ -147,7 +171,16 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         guard !userResized else { return enforceMinimum() }
         guard let panel, let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()
-        let size = content.fittingSize
+        var size = content.fittingSize
+        // Word cards must hug their content: re-measure the exact height at
+        // the fitted width (every text is rigid, so sizeThatFits is honest)
+        // instead of trusting fittingSize's height, which can carry slack.
+        if state.wordMode, let hosting {
+            let tight = hosting.sizeThatFits(
+                in: CGSize(width: size.width, height: 1)
+            ).height
+            if tight > 10 { size.height = tight }
+        }
         ThornLog.info("fitToContent: fitting=\(size), current=\(panel.frame.size)")
         guard size.width > 10, size.height > 10, size != panel.frame.size else { return }
         var frame = panel.frame
@@ -165,7 +198,11 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         panel.layoutIfNeeded()
         var size = panel.contentView?.fittingSize ?? .zero
         if size.width < 50 || size.height < 30 {
-            size = CGSize(width: 460, height: 64) // loading placeholder; fitToContent() corrects it
+            // Loading placeholder; fitToContent() corrects it. Word lookups
+            // resolve into a small card — don't flash a sentence-wide panel.
+            size = state.wordMode
+                ? CGSize(width: 280, height: 56)
+                : CGSize(width: 460, height: 64)
         }
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main

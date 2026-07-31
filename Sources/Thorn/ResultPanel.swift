@@ -14,6 +14,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     private var globalKeyMonitor: Any?
     private var statusObserver: AnyCancellable?
     private var expandObserver: AnyCancellable?
+    private var pendingShrink: DispatchWorkItem?
     private var userResized = false
     let state = PanelState()
 
@@ -143,11 +144,27 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
             .sink { [weak self] _ in
                 DispatchQueue.main.async { self?.fitToContent() }
             }
+        // Expanding a clause animates the subtree in (ThornMotion.reveal).
+        // The window must be at its final size *before* that animation runs,
+        // or SwiftUI lays out inside a too-small frame and hard-clips — the
+        // square-corners bug in LEARNINGS #15. So: grow immediately, and defer
+        // any shrink until the collapse animation has finished playing.
         expandObserver = state.$expanded
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                DispatchQueue.main.async { self?.fitToContent() }
+                DispatchQueue.main.async { self?.refitAroundReveal() }
             }
+    }
+
+    private func refitAroundReveal() {
+        pendingShrink?.cancel()
+        fitToContent(allowShrink: false)
+        let shrink = DispatchWorkItem { [weak self] in self?.fitToContent() }
+        pendingShrink = shrink
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + ThornMotion.revealDuration,
+            execute: shrink
+        )
     }
 
     /// Content changed while the user holds a manual size: keep their size,
@@ -167,7 +184,11 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
 
     /// Resize to the content's real size: keep top edge fixed, clamp to screen.
     /// Backs off once the user has resized the panel manually.
-    private func fitToContent() {
+    ///
+    /// `allowShrink: false` only ever grows the window — used while a content
+    /// animation is in flight, where shrinking would clip the frames still
+    /// being drawn at the old (larger) size.
+    private func fitToContent(allowShrink: Bool = true) {
         guard !userResized else { return enforceMinimum() }
         guard let panel, let content = panel.contentView else { return }
         content.layoutSubtreeIfNeeded()
@@ -180,6 +201,10 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
                 in: CGSize(width: size.width, height: 1)
             ).height
             if tight > 10 { size.height = tight }
+        }
+        if !allowShrink {
+            size.width = max(size.width, panel.frame.width)
+            size.height = max(size.height, panel.frame.height)
         }
         ThornLog.info("fitToContent: fitting=\(size), current=\(panel.frame.size)")
         guard size.width > 10, size.height > 10, size != panel.frame.size else { return }
@@ -256,6 +281,8 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     private func hidePanel() {
         statusObserver = nil
         expandObserver = nil
+        pendingShrink?.cancel()
+        pendingShrink = nil
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }

@@ -60,12 +60,12 @@ enum ParseService {
             throw error
         }
         try Task.checkCancellation()
-        let bare = ParseResult(chunks: structure.chunks, translation: "")
+        let bare = ParseResult(sentence: normalized, chunks: structure.chunks, translation: "")
         onPartial?(bare) // tree on screen immediately, translation pending
         do {
             let translation = try await translated
             try Task.checkCancellation()
-            return ParseResult(chunks: structure.chunks, translation: translation)
+            return ParseResult(sentence: normalized, chunks: structure.chunks, translation: translation)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -73,6 +73,7 @@ enum ParseService {
             // Structure alone still beats nothing — fill the translation slot
             // so the panel doesn't spin forever waiting for one.
             return ParseResult(
+                sentence: normalized,
                 chunks: structure.chunks,
                 translation: "（中文释义暂缺：本地模型未响应，结构来自句法引擎）"
             )

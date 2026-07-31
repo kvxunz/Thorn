@@ -10,7 +10,32 @@ struct ChunkTextLayout {
 /// left to right, so repeated text such as two separate "that" nodes remains
 /// unambiguous.
 enum ChunkSpanResolver {
-    static func layout(for chunks: [Chunk]) -> ChunkTextLayout {
+    /// Locate the tree inside the sentence the user actually captured.
+    ///
+    /// Reassembling the header from chunk text cannot reproduce English
+    /// spacing: spaCy splits `It's` into `It` + `'s`, so gluing the pieces
+    /// back with spaces renders `It 's`. Clitics, and any other token the
+    /// tokenizer detaches, are only correct in the original string — so the
+    /// original string is what gets drawn, and the chunks are matched into it.
+    static func layout(for chunks: [Chunk], in sentence: String) -> ChunkTextLayout {
+        if !sentence.isEmpty {
+            var spans: [UUID: Range<Int>] = [:]
+            // Same parent-constrained, left-to-right walk used for children:
+            // the sentence is simply the outermost parent.
+            resolveChildren(chunks, within: sentence, parentStart: 0, into: &spans)
+            // All or nothing. A partial match would leave some chunks with no
+            // span, and an uncolored chunk is worse than uniform fallback.
+            if chunks.allSatisfy({ spans[$0.id] != nil }) {
+                return ChunkTextLayout(text: sentence, spans: spans)
+            }
+        }
+        return reassembled(chunks)
+    }
+
+    /// Fallback for when the tree cannot be found in the sentence (normalized
+    /// capture, a sidecar that rewrote a token). Spacing may be imperfect, but
+    /// every chunk still gets a span.
+    private static func reassembled(_ chunks: [Chunk]) -> ChunkTextLayout {
         var text = ""
         var spans: [UUID: Range<Int>] = [:]
 

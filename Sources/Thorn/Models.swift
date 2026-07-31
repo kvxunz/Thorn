@@ -18,13 +18,6 @@ enum ChunkRole: String, Decodable, CaseIterable, Sendable {
     case adverbial
     case other
 
-    var isClause: Bool {
-        switch self {
-        case .clauseRelative, .clauseAdverbial, .clauseNoun, .clause: return true
-        default: return false
-        }
-    }
-
     var label: String {
         switch self {
         case .subject: return "主语"

@@ -204,6 +204,10 @@ struct Chunk: Decodable, Identifiable, Equatable, Sendable {
 }
 
 struct ParseResult: Equatable, Sendable {
+    /// The exact string the chunks were produced from — already normalized and
+    /// English-extracted. The header renders this rather than gluing chunk text
+    /// back together, which cannot restore spacing around detached tokens.
+    let sentence: String
     let chunks: [Chunk]
     let translation: String
 }

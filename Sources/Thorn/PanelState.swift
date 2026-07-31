@@ -90,6 +90,7 @@ final class PanelState: ObservableObject {
                 guard self.activeRunID == runID else { return }
                 if case .result(let partial) = self.status, partial.translation.isEmpty {
                     self.status = .result(ParseResult(
+                        sentence: partial.sentence,
                         chunks: partial.chunks,
                         translation: "（已取消：整句翻译未完成）"
                     ))
@@ -141,6 +142,7 @@ final class PanelState: ObservableObject {
         // translation) after an intentional cancel.
         if case .result(let result) = status, result.translation.isEmpty {
             status = .result(ParseResult(
+                sentence: result.sentence,
                 chunks: result.chunks,
                 translation: "（已取消：整句翻译未完成）"
             ))

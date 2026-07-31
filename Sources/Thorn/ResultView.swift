@@ -138,7 +138,10 @@ struct ResultView: View {
 
     private func resultView(_ result: ParseResult) -> some View {
         let chunks = headerChunks(result)
-        let layout = ChunkSpanResolver.layout(for: chunks)
+        // The parsed sentence, not state.sentence: normalization runs again
+        // inside ParseService, so only the result knows the exact string its
+        // chunks were cut from.
+        let layout = ChunkSpanResolver.layout(for: chunks, in: result.sentence)
         let spans = layout.spans
 
         return VStack(alignment: .leading, spacing: 0) {

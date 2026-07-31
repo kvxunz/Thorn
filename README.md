@@ -31,6 +31,16 @@
 
 `Esc` 或点击浮窗外部关闭浮窗。双语材料（英文句夹中文注释）会自动只保留英文句子。
 
+## 选中的是单词？按自然拼读拆
+
+选中内容只有一个英文单词时（允许 `don't`、`mother-in-law` 这类内部撇号/连字符），没有句法可拆，浮窗改为显示**自然拼读拆解**：
+
+- 单词按「一块拼写 ↔ 一个音」切成色块，同音节同色，块下标注对应 IPA；
+- 音节之间以 `·` 分隔，重音音节加粗并带 `ˈ`/`ˌ` 标记；
+- 下方是整词 IPA 和本地 Ollama 给出的中文词义。
+
+拆分来自打包进 App 的对齐词典（`Resources/phonics-en.tsv`，由 CMUdict 离线对齐生成，约 12.5 万词，见 `docs/phonics-dict.md`），查表纯本地、确定性、零延迟。词典未收录的词退回规则近似拆分，浮窗会标注「近似拆分」且不猜发音。
+
 ## 工作原理
 
 ```
@@ -94,11 +104,14 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 ## 项目结构
 
 ```
-Sources/Thorn/          Swift 菜单栏 App（热键、浮窗、sidecar 客户端、OCR、翻译）
+Sources/Thorn/          Swift 菜单栏 App（热键、浮窗、sidecar 客户端、OCR、翻译、拼读）
 sidecar/                Python 句法引擎（spaCy + Benepar），FastAPI 服务
+Resources/phonics-en.tsv 单词拼读对齐词典（离线生成，随 App 打包）
 Tests/ThornTests/       Swift 单测
 scripts/bundle.sh       构建 + 签名 + 组装 .app
+scripts/build_phonics_dict.py 拼读词典离线生成器（CMUdict + EM 对齐）
 docs/parsing-issues.md  句法拆解的已知问题与回归样本
+docs/phonics-dict.md    拼读词典的数据格式与生成说明
 .learnings/LEARNINGS.md 踩坑档案：症状 → 根因 → 解法 → 诊断手法
 ```
 

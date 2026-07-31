@@ -16,6 +16,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Thorn "$APP/Contents/MacOS/Thorn"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Phonics dictionary (single-word ⌥A path); regenerate with
+# scripts/build_phonics_dict.py.
+cp Resources/phonics-en.tsv "$APP/Contents/Resources/phonics-en.tsv"
 
 # Stable identity so the TCC accessibility grant survives rebuilds.
 # Hash, not name: two same-named "DocR Dev" certs in keychain make the name ambiguous.

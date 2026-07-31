@@ -67,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "选中英文后按 ⌥A 拆句", action: nil, keyEquivalent: "")
+        menu.addItem(withTitle: "选中英文后按 ⌥A 拆句（单词则拆拼读）", action: nil, keyEquivalent: "")
         menu.addItem(withTitle: "框选图片文字后按 ⌥S 识别并拆句", action: nil, keyEquivalent: "")
         menu.addItem(withTitle: "⌥Z 重现上次结果", action: nil, keyEquivalent: "")
         menu.addItem(.separator())
@@ -159,6 +159,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard sentence.count <= 1200 else {
             panelController.showError("内容过长（超过 1200 字符）。请只选取一句或一小段。")
+            return
+        }
+        // A single word has no syntax to teach — decompose its spelling into
+        // phonics blocks instead of sending it to the sentence parser.
+        if let word = ParseService.singleWord(in: sentence) {
+            ThornLog.info("single word capture, phonics path")
+            panelController.show(word: word)
             return
         }
         panelController.show(sentence: sentence)

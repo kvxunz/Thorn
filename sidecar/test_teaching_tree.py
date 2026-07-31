@@ -133,6 +133,85 @@ class TeachingTreeContractTests(unittest.TestCase):
         )
         self.assertEqual((predicate["s"], predicate["e"]), (1, 5))
 
+    def test_inversion_grouping_never_crosses_a_sentence_boundary(self):
+        # Two selected sentences: "... he will." + "The boy can go ... up".
+        # The sentence-final "will." must not be read as an inversion
+        # auxiliary for the next sentence's subject and predicate.
+        result = self.compile_result(
+            "Indeed and he will. The boy can go nowhere but up",
+            [
+                {
+                    "text": "Indeed", "role": "adverbial", "gloss": "",
+                    "children": None, "_lo": 0, "_hi": 0,
+                },
+                {
+                    "text": "and", "role": "conjunction", "gloss": "",
+                    "children": None, "_lo": 1, "_hi": 1,
+                },
+                {
+                    "text": "he", "role": "subject", "gloss": "",
+                    "children": None, "_lo": 2, "_hi": 2,
+                },
+                {
+                    "text": "will.", "role": "verb", "gloss": "",
+                    "children": None, "_lo": 3, "_hi": 4,
+                },
+                {
+                    "text": "The boy", "role": "subject", "gloss": "",
+                    "children": None, "_lo": 5, "_hi": 6,
+                },
+                {
+                    "text": "can go nowhere but", "role": "verb", "gloss": "",
+                    "children": None, "_lo": 7, "_hi": 10,
+                },
+                {
+                    "text": "up", "role": "adverbial", "gloss": "",
+                    "children": None, "_lo": 11, "_hi": 11,
+                },
+            ],
+        )
+
+        self.assertEqual(
+            [node["role"] for node in result],
+            [
+                "adverbial", "conjunction", "subject", "verb",
+                "subject", "verb", "adverbial",
+            ],
+        )
+        self.assertEqual(result[3]["text"], "will.")
+        self.assertIsNone(result[3]["children"])
+
+    def test_coordination_grouping_never_crosses_a_sentence_boundary(self):
+        # "He will." + "But wait." must stay two clauses, not fuse into one
+        # coordinated predicate spanning the period.
+        result = self.compile_result(
+            "He will. But wait.",
+            [
+                {
+                    "text": "He", "role": "subject", "gloss": "",
+                    "children": None, "_lo": 0, "_hi": 0,
+                },
+                {
+                    "text": "will.", "role": "verb", "gloss": "",
+                    "children": None, "_lo": 1, "_hi": 2,
+                },
+                {
+                    "text": "But", "role": "conjunction", "gloss": "",
+                    "children": None, "_lo": 3, "_hi": 3,
+                },
+                {
+                    "text": "wait.", "role": "verb", "gloss": "",
+                    "children": None, "_lo": 4, "_hi": 5,
+                },
+            ],
+        )
+
+        self.assertEqual(
+            [node["role"] for node in result],
+            ["subject", "verb", "conjunction", "verb"],
+        )
+        self.assertTrue(all(node["children"] is None for node in result))
+
     def test_coordinated_predicates_and_trailing_object_form_one_group(self):
         result = self.compile_result(
             "They sneer and nudge each other.",

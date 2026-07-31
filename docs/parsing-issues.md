@@ -74,6 +74,27 @@ for
 
 处理结果：解释性 `for` 后存在完整主谓骨架时，将 `for`、让步从句和第二主句收进同一“分句”分支。真实模型回归已通过。
 
+### P-004 两句连选时被并成一个伪倒装谓语
+
+触发文本（一次选中两句）：
+
+> Indeed and he will. The boy who wants to know something about the grace, elegance and beauty of Euclid can go nowhere but up
+
+当前结果把第一句句尾的 `will.` 当成倒装助动词，与第二句的主语和 `can go nowhere but` 归组成一个横跨句号的“谓语”，两个句子融成一棵错误的树。
+
+期望骨架：
+
+```text
+Indeed / and / he / will.        （第一句，各成分独立）
+The boy who ... Euclid           （第二句主语）
+can go nowhere but               （第二句谓语）
+up                               （状语）
+```
+
+回归判据：任何谓语归组（倒装、并列）都不得跨越以 `.` `!` `?` `;` `:` 结尾的块。
+
+处理结果：`teaching_tree.py` 的 `_group_subject_aux_inversion` 与 `_group_coordinated_predicates` 在归组前检查前一块是否以句子/分句终结符收尾（merge_tiny 会把尾部标点粘到前块上，因此这是可靠的边界信号），是则拒绝归组。单测 + 真实模型探针均通过。
+
 ## 运行链路已修复（2026-07-30）
 
 ### R-001 插入性介词短语后的逗号丢失，导致整句被拒绝

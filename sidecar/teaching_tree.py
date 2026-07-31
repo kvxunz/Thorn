@@ -209,6 +209,18 @@ def _alignment_payload(source: TokenSource, node: TeachingNode) -> dict[str, Any
     return payload
 
 
+def _ends_sentence(source: TokenSource, node: TeachingNode) -> bool:
+    """Whether the node's surface text stops at a sentence/clause terminator.
+
+    merge_tiny glues trailing punctuation onto the preceding chunk, so a
+    chunk ending in ``.!?;:`` marks a boundary the predicate-grouping
+    passes must never merge across (two selected sentences would otherwise
+    fuse into one fake inverted/coordinated predicate).
+    """
+    text = source.span_text(node.start, node.end).rstrip().rstrip("\"'”’)]")
+    return text.endswith((".", "!", "?", ";", ":"))
+
+
 def _group_subject_aux_inversion(
     source: TokenSource,
     nodes: Sequence[TeachingNode],
@@ -232,6 +244,8 @@ def _group_subject_aux_inversion(
                     auxiliary_text in _AUXILIARY_WORDS
                     or auxiliary_text.startswith("'")
                 )
+                and not _ends_sentence(source, auxiliary)
+                and not _ends_sentence(source, subject)
             ):
                 output.append(TeachingNode(
                     start=auxiliary.start,
@@ -248,6 +262,7 @@ def _group_subject_aux_inversion(
 
 
 def _group_coordinated_predicates(
+    source: TokenSource,
     nodes: Sequence[TeachingNode],
 ) -> tuple[TeachingNode, ...]:
     output: list[TeachingNode] = []
@@ -264,6 +279,7 @@ def _group_coordinated_predicates(
             cursor + 1 < len(nodes)
             and nodes[cursor].role == "conjunction"
             and nodes[cursor + 1].role == "verb"
+            and not _ends_sentence(source, cluster[-1])
         ):
             cluster.extend((nodes[cursor], nodes[cursor + 1]))
             cursor += 2
@@ -272,6 +288,7 @@ def _group_coordinated_predicates(
             len(cluster) >= 3
             and cursor < len(nodes)
             and nodes[cursor].role == "object"
+            and not _ends_sentence(source, cluster[-1])
         ):
             cluster.append(nodes[cursor])
             cursor += 1
@@ -318,7 +335,7 @@ def _coarsen_predicates(
         for node in nested
     )
     nested = _group_subject_aux_inversion(source, nested)
-    return _group_coordinated_predicates(nested)
+    return _group_coordinated_predicates(source, nested)
 
 
 def _split_paired_dash_parentheticals(

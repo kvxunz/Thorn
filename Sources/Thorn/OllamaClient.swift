@@ -43,7 +43,11 @@ enum OllamaRequestFactory {
             "model": model,
             "messages": messages.map { ["role": $0.role, "content": $0.content] },
             "stream": false,
-            "keep_alive": "15m",
+            // A resident HY-MT2 weighs ~6.5 GB, and translation here is
+            // one-shot: no history, no shared prefix, so a warm model buys
+            // nothing after the panel closes. Note this per-request value
+            // overrides OLLAMA_KEEP_ALIVE — setting the env var has no effect.
+            "keep_alive": "60s",
             "options": [
                 "temperature": temperature,
                 "num_ctx": contextWindow,
@@ -116,15 +120,6 @@ actor OllamaCoordinator {
         let names = response.models.compactMap { $0.name ?? $0.model }.sorted()
         verifiedModels.formUnion(names)
         return names
-    }
-
-    func modelIsInstalled(_ model: String) async -> Bool {
-        do {
-            try await ensureModel(model)
-            return true
-        } catch {
-            return false
-        }
     }
 
     private func ensureModel(_ model: String) async throws {

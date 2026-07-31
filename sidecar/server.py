@@ -16,7 +16,7 @@
 # ///
 """Thorn local language sidecar: raw spaCy + Benepar evidence.
 
-Run: uv run --script server.py [--port 48620] [--idle-exit 900]
+Run: uv run --script server.py [--port 48620] [--idle-exit 120]
 """
 import argparse
 import hmac
@@ -1642,7 +1642,10 @@ if __name__ == "__main__":
     import uvicorn
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=48620)
-    ap.add_argument("--idle-exit", type=int, default=900)
+    # The transformer models cost ~3.2 GB resident but only ~2.7 s to reload,
+    # so idling for a quarter of an hour trades a lot of RAM for a saving the
+    # user rarely collects. Two minutes still covers a reading session.
+    ap.add_argument("--idle-exit", type=int, default=120)
     ap.add_argument(
         "--install-models",
         action="store_true",

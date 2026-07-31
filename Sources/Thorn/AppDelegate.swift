@@ -63,13 +63,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "text.line.magnify", accessibilityDescription: "Thorn")
+            // Swap the glyph to retaste the icon: ⊢ (formal-grammar "derives"),
+            // ∇, λ, þ (the Old English letter the app is named after).
+            button.image = Self.glyphIcon("∂")
         }
 
         let menu = NSMenu()
-        menu.addItem(withTitle: "选中英文后按 ⌥A 拆句（单词则拆拼读）", action: nil, keyEquivalent: "")
-        menu.addItem(withTitle: "框选图片文字后按 ⌥S 识别并拆句", action: nil, keyEquivalent: "")
-        menu.addItem(withTitle: "⌥Z 重现上次结果", action: nil, keyEquivalent: "")
+        // Verb left, shortcut right-aligned in its own column. The old hints
+        // were sentences ("选中英文后按 ⌥A 拆句（单词则拆拼读）") and NSMenu
+        // sizes itself to its widest item, so one of them set the width of
+        // the whole menu.
+        for (title, key) in [("拆解选中英文", "a"), ("截图取词拆解", "s"), ("重现上次结果", "z")] {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: key)
+            item.keyEquivalentModifierMask = .option
+            menu.addItem(item) // nil action -> auto-disabled, i.e. a hint
+        }
         menu.addItem(.separator())
         menu.addItem(withTitle: "设置…", action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(.separator())
@@ -92,6 +100,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Warm the structure sidecar so the first parse isn't a cold start.
         Task.detached { _ = try? await Sidecar.shared.structure(for: "Warm up.") }
+    }
+
+    /// A single glyph as the menubar icon. SF Symbols carry fine detail that
+    /// dies at the menubar's ~16pt: `text.line.magnify`'s magnifier ring
+    /// degraded into a fourth horizontal line, so the icon read as a smudge
+    /// of stripes. A glyph has no detail to lose.
+    private static func glyphIcon(_ glyph: String) -> NSImage {
+        let font = NSFont(name: "NewYork-Medium", size: 16)
+            ?? .systemFont(ofSize: 16, weight: .medium)
+        let text = NSAttributedString(string: glyph, attributes: [
+            .font: font,
+            .foregroundColor: NSColor.black,
+        ])
+        let bounds = text.size()
+        let image = NSImage(size: NSSize(width: ceil(bounds.width) + 2,
+                                         height: ceil(bounds.height)))
+        image.lockFocus()
+        text.draw(at: NSPoint(x: 1, y: 0))
+        image.unlockFocus()
+        // Template: AppKit recolours it for light/dark menubars *and* for the
+        // highlighted state. A baked-in colour inverts wrong on selection.
+        image.isTemplate = true
+        image.accessibilityDescription = "Thorn"
+        return image
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -34,6 +34,10 @@ enum SidecarFailure: LocalizedError, Sendable {
 actor Sidecar {
     static let shared = Sidecar()
 
+    /// Passed explicitly rather than left to server.py's default, so the cost
+    /// of an idle sidecar (~3.2 GB) is visible on the side that spawns it.
+    private static let idleExitSeconds = 120
+
     private let port: Int
     private let authToken: String
     private var process: Process?
@@ -239,7 +243,7 @@ actor Sidecar {
     }
 
     /// Spawn `uv run server.py` once per app session. The sidecar exits itself
-    /// after 15 minutes idle; we respawn on the next request.
+    /// after `idleExitSeconds` idle; we respawn on the next request.
     private func launchIfNeeded() {
         if let process, process.isRunning { return }
         // Re-allow launching after a previous sidecar exited (idle timeout).
@@ -258,10 +262,11 @@ actor Sidecar {
         // parameters so a custom path cannot be interpreted as shell syntax.
         p.arguments = [
             "-lc",
-            "exec uv run --script \"$1\" --port \"$2\"",
+            "exec uv run --script \"$1\" --port \"$2\" --idle-exit \"$3\"",
             "thorn-sidecar",
             script,
             String(port),
+            String(Self.idleExitSeconds),
         ]
         var environment = ProcessInfo.processInfo.environment
         environment["THORN_SIDECAR_TOKEN"] = authToken

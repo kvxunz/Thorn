@@ -811,6 +811,66 @@ class TeachingTreeContractTests(unittest.TestCase):
 
         self.assertEqual(clause["form"], "relative-clause")
 
+    def prep_wrapper(self, text, rows, cut):
+        """A prep wrapper split into a preposition card and an object card."""
+        source = token_source(text)
+        last = len(rows) - 1
+        chunks = [{
+            "text": text, "role": "prep-phrase", "gloss": "",
+            "_lo": 0, "_hi": last,
+            "children": [
+                {
+                    "text": text, "role": "prep-phrase", "gloss": "",
+                    "children": None, "_lo": 0, "_hi": cut - 1,
+                },
+                {
+                    "text": text, "role": "object", "gloss": "",
+                    "children": None, "_lo": cut, "_hi": last,
+                },
+            ],
+        }]
+        compiled = compile_teaching_tree(
+            source, chunks, evidence=teaching_evidence(rows),
+        )
+        return compiled[0]
+
+    def test_card_holding_only_the_preposition_is_labelled_a_preposition(self):
+        """"Apart from | the fact": the phrase label belongs to the parent.
+
+        The child card has no object on it, so calling it 介词短语 would name
+        a phrase that is not there.
+        """
+        wrapper = self.prep_wrapper(
+            "Apart from the fact",
+            [
+                ("Apart", "apart", "ADV", "RB", "advmod", 3),
+                ("from", "from", "ADP", "IN", "prep", 3),
+                ("the", "the", "DET", "DT", "det", 3),
+                ("fact", "fact", "NOUN", "NN", "pobj", 1),
+            ],
+            cut=2,
+        )
+
+        self.assertEqual(wrapper["form"], "prepositional-phrase")
+        self.assertEqual(wrapper["children"][0]["form"], "preposition")
+        self.assertEqual(wrapper["children"][1]["function"], "object")
+
+    def test_prep_card_carrying_its_object_stays_a_phrase(self):
+        """An unsplit core keeps 介词短语 — the object is on the card."""
+        wrapper = self.prep_wrapper(
+            "in spite of the rain",
+            [
+                ("in", "in", "ADP", "IN", "prep", 0),
+                ("spite", "spite", "NOUN", "NN", "pobj", 0),
+                ("of", "of", "ADP", "IN", "prep", 1),
+                ("the", "the", "DET", "DT", "det", 4),
+                ("rain", "rain", "NOUN", "NN", "pobj", 2),
+            ],
+            cut=3,
+        )
+
+        self.assertEqual(wrapper["children"][0]["form"], "prepositional-phrase")
+
 
 if __name__ == "__main__":
     unittest.main()

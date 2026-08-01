@@ -46,6 +46,7 @@ from chunk_rules import (
     is_wh_relative_pronoun,
     mark_discourse_insertions,
     merge_or_so,
+    prep_object_start,
     prepare_parse_text,
     though_clause_verb,
     verb_group_indices,
@@ -771,6 +772,31 @@ def np_expand(head, doc, role, constituency, parent_span):
     return result
 
 
+def split_prep_core(sub, prep, doc):
+    """Split the core card of a prep wrapper into 介词 + 宾语.
+
+    "Apart from the fact that …" wraps a core "from the fact" plus the clause.
+    That core card repeats its parent's own 介词短语 label and so teaches
+    nothing; naming the preposition and its object does. Only for a wrapper —
+    a prep phrase that stays one card must stay one card."""
+    core = sub[0]
+    lo, hi = core.get("_lo"), core.get("_hi")
+    if (core.get("role") != "prep-phrase" or core.get("children")
+            or not isinstance(lo, int) or not isinstance(hi, int)
+            or not lo <= prep.i <= hi):
+        return sub
+    start = prep_object_start(prep, lo, hi)
+    if start is None:
+        return sub
+    return [
+        {"text": doc[lo:start].text, "role": "prep-phrase", "gloss": "",
+         "children": None, "_lo": lo, "_hi": start - 1},
+        {"text": doc[start:hi + 1].text, "role": "object", "gloss": "",
+         "children": None, "_lo": start, "_hi": hi},
+        *sub[1:],
+    ]
+
+
 def build_chunks(
     head,
     doc,
@@ -1203,9 +1229,10 @@ def build_chunks(
                     # already carries the preposition text.
                     first = sub[0].get("text", "")
                     if first and text.startswith(first[: max(1, min(12, len(first)))]):
+                        kids = split_prep_core(sub, c, doc)
                         chunks.append({
                             "text": text, "role": card_role, "gloss": "",
-                            "children": sub if len(sub) >= 2 else None,
+                            "children": kids if len(kids) >= 2 else None,
                         })
                     else:
                         splice_flat(sub, recursive_span)
@@ -1486,7 +1513,21 @@ def merge_idioms(chunks):
                 and ch["role"] == "prep-phrase" and not out[-1].get("children")):
             first_prep = ch["text"].split()[0].lower() if ch["text"].split() else ""
             if (out[-1]["text"].strip(",").lower(), first_prep) in COMPOUND_ADV_PREP:
+                kids = ch.get("children")
+                if kids and kids[0].get("_lo") == ch.get("_lo"):
+                    # The adverb is half of the preposition ("apart from"), so
+                    # it belongs on the card that names it, not only on the
+                    # wrapper above it.
+                    kids = list(kids)
+                    kids[0] = dict(
+                        kids[0],
+                        text=out[-1]["text"] + " " + kids[0]["text"],
+                    )
+                    if "_lo" in out[-1]:
+                        kids[0]["_lo"] = out[-1]["_lo"]
                 ch = dict(ch, text=out[-1]["text"] + " " + ch["text"])
+                if kids:
+                    ch["children"] = kids
                 if "_lo" in out[-1]:
                     ch["_lo"] = out[-1]["_lo"]
                 out.pop()

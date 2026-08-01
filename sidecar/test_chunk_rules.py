@@ -20,6 +20,7 @@ from chunk_rules import (
     merge_or_so,
     normalize_parse_text,
     phrasal_prep_verb_preposition,
+    prep_object_start,
     prepare_parse_text,
     though_clause_verb,
     verb_group_indices,
@@ -78,13 +79,14 @@ class ComitativeParticipleTests(unittest.TestCase):
 class _VGTok:
     """Minimal spaCy-like token for verb_group_indices unit tests."""
 
-    def __init__(self, i, text, dep, head_i, doc_ref, lemma=None):
+    def __init__(self, i, text, dep, head_i, doc_ref, lemma=None, pos=None):
         self.i = i
         self.text = text
         self.dep_ = dep
         self._head_i = head_i
         self.lemma_ = lemma or text.lower()
         self.lower_ = text.lower()
+        self.pos_ = pos or ""
         self._doc_ref = doc_ref
 
     @property
@@ -99,14 +101,21 @@ class _VGTok:
     def children(self):
         return [t for t in self._doc_ref if t._head_i == self.i and t.i != self.i]
 
+    @property
+    def subtree(self):
+        yield self
+        for child in self.children:
+            yield from child.subtree
+
 
 def _make_doc(specs):
-    """specs: list of (text, dep, head_i) or (text, dep, head_i, lemma)."""
+    """specs: (text, dep, head_i) plus optional lemma and POS."""
     doc = []
     for i, spec in enumerate(specs):
         text, dep, head_i = spec[:3]
         lemma = spec[3] if len(spec) > 3 else None
-        doc.append(_VGTok(i, text, dep, head_i, doc, lemma=lemma))
+        pos = spec[4] if len(spec) > 4 else None
+        doc.append(_VGTok(i, text, dep, head_i, doc, lemma=lemma, pos=pos))
     return doc
 
 
@@ -217,6 +226,49 @@ class PhrasalPrepVerbTests(unittest.TestCase):
             ("shelf", "pobj", 3),
         ])
         self.assertIsNone(phrasal_prep_verb_preposition(doc[0]))
+
+
+class PrepObjectStartTests(unittest.TestCase):
+    def test_object_starts_at_its_determiner(self):
+        """"from the fact that …": the 宾语 card opens at ``the``, not ``fact``."""
+        doc = _make_doc([
+            ("from", "prep", 0, None, "ADP"),
+            ("the", "det", 2, None, "DET"),
+            ("fact", "pobj", 0, None, "NOUN"),
+        ])
+        self.assertEqual(prep_object_start(doc[0], 0, 2), 1)
+
+    def test_compound_preposition_is_not_cut(self):
+        """"in spite of the rain": spaCy's pobj is ``spite``.
+
+        Splitting there would put "of" — half the preposition — on the object
+        card, so the run stays one card instead.
+        """
+        doc = _make_doc([
+            ("in", "prep", 0, None, "ADP"),
+            ("spite", "pobj", 0, None, "NOUN"),
+            ("of", "prep", 1, None, "ADP"),
+            ("the", "det", 4, None, "DET"),
+            ("rain", "pobj", 2, None, "NOUN"),
+        ])
+        self.assertIsNone(prep_object_start(doc[0], 0, 4))
+
+    def test_preposition_without_an_object_in_the_run(self):
+        """A stranded prep ("the man I spoke **to**") has nothing to split."""
+        doc = _make_doc([
+            ("spoke", "ROOT", 0, None, "VERB"),
+            ("to", "prep", 0, None, "ADP"),
+        ])
+        self.assertIsNone(prep_object_start(doc[1], 1, 1))
+
+    def test_object_outside_the_run_is_ignored(self):
+        """The clause child owns those tokens; only the core run may be cut."""
+        doc = _make_doc([
+            ("from", "prep", 0, None, "ADP"),
+            ("the", "det", 2, None, "DET"),
+            ("fact", "pobj", 0, None, "NOUN"),
+        ])
+        self.assertIsNone(prep_object_start(doc[0], 0, 0))
 
 
 class OrSoTests(unittest.TestCase):

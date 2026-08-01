@@ -12,6 +12,75 @@ FIXED_ADVERBIAL_PARTICLES = {
     ("look", "back"),
 }
 
+# Deps spaCy uses for the middle word of a phrasal-prepositional verb. All
+# three occur and there is no predicting which: ``up`` in "put up with" is
+# ``prt``, ``forward`` in "look forward to" is ``advmod``, ``up`` in "face up
+# to" is ``prep``. Same construction, three labels.
+PHRASAL_PARTICLE_DEPS = frozenset({"prt", "advmod", "prep"})
+
+# Verb + particle + preposition that behave as a single lexical verb. The
+# dependency tree cannot supply these: spaCy attaches the preposition to the
+# verb exactly as it attaches an ordinary adjunct, so "live up to the promise"
+# and "live up in the attic" arrive identically shaped. A closed list is the
+# only honest source, and the cost of omitting one is a card reading
+# "to live up" — meaningless by itself, which is the bug this fixes.
+PHRASAL_PREP_VERBS = {
+    ("live", "up", "to"),
+    ("look", "forward", "to"),
+    ("look", "down", "on"),
+    ("look", "up", "to"),
+    ("look", "out", "for"),
+    ("put", "up", "with"),
+    ("come", "up", "with"),
+    ("catch", "up", "with"),
+    ("keep", "up", "with"),
+    ("get", "away", "with"),
+    ("do", "away", "with"),
+    ("make", "up", "for"),
+    ("stand", "up", "for"),
+    ("face", "up", "to"),
+    ("get", "on", "with"),
+    ("go", "in", "for"),
+    ("go", "back", "on"),
+    ("cut", "down", "on"),
+    ("check", "up", "on"),
+    ("fall", "back", "on"),
+    ("hold", "on", "to"),
+    ("give", "in", "to"),
+    ("break", "away", "from"),
+    ("drop", "out", "of"),
+    ("grow", "out", "of"),
+}
+
+
+def phrasal_prep_verb_preposition(head):
+    """The preposition that belongs to ``head`` as part of one lexical verb.
+
+    "fails to live up **to** the promise" is one verb taking an object, not
+    "live up" plus a place adjunct — but the parse says adjunct either way.
+    The list above decides which verbs are candidates; adjacency decides
+    whether this occurrence is one, so the split reading of "put it up with
+    the others" is untouched.
+    """
+    lemma = getattr(head, "lemma_", "").lower()
+    doc = getattr(head, "doc", None)
+    if not lemma or doc is None or head.i + 2 >= len(doc):
+        return None
+    particle, preposition = doc[head.i + 1], doc[head.i + 2]
+    if getattr(particle, "dep_", "") not in PHRASAL_PARTICLE_DEPS:
+        return None
+    if particle.head.i != head.i:
+        return None
+    if getattr(preposition, "dep_", "") != "prep":
+        return None
+    # The preposition hangs off the verb ("come up **with**") or off the
+    # particle ("fall back **on**") depending on nothing in particular.
+    if preposition.head.i not in (head.i, particle.i):
+        return None
+    if (lemma, particle.lower_, preposition.lower_) not in PHRASAL_PREP_VERBS:
+        return None
+    return preposition
+
 RELATIVE_INTRODUCERS = {
     "that", "which", "who", "whom", "whose", "where", "when",
 }
@@ -41,6 +110,11 @@ def verb_group_indices(head):
             lemma, getattr(c, "text", ""), dep
         ):
             toks.add(c.i)
+    # "live up to" is one verb; its particle and preposition are adjacent by
+    # construction, so the two indices after the head are exactly them.
+    preposition = phrasal_prep_verb_preposition(head)
+    if preposition is not None:
+        toks.update({preposition.i - 1, preposition.i})
     if len(toks) <= 1:
         return toks
 

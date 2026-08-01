@@ -216,6 +216,11 @@ def chunk_roots(head):
             else:
                 roots.append((c, clause_role_for(c), True))
         elif d in ("prep", "agent"):
+            if c.i in group:
+                # Swallowed by a phrasal-prepositional verb ("live up **to**").
+                # Its object belongs to the verb; the harvest above already put
+                # that pobj on this candidate list, handled below.
+                continue
             # Comparative "than" is not a true preposition for teaching labels.
             if c.lower_ == "than":
                 roots.append((c, "conjunction", contains_clause(c)))
@@ -233,6 +238,13 @@ def chunk_roots(head):
                     or contains_clause(c)
                     or is_adverbial_complex_prep(c),
                 ))
+        elif d == "pobj":
+            # Only reachable when the governing preposition was absorbed into a
+            # phrasal-prepositional verb: an ordinary pobj sits under a prep
+            # card and never surfaces as a candidate here. "put up with his
+            # rudeness" — 宾语, not 介词短语.
+            roots.append((c, "object",
+                          contains_clause(c) or has_appositive_enumeration(c)))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).

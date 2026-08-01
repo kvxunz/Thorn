@@ -19,6 +19,7 @@ from chunk_rules import (
     mark_discourse_insertions,
     merge_or_so,
     normalize_parse_text,
+    phrasal_prep_verb_preposition,
     prepare_parse_text,
     though_clause_verb,
     verb_group_indices,
@@ -83,6 +84,7 @@ class _VGTok:
         self.dep_ = dep
         self._head_i = head_i
         self.lemma_ = lemma or text.lower()
+        self.lower_ = text.lower()
         self._doc_ref = doc_ref
 
     @property
@@ -99,10 +101,12 @@ class _VGTok:
 
 
 def _make_doc(specs):
-    """specs: list of (text, dep, head_i)."""
+    """specs: list of (text, dep, head_i) or (text, dep, head_i, lemma)."""
     doc = []
-    for i, (text, dep, head_i) in enumerate(specs):
-        doc.append(_VGTok(i, text, dep, head_i, doc))
+    for i, spec in enumerate(specs):
+        text, dep, head_i = spec[:3]
+        lemma = spec[3] if len(spec) > 3 else None
+        doc.append(_VGTok(i, text, dep, head_i, doc, lemma=lemma))
     return doc
 
 
@@ -145,6 +149,74 @@ class VerbGroupTests(unittest.TestCase):
             ("bring", "ROOT", 2),
         ])
         self.assertEqual(verb_group_indices(doc[2]), {2})
+
+
+class PhrasalPrepVerbTests(unittest.TestCase):
+    """Every tree below was read off a live ``en_core_web_trf`` parse.
+
+    The three shapes are not a taxonomy anyone designed — they are what the
+    model happens to emit for one construction, so guessing any of them
+    ends in a rule that never fires.
+    """
+
+    def test_particle_prt_with_preposition_on_the_verb(self):
+        """"live up to": ``up`` is ``prt``, ``to`` hangs off ``live``."""
+        doc = _make_doc([
+            ("live", "xcomp", 0),
+            ("up", "prt", 0),
+            ("to", "prep", 0),
+            ("promise", "pobj", 2),
+        ])
+        self.assertIs(phrasal_prep_verb_preposition(doc[0]), doc[2])
+        self.assertEqual(verb_group_indices(doc[0]), {0, 1, 2})
+
+    def test_particle_advmod_with_preposition_on_the_particle(self):
+        """"fall back on": ``back`` is ``advmod`` and ``on`` hangs off it."""
+        doc = _make_doc([
+            ("fell", "ROOT", 0, "fall"),
+            ("back", "advmod", 0),
+            ("on", "prep", 1),
+            ("method", "pobj", 2),
+        ])
+        self.assertIs(phrasal_prep_verb_preposition(doc[0]), doc[2])
+        self.assertEqual(verb_group_indices(doc[0]), {0, 1, 2})
+
+    def test_particle_tagged_prep_is_still_a_particle(self):
+        """"face up to": spaCy calls ``up`` a preposition here."""
+        doc = _make_doc([
+            ("face", "ROOT", 0),
+            ("up", "prep", 0),
+            ("to", "prep", 0),
+            ("facts", "pobj", 2),
+        ])
+        self.assertIs(phrasal_prep_verb_preposition(doc[0]), doc[2])
+        self.assertEqual(verb_group_indices(doc[0]), {0, 1, 2})
+
+    def test_unlisted_combination_is_left_alone(self):
+        """"looked up at the sky": ``look up`` is literal, ``at`` is its own."""
+        doc = _make_doc([
+            ("looked", "ROOT", 0, "look"),
+            ("up", "prt", 0),
+            ("at", "prep", 0),
+            ("sky", "pobj", 2),
+        ])
+        self.assertIsNone(phrasal_prep_verb_preposition(doc[0]))
+        self.assertEqual(verb_group_indices(doc[0]), {0, 1})
+
+    def test_separated_particle_is_not_the_idiom(self):
+        """"put the book up on the shelf": the object splits the two words.
+
+        Adjacency is the whole guard against reading a listed combination
+        into a sentence that merely contains those words.
+        """
+        doc = _make_doc([
+            ("put", "ROOT", 0),
+            ("book", "dobj", 0),
+            ("up", "prt", 0),
+            ("on", "prep", 0),
+            ("shelf", "pobj", 3),
+        ])
+        self.assertIsNone(phrasal_prep_verb_preposition(doc[0]))
 
 
 class OrSoTests(unittest.TestCase):

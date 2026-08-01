@@ -453,6 +453,11 @@ _ROLE_FORMS = {
     "absolute": "absolute-construction",
 }
 
+# Words that can open a content clause as a pure complementizer, carrying no
+# role inside it.  A relative "that" is never one of these — spaCy tags it
+# WDT and gives it a slot.
+_COMPLEMENTIZERS = frozenset({"that", "whether", "if"})
+
 _OBJECT_DEPS = frozenset({"dobj", "obj", "pobj", "attr", "oprd"})
 _SPEECH_LEMMAS = frozenset({
     "say", "add", "announce", "answer", "ask", "cry", "reply", "shout",
@@ -636,13 +641,18 @@ def _annotate_reduced_relative(
         or not evidence.labels_for(node.start, node.end)
     ):
         return node
+    inside = evidence.tokens[node.start:node.end]
     candidates = [
         token
-        for token in evidence.tokens[node.start:node.end]
+        for token in inside
         if token.dep == "acl"
         and token.tag in {"VBG", "VBN"}
         and not (node.start <= token.head < node.end)
         and evidence.tokens[token.head].pos in {"NOUN", "PROPN", "PRON"}
+        # "The news that he had won …" is also VBN under acl, and calling its
+        # finite predicate a participle is exactly backwards. A reduced
+        # relative is reduced because it has no complementizer.
+        and not _opens_with_complementizer(token.index, inside)
     ]
     if not candidates:
         return node
@@ -661,6 +671,52 @@ def _annotate_reduced_relative(
             if participle.tag == "VBG" else "past-participle"
         ),
     )
+
+
+def _opens_with_complementizer(
+    clause_index: int,
+    tokens: Sequence[SyntaxToken],
+) -> bool:
+    """Whether the clause headed by ``clause_index`` is introduced by one."""
+    return any(
+        token.dep == "mark"
+        and token.head == clause_index
+        and token.lemma.lower() in _COMPLEMENTIZERS
+        for token in tokens
+    )
+
+
+def _annotate_appositive_clause(
+    node: TeachingNode,
+    evidence: TeachingEvidence,
+) -> TeachingNode:
+    """"the fact that Parliament governs …" is not a relative clause.
+
+    Both hang off a noun and both usually open with ``that``, so the tree
+    builder lumps them together — but they are different constructions and
+    Chinese grammar teaching names them separately, which is the whole point
+    of the label.  The dependency settles it without a word list: a relative
+    clause is ``relcl`` and its ``that`` fills a slot inside the clause
+    ("a product **that** fails" — subject), while a content clause is ``acl``
+    and its ``that`` is a bare complementizer, a ``mark`` filling nothing.
+
+    Requiring that ``mark`` is what keeps the participial ``acl`` of a
+    reduced relative ("payments depending on returns") out — it has none.
+    """
+    if node.role != "clause-relative":
+        return node
+    inside = evidence.tokens[node.start:node.end]
+    for token in inside:
+        if token.dep != "acl" or node.start <= token.head < node.end:
+            continue
+        if evidence.tokens[token.head].pos not in {"NOUN", "PROPN"}:
+            continue
+        if not _opens_with_complementizer(token.index, inside):
+            continue
+        # No function: "同位语从句" already names both the slot and the shape,
+        # and a second chip repeating half of it earns nothing on a card.
+        return replace(node, function=None, form="appositive-clause")
+    return node
 
 
 def _annotate_direct_quotation(
@@ -709,6 +765,7 @@ def _annotate_teaching_metadata(
         annotated = _annotate_wh_infinitive(annotated, evidence)
         annotated = _annotate_with_complex(annotated, evidence)
         annotated = _annotate_reduced_relative(annotated, evidence)
+        annotated = _annotate_appositive_clause(annotated, evidence)
         annotated = _annotate_direct_quotation(annotated, source, evidence)
         output.append(annotated)
     return tuple(output)

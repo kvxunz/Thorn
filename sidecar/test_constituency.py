@@ -16,7 +16,7 @@ class ConstituencyBoundaryTests(unittest.TestCase):
             parent=TokenSpan(0, 10),
             required={4},
             blocked={6, 8},
-            dependency_indices=range(0, 6),
+            dependency_indices=range(6),
         )
         self.assertEqual((got.start, got.end), (0, 6))
 
@@ -30,7 +30,7 @@ class ConstituencyBoundaryTests(unittest.TestCase):
             role="subject",
             parent=TokenSpan(0, 10),
             blocked={6},
-            dependency_indices=range(0, 6),
+            dependency_indices=range(6),
         )
         self.assertEqual((got.start, got.end), (0, 2))
 

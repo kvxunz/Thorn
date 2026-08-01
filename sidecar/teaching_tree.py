@@ -8,9 +8,9 @@ Internal grouping metadata never crosses the sidecar protocol boundary.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Sequence
-
+from typing import Any
 
 _AUXILIARY_WORDS = frozenset({
     "do", "does", "did", "is", "am", "are", "was", "were", "be", "been",
@@ -91,7 +91,7 @@ class TeachingEvidence:
                 raise ValueError("invalid teaching evidence constituent span")
 
     @classmethod
-    def from_doc(cls, doc) -> "TeachingEvidence":
+    def from_doc(cls, doc) -> TeachingEvidence:
         tokens = tuple(
             SyntaxToken(
                 index=token.i,
@@ -135,7 +135,7 @@ class TeachingNode:
     end: int
     role: str
     gloss: str = ""
-    children: tuple["TeachingNode", ...] = ()
+    children: tuple[TeachingNode, ...] = ()
     kind: str = "semantic"
     function: str | None = None
     form: str | None = None
@@ -151,7 +151,7 @@ class TeachingNode:
                 raise ValueError("teaching-node children overlap or are out of order")
             previous_end = child.end
 
-    def with_children(self, children: Sequence["TeachingNode"]) -> "TeachingNode":
+    def with_children(self, children: Sequence[TeachingNode]) -> TeachingNode:
         return replace(self, children=tuple(children))
 
 

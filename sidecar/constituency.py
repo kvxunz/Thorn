@@ -9,9 +9,8 @@ falls back to the contiguous dependency component around the root.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
-
 
 CLAUSE_LABELS = frozenset({"S", "SBAR", "SBARQ", "SINV", "SQ"})
 WH_LABELS = frozenset({"WHNP", "WHADVP", "WHPP", "WHADJP"})
@@ -49,7 +48,7 @@ class TokenSpan:
     def contains_all(self, token_indices: Iterable[int]) -> bool:
         return all(self.contains(index) for index in token_indices)
 
-    def inside(self, parent: "TokenSpan") -> bool:
+    def inside(self, parent: TokenSpan) -> bool:
         return parent.start <= self.start and self.end <= parent.end
 
 
@@ -71,7 +70,7 @@ class ConstituencyIndex:
         self.sentence_spans = tuple(sentence_spans)
 
     @classmethod
-    def from_doc(cls, doc) -> "ConstituencyIndex":
+    def from_doc(cls, doc) -> ConstituencyIndex:
         spans: list[TokenSpan] = []
         sentences: list[TokenSpan] = []
         for sentence in doc.sents:

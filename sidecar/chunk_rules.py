@@ -1,8 +1,7 @@
 """Small dependency-free lexical rules used by the structure sidecar."""
 
-from dataclasses import dataclass
 import re
-
+from dataclasses import dataclass
 
 # deps absorbed into the finite verbal complex (aux chain + mid-complex adverbs)
 VERB_GROUP_CORE_DEPS = frozenset({"aux", "auxpass", "neg", "prt"})

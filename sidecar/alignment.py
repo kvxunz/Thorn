@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-
 MAX_CHUNKS = 256
 MAX_SOURCE_TOKENS = 512
 

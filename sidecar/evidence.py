@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-
 ANALYSIS_PROTOCOL_VERSION = 4
 # Backward-compatible import for callers that only consume /analyze.
 PROTOCOL_VERSION = ANALYSIS_PROTOCOL_VERSION

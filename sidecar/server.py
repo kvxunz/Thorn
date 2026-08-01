@@ -615,7 +615,7 @@ def np_expand(head, doc, role, constituency, parent_span):
             crole = "clause-noun"
         elif has_to and not has_own_subject:
             crole = "adverbial"
-        elif (clause.tag_ == "VBG" and has_own_subject
+        elif (clause.tag_ == "VBG" and has_own_subject  # noqa: SIM114
               and not has_relative_introducer(clause)):
             crole = "insertion"
         elif is_comitative_participle(clause):
@@ -653,7 +653,7 @@ def np_expand(head, doc, role, constituency, parent_span):
     # parent phrase — each becomes its own appositive chunk.
     enum_members = set()
     for t in subtree:
-        if t.dep_ == "appos":
+        if t.dep_ == "appos":  # noqa: SIM114
             enum_members.add(t.i)
         elif t.dep_ == "conj" and t.head.i in enum_members:
             enum_members.add(t.i)

@@ -17,7 +17,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-
 # A head that governs one of these has a clause carrying the meaning its
 # subject slot lacks, which is what makes a preceding ``it`` a placeholder.
 # ``advcl`` is absent: "It was raining when I left" has one, and that is

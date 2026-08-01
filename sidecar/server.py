@@ -52,6 +52,7 @@ from chunk_rules import (
 )
 from constituency import CLAUSE_LABELS, ConstituencyIndex, TokenSpan
 from evidence import ANALYSIS_PROTOCOL_VERSION, build_analysis_evidence
+from grammar_notes import annotate_grammar_notes
 from teaching_tree import TeachingEvidence, TokenSource, compile_teaching_tree
 
 SPACY_MODEL = "en_core_web_trf"
@@ -1553,6 +1554,9 @@ def parse_text(text):
         evidence=TeachingEvidence.from_doc(doc),
     )
     chunks = annotate_chunk_spans(prepared.surface, teaching_chunks, offsets)
+    # After spans, because a note is chosen by the token a card covers and
+    # only the annotated tree knows which token that is.
+    annotate_grammar_notes(chunks, doc)
     return chunks, [
         prepared.surface[start:end]
         for start, end in offsets

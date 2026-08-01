@@ -423,8 +423,8 @@ struct ResultView: View {
                 .overlay(Capsule().strokeBorder(displayRole.badgeStroke, lineWidth: 0.5))
                 .fixedSize()
 
-            // Local pipeline delivers no per-chunk glosses; don't reserve a
-            // blank 130pt column for them.
+            // Only function words carry a note, and most cards are not
+            // function words; don't reserve a blank 130pt column for them.
             if !chunk.gloss.isEmpty {
                 Text(chunk.gloss)
                     .font(ThornType.ui(depth > 0 ? ThornType.small : ThornType.body))

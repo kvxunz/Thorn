@@ -82,6 +82,7 @@ enum ChunkFunction: String, Decodable, Sendable {
 enum ChunkForm: String, Decodable, Sendable {
     case prepositionalPhrase = "prepositional-phrase"
     case relativeClause = "relative-clause"
+    case appositiveClause = "appositive-clause"
     case adverbialClause = "adverbial-clause"
     case nominalClause = "nominal-clause"
     case absoluteConstruction = "absolute-construction"
@@ -100,6 +101,7 @@ enum ChunkForm: String, Decodable, Sendable {
         switch self {
         case .prepositionalPhrase: return "介词短语"
         case .relativeClause: return "关系从句"
+        case .appositiveClause: return "同位语从句"
         case .adverbialClause: return "状语从句"
         case .nominalClause: return "名词性从句"
         case .absoluteConstruction: return "独立主格"

@@ -685,6 +685,132 @@ class TeachingTreeContractTests(unittest.TestCase):
         self.assertEqual(modifier["function"], "modifier")
         self.assertEqual(modifier["form"], "relative-clause")
 
+    def clause_after_noun(self, text, rows):
+        """One noun followed by one clause chunk, compiled and returned."""
+        source = token_source(text)
+        last = len(rows) - 1
+        chunks = [
+            {
+                "text": rows[0][0], "role": "object", "gloss": "",
+                "children": None, "_lo": 0, "_hi": 0,
+            },
+            {
+                "text": text, "role": "clause-relative", "gloss": "",
+                "children": None, "_lo": 1, "_hi": last,
+            },
+        ]
+        compiled = compile_teaching_tree(
+            source, chunks, evidence=teaching_evidence(rows),
+        )
+        return compiled[1]
+
+    def test_that_complementizer_on_a_noun_is_an_appositive_clause(self):
+        """"the fact that Parliament governs advertising".
+
+        ``that`` is a bare ``mark`` here — the clause is complete without it,
+        which is exactly what distinguishes 同位语从句 from 定语从句.
+        """
+        clause = self.clause_after_noun(
+            "fact that Parliament governs advertising",
+            [
+                ("fact", "fact", "NOUN", "NN", "pobj", 0),
+                ("that", "that", "SCONJ", "IN", "mark", 3),
+                ("Parliament", "Parliament", "PROPN", "NNP", "nsubj", 3),
+                ("governs", "govern", "VERB", "VBZ", "acl", 0),
+                ("advertising", "advertising", "NOUN", "NN", "dobj", 3),
+            ],
+        )
+
+        self.assertEqual(clause["form"], "appositive-clause")
+        # 同位语从句 already names the slot; a "定语" chip beside it would
+        # contradict the note the grammar-notes layer puts on ``that``.
+        self.assertNotIn("function", clause)
+
+    def test_relative_that_keeps_the_relative_clause_form(self):
+        """"a product that fails": ``relcl``, and ``that`` is its subject."""
+        clause = self.clause_after_noun(
+            "product that fails",
+            [
+                ("product", "product", "NOUN", "NN", "dobj", 0),
+                ("that", "that", "PRON", "WDT", "nsubj", 2),
+                ("fails", "fail", "VERB", "VBZ", "relcl", 0),
+            ],
+        )
+
+        self.assertEqual(
+            (clause["function"], clause["form"]),
+            ("modifier", "relative-clause"),
+        )
+
+    def test_finite_verb_under_a_complementizer_is_not_a_participle(self):
+        """"The news that he had won": ``won`` is VBN under ``acl`` too.
+
+        Without the complementizer guard the reduced-relative pass claims it
+        first and relabels a past-perfect predicate 过去分词 — backwards, and
+        it survives the outer rename because the two passes write to
+        different nodes.
+        """
+        source = token_source("news that he had won")
+        chunks = [
+            {
+                "text": "news", "role": "subject", "gloss": "",
+                "children": None, "_lo": 0, "_hi": 0,
+            },
+            {
+                "text": "that he had won", "role": "clause-relative",
+                "gloss": "", "_lo": 1, "_hi": 4,
+                "children": [
+                    {
+                        "text": "that", "role": "conjunction", "gloss": "",
+                        "children": None, "_lo": 1, "_hi": 1,
+                    },
+                    {
+                        "text": "he", "role": "subject", "gloss": "",
+                        "children": None, "_lo": 2, "_hi": 2,
+                    },
+                    {
+                        "text": "had won", "role": "verb", "gloss": "",
+                        "children": None, "_lo": 3, "_hi": 4,
+                    },
+                ],
+            },
+        ]
+        evidence = teaching_evidence(
+            [
+                ("news", "news", "NOUN", "NN", "nsubj", 0),
+                ("that", "that", "SCONJ", "IN", "mark", 4),
+                ("he", "he", "PRON", "PRP", "nsubj", 4),
+                ("had", "have", "AUX", "VBD", "aux", 4),
+                ("won", "win", "VERB", "VBN", "acl", 0),
+            ],
+            [(1, 5, {"SBAR"})],
+        )
+
+        clause = compile_teaching_tree(source, chunks, evidence=evidence)[1]
+        self.assertEqual(clause["form"], "appositive-clause")
+        predicate = clause["children"][2]
+        self.assertEqual((predicate["function"], predicate.get("form")),
+                         ("predicate", None))
+
+    def test_acl_without_a_complementizer_stays_a_relative_clause(self):
+        """"the mother moaning by the fire": an ``acl``, but no ``mark``.
+
+        Reduced relatives are the other construction spaCy files under
+        ``acl``; without the complementizer they must not be renamed.
+        """
+        clause = self.clause_after_noun(
+            "mother moaning by the fire",
+            [
+                ("mother", "mother", "NOUN", "NN", "dobj", 0),
+                ("moaning", "moan", "VERB", "VBG", "acl", 0),
+                ("by", "by", "ADP", "IN", "prep", 1),
+                ("the", "the", "DET", "DT", "det", 4),
+                ("fire", "fire", "NOUN", "NN", "pobj", 2),
+            ],
+        )
+
+        self.assertEqual(clause["form"], "relative-clause")
+
 
 if __name__ == "__main__":
     unittest.main()

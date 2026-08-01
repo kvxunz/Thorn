@@ -719,6 +719,25 @@ def _annotate_appositive_clause(
     return node
 
 
+def _annotate_bare_preposition(
+    node: TeachingNode,
+    evidence: TeachingEvidence,
+) -> TeachingNode:
+    """A card holding the preposition alone is the 介词, not a 介词短语.
+
+    Its object sits on the sibling card beside it, so repeating the phrase
+    label here would name a phrase that is not on this card.
+    """
+    if node.role != "prep-phrase" or node.children:
+        return node
+    inside = evidence.tokens[node.start:node.end]
+    if not any(token.pos == "ADP" for token in inside):
+        return node
+    if any(token.pos not in {"ADP", "ADV", "PART"} for token in inside):
+        return node
+    return replace(node, form="preposition")
+
+
 def _annotate_direct_quotation(
     node: TeachingNode,
     source: TokenSource,
@@ -766,6 +785,7 @@ def _annotate_teaching_metadata(
         annotated = _annotate_with_complex(annotated, evidence)
         annotated = _annotate_reduced_relative(annotated, evidence)
         annotated = _annotate_appositive_clause(annotated, evidence)
+        annotated = _annotate_bare_preposition(annotated, evidence)
         annotated = _annotate_direct_quotation(annotated, source, evidence)
         output.append(annotated)
     return tuple(output)

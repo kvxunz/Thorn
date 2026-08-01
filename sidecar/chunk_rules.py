@@ -81,6 +81,32 @@ def phrasal_prep_verb_preposition(head):
         return None
     return preposition
 
+
+def prep_object_start(prep, lo, hi):
+    """Where the preposition's object begins inside the token run ``lo..hi``.
+
+    ``None`` when the run must not be cut there. spaCy hangs a compound
+    preposition off a light noun ("in **spite** of the rain"), so a second
+    preposition anywhere in the object half means the tree's boundary is not
+    the grammar's, and one honest card beats two wrong ones.
+    """
+    doc = getattr(prep, "doc", None)
+    if doc is None or not lo <= prep.i <= hi:
+        return None
+    pobj = next(
+        (t for t in prep.children if t.dep_ == "pobj" and lo <= t.i <= hi),
+        None,
+    )
+    if pobj is None:
+        return None
+    start = min((t.i for t in pobj.subtree if lo <= t.i <= hi), default=hi + 1)
+    if not lo < start <= hi:
+        return None
+    if any(doc[i].pos_ == "ADP" for i in range(start, hi + 1)):
+        return None
+    return start
+
+
 RELATIVE_INTRODUCERS = {
     "that", "which", "who", "whom", "whose", "where", "when",
 }

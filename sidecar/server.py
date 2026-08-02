@@ -926,6 +926,29 @@ def build_chunks(
             if t_i not in assign:
                 assign[t_i] = key
 
+    # Same shape one level down: a preposition governed from *outside* this
+    # clause but sitting inside it. "as perhaps Kelsey will after her
+    # resignation …" — spaCy hangs both `after` phrases on the matrix verb
+    # `discovered`, so the elided VP `will` has no child to claim them and the
+    # leftover pass welds eleven tokens onto the predicate card. A verb card
+    # that reads as the whole rest of the clause is the worst thing this
+    # pipeline can show: the highlight paints the lot in the predicate colour.
+    for t in subtree:
+        if t.i in assign or t.dep_ not in ("prep", "agent"):
+            continue
+        stray_span = constituency.resolve(
+            root=t.i,
+            role="prep-phrase",
+            parent=parent_span,
+            blocked=set(assign),
+            dependency_indices=_projection(t, parent_span),
+        )
+        key = f"stray{t.i}"
+        root_entries[key] = (t, "prep-phrase", contains_clause(t), stray_span)
+        for t_i in range(stray_span.start, stray_span.end):
+            if t_i not in assign:
+                assign[t_i] = key
+
     # A WH constituent at the current SBAR edge belongs to this clause even
     # when the dependency parser parked it on a lower xcomp/conj. This is the
     # only promotion path: lexical when/where lists are intentionally gone.

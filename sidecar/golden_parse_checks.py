@@ -278,6 +278,17 @@ class GoldenParseTests(unittest.TestCase):
             ],
             "an `after` phrase was left beside the main clause",
         )
+        # …and they are not *inside* the predicate either. spaCy hangs both on
+        # the matrix `discovered`, so the elided VP has no child to claim them
+        # and the leftover pass used to weld them onto the verb card.
+        verb = next(
+            node for node in as_clause["children"] if node["role"] == "verb"
+        )
+        self.assertEqual(verb["text"], "will")
+        self.assertTrue(
+            node_starting_with([as_clause], "after her much-publicized"),
+            "the `after` phrases got no card of their own",
+        )
 
     def test_p002_coordinated_gerunds_form_one_subject(self):
         """P-002: both gerund phrases are one subject; no fake predicate."""

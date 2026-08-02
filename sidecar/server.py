@@ -896,6 +896,36 @@ def build_chunks(
                     if t_i not in assign:
                         assign[t_i] = key
 
+    # An extraposed clause — a relative separated from the noun it modifies
+    # ("sent a spy to his house, who heard …") — is nobody's dependency child
+    # at this level, and the noun's own Benepar NP stops before it, so no root
+    # claims a single one of its tokens. The leftover pass below would then
+    # glue the whole finite clause onto whichever card sits to its left, and
+    # it gets taught as part of that card's phrase. Give it its own root.
+    # Requiring a subject of its own keeps stranded participles out: those are
+    # genuinely modifiers, and promoting them is a separate question.
+    for t in subtree:
+        if (
+            t.i in assign
+            or t.dep_ not in CLAUSE_DEPS
+            or t.pos_ not in ("VERB", "AUX")
+            or not has_own_subject(t)
+        ):
+            continue
+        orphan_role = clause_role_for(t)
+        orphan_span = constituency.resolve(
+            root=t.i,
+            role=orphan_role,
+            parent=parent_span,
+            blocked=set(assign),
+            dependency_indices=_projection(t, parent_span),
+        )
+        key = f"orphan{t.i}"
+        root_entries[key] = (t, orphan_role, True, orphan_span)
+        for t_i in range(orphan_span.start, orphan_span.end):
+            if t_i not in assign:
+                assign[t_i] = key
+
     # A WH constituent at the current SBAR edge belongs to this clause even
     # when the dependency parser parked it on a lower xcomp/conj. This is the
     # only promotion path: lexical when/where lists are intentionally gone.

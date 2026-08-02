@@ -140,16 +140,19 @@ def chunk_roots(head):
             # insertion siblings so the head noun keeps role=subject. A
             # multi-item appositive list also expands into a revealable block.
             roots.append((c, "subject",
-                          contains_clause(c) or has_appositive_enumeration(c)))
+                          contains_clause(c) or has_appositive_enumeration(c)
+                          or has_bracketed_aside(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
             # linking verbs never take an object: theirs is a predicative
             linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
                                       "look", "feel", "sound", "stay", "grow")
             roots.append((c, "complement" if linking else "object",
-                          contains_clause(c) or has_appositive_enumeration(c)))
+                          contains_clause(c) or has_appositive_enumeration(c)
+                          or has_bracketed_aside(c)))
         elif d in ("attr", "acomp"):
             roots.append((c, "complement",
-                          contains_clause(c) or has_appositive_enumeration(c)))
+                          contains_clause(c) or has_appositive_enumeration(c)
+                          or has_bracketed_aside(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
         elif d == "pcomp" and is_clausal_pcomp(c):
@@ -241,12 +244,16 @@ def chunk_roots(head):
                 # appositive list, or an embedded clause (participial/relative)
                 # inside the object — "with … smoke laced with … where many a
                 # man puked …" — so those layers surface as their own rows.
+                # A parenthesis is the same thing: "by Swedish singer Sven-Olof
+                # Sandberg (1905–1974) and Norwegian soloist Olav Werner
+                # (1913–1992)" is four slots the flat card showed as one.
                 roots.append((
                     c,
                     "prep-phrase",
                     prep_object_enumeration(c)
                     or contains_clause(c)
-                    or is_adverbial_complex_prep(c),
+                    or is_adverbial_complex_prep(c)
+                    or has_bracketed_aside(c),
                 ))
         elif d == "pobj":
             # Only reachable when the governing preposition was absorbed into a
@@ -254,7 +261,8 @@ def chunk_roots(head):
             # card and never surfaces as a candidate here. "put up with his
             # rudeness" — 宾语, not 介词短语.
             roots.append((c, "object",
-                          contains_clause(c) or has_appositive_enumeration(c)))
+                          contains_clause(c) or has_appositive_enumeration(c)
+                          or has_bracketed_aside(c)))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
@@ -400,6 +408,38 @@ def is_complex_connective(token):
         and any(m.dep_ == "mark" for m in child.children)
         for child in token.children
     )
+
+
+# Brackets fence off supplementary material no matter what the dependency
+# parse made of the inside: across three corpus sentences spaCy called the same
+# "(1905--1974)" shape `parataxis`, `npadvmod` and `prep`. The punctuation is
+# the only signal that holds, so it is what the split keys off.
+OPEN_BRACKETS = frozenset({"(", "[", "（"})
+CLOSE_BRACKETS = frozenset({")", "]", "）"})
+
+
+def has_bracketed_aside(token):
+    """Whether a phrase encloses a parenthesis that deserves its own card."""
+    return any(t.text in OPEN_BRACKETS for t in token.subtree)
+
+
+def closing_bracket(doc, start, hi):
+    """Index of the bracket closing the one at ``start``, or None if unclosed.
+
+    An unclosed bracket is left alone: half a parenthesis is not an aside, and
+    a card running to the end of the frame on the strength of one stray "("
+    would be a worse reading than the one it replaced.
+    """
+    depth = 0
+    for index in range(start, hi + 1):
+        text = doc[index].text
+        if text in OPEN_BRACKETS:
+            depth += 1
+        elif text in CLOSE_BRACKETS:
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
 
 
 def has_appositive_enumeration(noun):
@@ -805,6 +845,31 @@ def np_expand(head, doc, role, constituency, parent_span):
             parts.append(current)
         return parts if len(parts) > 1 else [run]
 
+    def split_brackets(run):
+        # A parenthesis is supplementary material whatever the parse made of
+        # its contents — across three corpus sentences spaCy read the same
+        # "(1905–1974)" shape as `parataxis`, `npadvmod` and `prep`, so no
+        # dependency test finds them and the brackets themselves are the
+        # signal. Nesting is tracked so an inner pair does not close the card
+        # early; anything unclosed simply runs to the end of the run.
+        parts, current, depth = [], [], 0
+        for index in run:
+            text = doc[index].text
+            if text in OPEN_BRACKETS:
+                if depth == 0 and current:
+                    parts.append(current)
+                    current = []
+                depth += 1
+            current.append(index)
+            if text in CLOSE_BRACKETS and depth:
+                depth -= 1
+                if depth == 0:
+                    parts.append(current)
+                    current = []
+        if current:
+            parts.append(current)
+        return parts
+
     chunks = []
     run_owner, run = "__sentinel__", []
 
@@ -816,7 +881,12 @@ def np_expand(head, doc, role, constituency, parent_span):
         bounds = {"_lo": run[0], "_hi": run[-1]}
         o = run_owner
         if o is None:
-            for part in split_enumeration(run):
+            parts = [
+                bracketed
+                for item in split_enumeration(run)
+                for bracketed in split_brackets(item)
+            ]
+            for part in parts:
                 part_role = role
                 if (
                     any(doc[index].dep_ == "cc" for index in part)
@@ -826,14 +896,14 @@ def np_expand(head, doc, role, constituency, parent_span):
                     )
                 ):
                     part_role = "conjunction"
-                # Only multi-item appositive lists get the appositive role; a
-                # single appositive after "as a class, an element…" must not
-                # demote the whole object NP.
-                if (
-                    len(enum_members) >= 2
-                    and any(i in enum_members for i in part)
-                ):
+                # An appositive is only labelled once it has a card to itself.
+                # Where the run stayed whole ("as a class, an element…") the
+                # label would demote the entire object NP instead of naming the
+                # aside, which is why this asks about the split, not the count.
+                if len(parts) > 1 and any(i in enum_members for i in part):
                     part_role = "appositive"
+                if doc[part[0]].text in OPEN_BRACKETS:
+                    part_role = "insertion"
                 chunks.append({"text": doc[part[0]: part[-1] + 1].text,
                                "role": part_role, "gloss": "", "children": None,
                                "_lo": part[0], "_hi": part[-1]})
@@ -1068,6 +1138,51 @@ def build_chunks(
         for t_i in range(wh_span.start, wh_span.end):
             if t_i not in assign:
                 assign[t_i] = key
+
+    # A parenthesis is one aside, and the constituency spans routinely stop in
+    # the middle of it: "Going Down Swinging (2000)" resolved a span ending on
+    # the open bracket and the learner got a card reading "Swinging (". Claim
+    # the whole run for one insertion card of its own.
+    #
+    # Only when nothing straddles it. A holder with tokens on *both* sides
+    # would be left with two runs sharing one key, and an expandable one would
+    # then recurse twice over the same span and emit the same words under two
+    # siblings — an overlap the contract rejects outright. Where the run only
+    # hangs off the tail of its holders, narrowing their spans is enough.
+    bracketed = set()
+    for t in subtree:
+        if t.text not in OPEN_BRACKETS or t.i in bracketed:
+            continue
+        close = closing_bracket(doc, t.i, hi)
+        if close is None or (t.i == lo and close == hi):
+            continue
+        holders = {assign[i] for i in range(t.i, close + 1) if i in assign}
+        entries = [root_entries.get(holder) for holder in holders]
+        if any(
+            entry is not None and entry[3].start <= t.i and close < entry[3].end
+            for entry in entries
+        ):
+            # One card owns the aside outright, so its own recursion splits it
+            # where it belongs — inside the phrase, not hoisted up here. Pulling
+            # "(such as F. Scott Fitzgerald)" out to the sentence backbone would
+            # cut the subject away from the material it qualifies.
+            continue
+        if any(assign.get(i) in holders for i in range(close + 1, hi + 1)):
+            continue
+        for holder in holders:
+            entry = root_entries.get(holder)
+            if entry is None or entry[3].start >= t.i:
+                continue
+            root_entries[holder] = (
+                *entry[:3],
+                TokenSpan(entry[3].start, t.i, entry[3].labels),
+            )
+        key = f"aside{t.i}"
+        span = TokenSpan(t.i, close + 1, frozenset())
+        root_entries[key] = (t, "insertion", False, span)
+        for t_i in range(t.i, close + 1):
+            assign[t_i] = key
+            bracketed.add(t_i)
 
     # A multi-word subordinator ("as long as", "as soon as", "now that") is one
     # connective, but spaCy splits it: the final `as`/`that` is this clause's

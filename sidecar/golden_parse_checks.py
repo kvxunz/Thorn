@@ -227,6 +227,11 @@ CASES: dict[str, str] = {
         "The island was settled by more than 300 cultural groups, each with "
         "different customs, social structures, world views, and languages."
     ),
+    "appositive-behind-a-hyphenated-modifier": (
+        "In October Datafast acquired Affinity, a Melbourne-based ISP and its "
+        "umbrella of brands, taking the total number of active accounts to "
+        "120,000."
+    ),
     "bracketed-then-appositive": (
         "Her critically acclaimed first novel, Going Down Swinging (2000), was "
         "followed by The Chick at the Back of the Church (2001), a poetry book "
@@ -758,6 +763,24 @@ class GoldenParseTests(unittest.TestCase):
             "the prep phrase never separated from its appositive",
         )
         appositive = node_starting_with(chunks, ", each with different customs")
+        self.assertIsNotNone(appositive, "the appositive never got a card")
+        self.assertEqual(appositive["role"], "appositive")
+
+    def test_an_appositive_is_found_behind_a_hyphenated_modifier(self):
+        """"Affinity" and what it is renamed as are two slots.
+
+        The item's left edge was searched for by walking the member's *direct*
+        children, and "a Melbourne-based ISP" hangs `Melbourne` and the hyphen
+        off `based` rather than off `ISP`. The walk stopped two tokens short of
+        the comma that was the whole licence to split, so twelve tokens stayed
+        flat on one card.
+        """
+        chunks = self.tree("appositive-behind-a-hyphenated-modifier")
+        self.assertIsNotNone(
+            node_with_text(chunks, "Affinity"),
+            "the object never separated from the renaming",
+        )
+        appositive = node_starting_with(chunks, ", a Melbourne-based ISP")
         self.assertIsNotNone(appositive, "the appositive never got a card")
         self.assertEqual(appositive["role"], "appositive")
 

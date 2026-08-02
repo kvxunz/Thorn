@@ -901,10 +901,16 @@ def np_expand(head, doc, role, constituency, parent_span):
                 depth += 1
         starts = set()
         for member in enum_members:
+            # The item starts where its own subtree does, not where its direct
+            # children do. "Affinity, a Melbourne-based ISP" hangs `Melbourne`
+            # and the hyphen off `based` rather than off `ISP`, so a walk that
+            # only accepted direct children stopped at the hyphen -- two tokens
+            # short of the comma that was the whole licence to split.
+            member_subtree = {x.i for x in doc[member].subtree}
             start = member
             while (
                 (start - 1) in run_set
-                and doc[start - 1].head.i == member
+                and (start - 1) in member_subtree
                 and (start - 1) not in enum_members
             ):
                 start -= 1

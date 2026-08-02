@@ -239,6 +239,13 @@ CASES: dict[str, str] = {
         "In 2025, Livingston's story, Houdini Act, originally published by The "
         "Saturday Evening Post, was nominated for a prize."
     ),
+    "dash-aside-that-is-a-whole-clause": (
+        "I took dinner usually at the Yale Club—for some reason it was the "
+        "gloomiest event of my day—and then I went upstairs to the library."
+    ),
+    "inserted-attribution": (
+        "The trouble with you, she said, is that you never listen to anyone."
+    ),
     "supplement-inside-a-list-item": (
         "As funding for science has declined, scientists have attacked "
         '"antiscience" in several books, notably Higher Superstition, by Paul '
@@ -968,6 +975,33 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNotNone(
             node_with_text(chunks, ", by Carl Sagan of Cornell University"),
             "the attribution never left the title it names",
+        )
+
+    def test_a_dash_aside_that_is_a_whole_clause_comes_apart(self):
+        """"—for some reason it was the gloomiest event of my day—" opens.
+
+        `contains_clause` looks only *below* the root, so a parataxis that is
+        itself the clause reported no clause inside it and stayed one card of
+        eleven tokens.
+        """
+        chunks = self.tree("dash-aside-that-is-a-whole-clause")
+        self.assertIn("subject", roles(walk(chunks)))
+        self.assertIsNotNone(
+            node_starting_with(chunks, "the gloomiest event of my day"),
+            "the aside never came apart into slots",
+        )
+
+    def test_an_inserted_attribution_stays_one_interruption(self):
+        """", she said," is a clause too, and must not come apart.
+
+        What the verb is about is the sentence around it, not anything inside
+        the aside -- which is why there is no complement in there. Splitting it
+        into 主语 + 谓语 teaches an interruption as if it were a statement.
+        """
+        chunks = self.tree("inserted-attribution")
+        self.assertIsNotNone(
+            node_with_text(chunks, ", she said,"),
+            "the attribution was split into slots of its own",
         )
 
     def test_a_list_is_never_shattered_into_supplements(self):

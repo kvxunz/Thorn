@@ -318,7 +318,24 @@ def chunk_roots(head):
         elif d == "appos":
             roots.append((c, "insertion", contains_clause(c) or is_dash_appositive(c)))
         elif d in ("intj", "parataxis"):
-            roots.append((c, "insertion", contains_clause(c)))
+            # `contains_clause` only looks *below* the root, so a parataxis
+            # that is itself a verb with its own subject reports False and
+            # never opens: "—for some reason it was the gloomiest event of my
+            # day—" reached the learner as one card of eleven tokens. An aside
+            # that is a whole clause is exactly the thing worth taking apart.
+            #
+            # Unless it is an attribution. ", she said," and ",” he went on, “"
+            # say who is speaking; what the verb is about is the quotation
+            # around them, which is why spaCy leaves no complement inside the
+            # aside. Splitting one into 主语 + 谓语 teaches a clause the reader
+            # is meant to skim past as one interruption.
+            roots.append((c, "insertion", contains_clause(c) or (
+                c.pos_ in ("VERB", "AUX")
+                and any(
+                    t.dep_ in ("nsubj", "nsubjpass", "expl") for t in c.children
+                )
+                and any(t.dep_ in COMPLEMENT_DEPS for t in c.children)
+            )))
         elif c.lower_ == "for" and c.pos_ in ("ADP", "CCONJ", "SCONJ") and not any(
                 t.dep_ == "pobj" for t in c.children):
             # bare coordinating "for" (= because) between clauses
@@ -388,6 +405,13 @@ def chunk_roots(head):
         roots.extend(promoted)
         roots.sort(key=lambda item: item[0].i)
     return roots
+
+
+# What a verb needs inside its own span to be saying something rather than
+# framing what surrounds it. See the `parataxis` branch of `chunk_roots`.
+COMPLEMENT_DEPS = frozenset({
+    "attr", "acomp", "dobj", "obj", "iobj", "dative", "oprd", "xcomp", "ccomp",
+})
 
 
 def parent_contains_if_any(head, token):

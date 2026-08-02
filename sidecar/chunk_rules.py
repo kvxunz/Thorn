@@ -566,6 +566,73 @@ def normalize_parse_text(text: str) -> str:
     return prepare_parse_text(text).parser
 
 
+# A single one of these between two alphanumerics joins one written word.
+_WORD_JOINERS = ("-", "’", "'", ".")
+
+
+def splits_a_word(doc, index):
+    """Whether the seam after token ``index`` falls inside one written word.
+
+    spaCy splits "re-investigate" into three tokens and tags every one of them
+    ``VERB conj``, so the coordinate rule handed ``investigate`` a card of its
+    own and the panel showed "[verb] re-" beside "[verb] investigate". Half a
+    word is never a teaching unit, whatever the parse says.
+
+    A dash *run* is a real separator, not a joiner: "The plan--his own--failed"
+    must keep splitting into three cards, so only one joiner character between
+    two alphanumerics counts.
+    """
+    if index + 1 >= len(doc):
+        return False
+    text = doc.text
+    seam = doc[index + 1].idx
+    if seam != doc[index].idx + len(doc[index].text):
+        return False  # whitespace at the seam: two words, however they parsed
+    # The joiner is a token of its own here -- spaCy emits "re", "-",
+    # "investigate" -- so the seam can fall on either side of it. Walk out from
+    # the seam in both directions and ask what the two sides are.
+    left = seam - 1
+    while left >= 0 and text[left] in _WORD_JOINERS:
+        left -= 1
+    right = seam
+    while right < len(text) and text[right] in _WORD_JOINERS:
+        right += 1
+    if right - left > 2:
+        return False  # more than one joiner between the sides: a separator
+    return (
+        left >= 0
+        and right < len(text)
+        and text[left].isalnum()
+        and text[right].isalnum()
+    )
+
+
+def merge_split_words(chunks, doc):
+    """Fuse adjacent leaf cards whose boundary sits inside one written word.
+
+    Only leaf-to-leaf: a card with children is a whole layer, and folding one
+    into its neighbour would silently destroy the structure underneath. A word
+    split across two *expanded* cards is a different and rarer bug, and it
+    should stay visible rather than be papered over here.
+    """
+    out = []
+    for chunk in chunks:
+        previous = out[-1] if out else None
+        if (
+            previous is not None
+            and not previous.get("children")
+            and not chunk.get("children")
+            and previous.get("_hi") is not None
+            and previous["_hi"] + 1 == chunk.get("_lo")
+            and splits_a_word(doc, previous["_hi"])
+        ):
+            previous["text"] = previous["text"] + chunk["text"]
+            previous["_hi"] = chunk["_hi"]
+            continue
+        out.append(chunk)
+    return out
+
+
 def merge_tiny(chunks):
     """Attach punctuation-only chunks to the previous chunk (or the next one
     when they lead)."""

@@ -18,6 +18,7 @@ from chunk_rules import (
     is_wh_relative_pronoun,
     mark_discourse_insertions,
     merge_or_so,
+    merge_split_words,
     merge_tiny,
     normalize_parse_text,
     phrasal_prep_verb_preposition,
@@ -510,3 +511,78 @@ class MergeTinyTests(unittest.TestCase):
         self.assertEqual(merged[0]["text"], "(—")
         self.assertEqual(merged[0]["_lo"], 0)
         self.assertEqual(merged[0]["_hi"], 1)
+
+
+class _FakeDoc:
+    """Just enough of a spaCy Doc for splits_a_word: text plus token offsets."""
+
+    def __init__(self, text, tokens):
+        self.text = text
+        self._tokens = []
+        cursor = 0
+        for piece in tokens:
+            cursor = text.index(piece, cursor)
+            self._tokens.append(type("T", (), {"idx": cursor, "text": piece})())
+            cursor += len(piece)
+
+    def __len__(self):
+        return len(self._tokens)
+
+    def __getitem__(self, index):
+        return self._tokens[index]
+
+
+class MergeSplitWordsTests(unittest.TestCase):
+    """A card boundary may never fall inside one written word."""
+
+    def test_a_hyphenated_verb_is_one_card(self):
+        doc = _FakeDoc("and re-investigate some", ["and", "re", "-", "investigate", "some"])
+        merged = merge_split_words([
+            {"text": "re-", "_lo": 1, "_hi": 2, "role": "verb"},
+            {"text": "investigate", "_lo": 3, "_hi": 3, "role": "verb"},
+        ], doc)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "re-investigate")
+        self.assertEqual(merged[0]["role"], "verb")
+        self.assertEqual(merged[0]["_hi"], 3)
+
+    def test_the_joiner_may_sit_on_either_side_of_the_seam(self):
+        # spaCy makes the hyphen its own token, so the boundary can fall
+        # before it as easily as after -- "re" | "-investigate" is the same
+        # defect and was missed while the test only looked rightwards.
+        doc = _FakeDoc("and re-investigate some", ["and", "re", "-", "investigate", "some"])
+        merged = merge_split_words([
+            {"text": "re", "_lo": 1, "_hi": 1, "role": "verb"},
+            {"text": "-", "_lo": 2, "_hi": 2, "role": "verb"},
+            {"text": "investigate", "_lo": 3, "_hi": 3, "role": "verb"},
+        ], doc)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "re-investigate")
+
+    def test_a_dash_run_still_separates_two_cards(self):
+        # "The plan--his own--failed": the dash appositive must keep splitting.
+        doc = _FakeDoc("plan--his own", ["plan", "--", "his", "own"])
+        chunks = [
+            {"text": "plan", "_lo": 0, "_hi": 0, "role": "subject"},
+            {"text": "--his own", "_lo": 1, "_hi": 3, "role": "insertion"},
+        ]
+        self.assertEqual(merge_split_words(list(chunks), doc), chunks)
+
+    def test_a_space_at_the_seam_is_a_real_boundary(self):
+        doc = _FakeDoc("the cat sat", ["the", "cat", "sat"])
+        chunks = [
+            {"text": "the cat", "_lo": 0, "_hi": 1, "role": "subject"},
+            {"text": "sat", "_lo": 2, "_hi": 2, "role": "verb"},
+        ]
+        self.assertEqual(merge_split_words(list(chunks), doc), chunks)
+
+    def test_an_expanded_card_is_never_folded_away(self):
+        # Folding a card with children would silently destroy a whole layer;
+        # a word split across two expanded cards must stay visible instead.
+        doc = _FakeDoc("and re-investigate some", ["and", "re", "-", "investigate", "some"])
+        chunks = [
+            {"text": "re-", "_lo": 1, "_hi": 2, "role": "verb"},
+            {"text": "investigate", "_lo": 3, "_hi": 3, "role": "verb",
+             "children": [{"text": "investigate", "_lo": 3, "_hi": 3}]},
+        ]
+        self.assertEqual(merge_split_words(list(chunks), doc), chunks)

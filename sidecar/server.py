@@ -1035,10 +1035,7 @@ def np_expand(head, doc, role, constituency, parent_span):
         # egg, only fifty yards from the Sound". spaCy has no one label for
         # these -- `prep`, `advmod`, `amod`, `npadvmod` across the corpus -- so
         # again the punctuation is what holds. `fences` below is where a comma
-        # earns the split; only the card's own core run is offered one, since
-        # every other splitter here has already named what it separated.
-        if head.i not in run:
-            return [run]
+        # earns the split.
         run_set = set(run)
         inside = bracketed_indices(run)
         if not any(doc[i].pos_ != "PUNCT" for i in run):

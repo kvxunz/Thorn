@@ -239,6 +239,13 @@ CASES: dict[str, str] = {
         "In 2025, Livingston's story, Houdini Act, originally published by The "
         "Saturday Evening Post, was nominated for a prize."
     ),
+    "supplement-inside-a-list-item": (
+        "As funding for science has declined, scientists have attacked "
+        '"antiscience" in several books, notably Higher Superstition, by Paul '
+        "R.Gross, a biologist at the University of Virginia, and Norman "
+        "Levitt, a mathematician at Rutgers University; and The Demon-Haunted "
+        "World, by Carl Sagan of Cornell University."
+    ),
     "modifier-across-a-comma": (
         "Renaissance painters replaced the medieval convention of symbolic, "
         "two-dimensional space with the illusion of actual space."
@@ -948,6 +955,19 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNone(
             node_with_text(chunks, ", originally published"),
             "a supplement was cut away from the complement it needs",
+        )
+
+    def test_a_list_item_carries_its_own_supplement(self):
+        """"The Demon-Haunted World, by Carl Sagan" is two cards, not one.
+
+        The list is carved first, so the item a supplement hangs off is no
+        longer the card's own head. Offering only the head's run a fence left
+        every attribution inside a list glued to the title it names.
+        """
+        chunks = self.tree("supplement-inside-a-list-item")
+        self.assertIsNotNone(
+            node_with_text(chunks, ", by Carl Sagan of Cornell University"),
+            "the attribution never left the title it names",
         )
 
     def test_a_list_is_never_shattered_into_supplements(self):

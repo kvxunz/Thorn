@@ -202,6 +202,14 @@ CASES: dict[str, str] = {
         "subsequently chosen as one of the year's best books."
     ),
     "contracted-subject": "That’s the secret of Castle Rackrent.",
+    "colon-supplement": (
+        "He has been on the editorial board of Hume Studies and Chronicles: "
+        "A Magazine of American Culture."
+    ),
+    "colon-introduced-list": (
+        "Eftel offers a range of services including: DSL and dial-up Internet "
+        "access, web hosting and telephony services."
+    ),
     "comma-inside-a-parenthesis": (
         "She has received fellowships from The Banff Centre, MacDowell Colony, "
         "Escape to Create (Seaside, Florida), Ucross Foundation and Omi "
@@ -752,6 +760,40 @@ class GoldenParseTests(unittest.TestCase):
         appositive = node_starting_with(chunks, ", each with different customs")
         self.assertIsNotNone(appositive, "the appositive never got a card")
         self.assertEqual(appositive["role"], "appositive")
+
+    def test_a_colon_hands_what_follows_it_a_card(self):
+        """"Chronicles: A Magazine of American Culture" is two slots.
+
+        No dependency finds these -- across four corpus sentences spaCy read
+        the tail as `pobj`, `appos`, `appos` and `npadvmod` -- so the colon
+        itself is the signal, as the brackets are.
+        """
+        chunks = self.tree("colon-supplement")
+        magazine = node_with_text(chunks, "A Magazine of American Culture")
+        self.assertIsNotNone(magazine, "the expansion never got a card")
+        self.assertEqual(magazine["role"], "appositive")
+        self.assertIsNotNone(
+            node_starting_with(chunks, "on the editorial board"),
+            "the phrase that introduced it lost its card",
+        )
+
+    def test_the_colon_stays_with_the_phrase_that_promised_something(self):
+        """A card may not open on a bare colon.
+
+        "a range of services including:" is the half making the promise; ":
+        DSL and dial-up Internet access" reads as punctuation stranded from
+        its sentence.
+        """
+        chunks = self.tree("colon-introduced-list")
+        self.assertEqual(
+            [text for text in texts(chunks) if text.startswith(":")],
+            [],
+            "a card opened on the colon",
+        )
+        self.assertIsNotNone(
+            node_with_text(chunks, "a range of services including:"),
+            "the colon left the phrase that introduced it",
+        )
 
     def test_a_contraction_card_names_the_two_slots_it_holds(self):
         """"That's" is a subject and a verb in one written word.

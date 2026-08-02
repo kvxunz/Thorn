@@ -40,6 +40,11 @@ WIDE_LEAF_TOKENS = 8
 # often *not* a boundary, and `_comma_opens_a_slot` below judges it per case.
 SEPARATORS = frozenset({";", ":", "—", "–", "--", "(", ")"})
 
+# Of those, the ones that also join rather than separate. "400--500 copies",
+# "(1905--1974)": a dash between two numbers is a range, and reporting it sent
+# the rules after a boundary that does not exist.
+DASHES = frozenset({"—", "–", "--"})
+
 # Dependencies that make a token a pre-modifier of the word it hangs on rather
 # than the head of anything: "January Magazine" and "New York" reach their real
 # dependency one hop up, and it is that hop that says whether a comma before
@@ -99,6 +104,17 @@ def _is_inserted_attribution(
         or (token.head == verb.index and token.dep in ATTRIBUTION_DEPS)
         for token in tokens
     )
+
+
+def _is_numeric_range(tokens: Sequence[Any], position: int) -> bool:
+    """A dash with a number either side joins them: "400--500", "1905--1974"."""
+    if position == 0 or position + 1 >= len(tokens):
+        return False
+
+    def numeric(token):
+        return token.text.replace(",", "").replace(".", "").isdigit()
+
+    return numeric(tokens[position - 1]) and numeric(tokens[position + 1])
 
 
 def _is_bare_name_appositive(token: Any, tokens: Sequence[Any]) -> bool:
@@ -161,22 +177,31 @@ def _comma_opens_a_slot(
     if after.dep in CONTINUATION_DEPS:
         return False
 
-    # Coordinate modifiers of one noun: "such large, impersonal manipulation",
-    # "the cautious, unadorned prose", "the inflexible, though tacit, rules".
-    # Both sides describe the same word, so the comma is punctuation inside one
-    # slot. There is no way to split it into cards anyway -- the two modifiers
-    # are not contiguous with each other once the noun is taken out.
     before = next(
         (token for token in reversed(tokens[:position]) if token.pos != "PUNCT"),
         None,
     )
-    if (
-        before is not None
-        and before.dep in PREMODIFIER_DEPS
-        and raw_after.dep in PREMODIFIER_DEPS
-        and phrase_head(before).index == after.index
-    ):
+    # Nothing but punctuation to the left: this comma is the card's own fence,
+    # already drawn by whoever gave it a card. ", each with different customs…"
+    # and ", i.e. parameters relevant to lower scales…" were reported for the
+    # very boundary that put them on their own line.
+    if before is None:
         return False
+
+    # The word before the comma leans on a word after it: "such large,
+    # impersonal manipulation", "the inflexible, though tacit, rules", "the
+    # extracurricular, yet still important, aspects". The comma is inside one
+    # phrase rather than between two, and there is no way to make cards of it
+    # anyway -- take the head noun out and the modifiers either side are no
+    # longer contiguous with each other. The whole chain has to be walked:
+    # "important" reaches the noun only through the "extracurricular" it is
+    # coordinated with, which sits back on the far side of the comma.
+    walker, seen = before, 0
+    while start <= walker.head < end and seen < len(tokens):
+        if walker.head > start + position:
+            return False
+        walker = tokens[walker.head - start]
+        seen += 1
     return not _is_bare_name_appositive(after, tokens)
 
 
@@ -256,7 +281,9 @@ def classify_leaf(
     if len(content) < WIDE_LEAF_TOKENS:
         return None
     for position, token in enumerate(tokens[:-1]):
-        if token.text in SEPARATORS:
+        if token.text in SEPARATORS and not (
+            token.text in DASHES and _is_numeric_range(tokens, position)
+        ):
             return "wide-leaf"
         if token.text == "," and _comma_opens_a_slot(tokens, position, start, end):
             return "wide-leaf"

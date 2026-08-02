@@ -149,7 +149,8 @@ def chunk_roots(head):
             roots.append((c, "subject",
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)))
+                          or has_comma_fenced_appositive(c)
+                          or has_supplement_punctuation(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
             # linking verbs never take an object: theirs is a predicative
             linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
@@ -157,12 +158,14 @@ def chunk_roots(head):
             roots.append((c, "complement" if linking else "object",
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)))
+                          or has_comma_fenced_appositive(c)
+                          or has_supplement_punctuation(c)))
         elif d in ("attr", "acomp"):
             roots.append((c, "complement",
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)))
+                          or has_comma_fenced_appositive(c)
+                          or has_supplement_punctuation(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
         elif d == "pcomp" and is_clausal_pcomp(c):
@@ -264,7 +267,8 @@ def chunk_roots(head):
                     or contains_clause(c)
                     or is_adverbial_complex_prep(c)
                     or has_bracketed_aside(c)
-                    or has_comma_fenced_appositive(c),
+                    or has_comma_fenced_appositive(c)
+                    or has_supplement_punctuation(c),
                 ))
         elif d == "pobj":
             # Only reachable when the governing preposition was absorbed into a
@@ -274,7 +278,8 @@ def chunk_roots(head):
             roots.append((c, "object",
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)))
+                          or has_comma_fenced_appositive(c)
+                          or has_supplement_punctuation(c)))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
@@ -481,6 +486,19 @@ def has_appositive_enumeration(noun):
 # being renamed, not off the renaming, so the appositive's own subtree stops
 # one token short of the comma that introduced it.
 FENCE_ADVERB_DEPS = frozenset({"neg", "advmod"})
+
+
+# Punctuation that introduces a supplement rather than separating two equals.
+SUPPLEMENT_PUNCT = frozenset({":", ";"})
+
+
+def has_supplement_punctuation(token):
+    """Whether a phrase holds a colon with material on both sides of it."""
+    indices = [t.i for t in token.subtree]
+    lo, hi = min(indices), max(indices)
+    return any(
+        lo < t.i < hi and t.text in SUPPLEMENT_PUNCT for t in token.subtree
+    )
 
 
 def appositive_fence(doc, left):
@@ -954,6 +972,25 @@ def np_expand(head, doc, role, constituency, parent_span):
             parts.append(current)
         return parts
 
+    def split_supplement(run):
+        # A colon introduces an expansion of whatever came before it, and the
+        # dependency parse does not say so: across four corpus sentences spaCy
+        # read the tail as `pobj`, `appos`, `appos` and `npadvmod`. As with
+        # brackets, the punctuation is the only signal that holds.
+        #
+        # The colon stays with the half that introduced it. "two perspectives:"
+        # is the phrase making the promise, and a card opening on a bare colon
+        # reads as punctuation stranded from its sentence.
+        parts, current = [], []
+        for index in run:
+            current.append(index)
+            if doc[index].text in SUPPLEMENT_PUNCT:
+                parts.append(current)
+                current = []
+        if current:
+            parts.append(current)
+        return parts
+
     chunks = []
     run_owner, run = "__sentinel__", []
 
@@ -966,9 +1003,10 @@ def np_expand(head, doc, role, constituency, parent_span):
         o = run_owner
         if o is None:
             parts = [
-                bracketed
+                piece
                 for item in split_enumeration(run)
                 for bracketed in split_brackets(item)
+                for piece in split_supplement(bracketed)
             ]
             for part in parts:
                 part_role = role
@@ -988,6 +1026,14 @@ def np_expand(head, doc, role, constituency, parent_span):
                     part_role = "appositive"
                 if doc[part[0]].text in OPEN_BRACKETS:
                     part_role = "insertion"
+                # What a colon introduces expands what precedes it, whether
+                # spaCy called it an appositive or not: "Chronicles: A Magazine
+                # of American Culture", "two perspectives: that of the owner
+                # and that of the operator". 同位语 is what a grammar names
+                # that, and repeating the parent's own role on both halves
+                # would say nothing about why there are two cards.
+                if part[0] - 1 in set(run) and doc[part[0] - 1].text in SUPPLEMENT_PUNCT:
+                    part_role = "appositive"
                 chunks.append({"text": doc[part[0]: part[-1] + 1].text,
                                "role": part_role, "gloss": "", "children": None,
                                "_lo": part[0], "_hi": part[-1]})

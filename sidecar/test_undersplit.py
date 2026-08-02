@@ -222,6 +222,59 @@ class ClassifyLeafTests(unittest.TestCase):
         ])
         self.assertEqual(classify_leaf(0, 9, exemplified), "wide-leaf")
 
+    def test_a_dash_between_two_numbers_is_a_range_not_a_boundary(self):
+        # "Only 400--500 copies of this vinyl EP were pressed": the dash joins.
+        # `_prepare_document` normalizes every dash to "--", so a range reads
+        # exactly like the separator that opens a supplement.
+        ranged = evidence([
+            ("Only", "ADV", "RB", "advmod", 1),
+            ("400", "NUM", "CD", "nummod", 3),
+            ("--", "PUNCT", ":", "punct", 3),
+            ("500", "NUM", "CD", "nummod", 4),
+            ("copies", "NOUN", "NNS", "nsubjpass", 4),
+            ("of", "ADP", "IN", "prep", 4),
+            ("this", "DET", "DT", "det", 8),
+            ("vinyl", "NOUN", "NN", "compound", 8),
+            ("EP", "PROPN", "NNP", "pobj", 5),
+        ])
+        self.assertIsNone(classify_leaf(0, 9, ranged))
+
+    def test_a_leading_comma_is_a_fence_already_drawn(self):
+        # ", i.e. parameters relevant to lower scales of organization," got a
+        # card of its own *because* of that comma, then was reported for it.
+        fenced = evidence([
+            (",", "PUNCT", ",", "punct", 2),
+            ("i.e.", "ADV", "RB", "advmod", 2),
+            ("parameters", "NOUN", "NNS", "appos", 9),
+            ("relevant", "ADJ", "JJ", "amod", 2),
+            ("to", "ADP", "IN", "prep", 3),
+            ("lower", "ADJ", "JJR", "amod", 6),
+            ("scales", "NOUN", "NNS", "pobj", 4),
+            ("of", "ADP", "IN", "prep", 6),
+            ("organization", "NOUN", "NN", "pobj", 7),
+            ("remains", "VERB", "VBZ", "ROOT", 9),
+        ])
+        self.assertIsNone(classify_leaf(0, 9, fenced))
+
+    def test_a_modifier_reached_through_its_conjunct_still_continues(self):
+        # "the extracurricular, yet still important, aspects of university
+        # life": "important" reaches the noun only through the
+        # "extracurricular" it coordinates with, back across the comma.
+        coordinate = evidence([
+            ("the", "DET", "DT", "det", 7),
+            ("extracurricular", "ADJ", "JJ", "amod", 7),
+            (",", "PUNCT", ",", "punct", 1),
+            ("yet", "CCONJ", "CC", "cc", 1),
+            ("still", "ADV", "RB", "advmod", 5),
+            ("important", "ADJ", "JJ", "conj", 1),
+            (",", "PUNCT", ",", "punct", 7),
+            ("aspects", "NOUN", "NNS", "dobj", 7),
+            ("of", "ADP", "IN", "prep", 7),
+            ("university", "NOUN", "NN", "compound", 10),
+            ("life", "NOUN", "NN", "pobj", 8),
+        ])
+        self.assertIsNone(classify_leaf(0, 11, coordinate))
+
     def test_an_inserted_she_said_is_one_card_on_purpose(self):
         # "Human nature, they say, is not easily changed by law." The reporting
         # clause is the interruption; showing "they" and "say" as two cards

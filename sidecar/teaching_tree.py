@@ -507,12 +507,23 @@ def _object_infinitive_parts(
     hides the matrix object inside a nominal-clause card.  Require both parses
     to agree on the narrow object-plus-to-infinitive shape before splitting;
     finite content clauses remain nominal clauses.
+
+    Benepar's spans stop before sentence-final punctuation while merge_tiny
+    glues that punctuation onto the last chunk, so the node is one token wider
+    than the constituent whenever the construction ends the sentence — which
+    it usually does.  Compare labels against the node's content, and let the
+    emitted complement keep the punctuation so the split still tiles the node.
     """
-    if (
-        node.role != "clause-noun"
-        or len(node.children) < 2
-        or "S" not in evidence.labels_for(node.start, node.end)
+    if node.role != "clause-noun" or len(node.children) < 2:
+        return None
+
+    content_end = node.end
+    while (
+        content_end > node.start
+        and evidence.tokens[content_end - 1].pos == "PUNCT"
     ):
+        content_end -= 1
+    if "S" not in evidence.labels_for(node.start, content_end):
         return None
 
     object_node = node.children[0]
@@ -521,7 +532,7 @@ def _object_infinitive_parts(
         object_node.role != "subject"
         or object_node.start != node.start
         or tail[0].start != object_node.end
-        or tail[-1].end != node.end
+        or not (content_end <= tail[-1].end <= node.end)
     ):
         return None
 
@@ -549,7 +560,7 @@ def _object_infinitive_parts(
     marker = markers[0]
     if (
         marker.index != object_node.end
-        or "VP" not in evidence.labels_for(marker.index, node.end)
+        or "VP" not in evidence.labels_for(marker.index, content_end)
     ):
         return None
 

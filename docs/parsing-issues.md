@@ -5,10 +5,28 @@
 下面每条的「回归判据」都有一条对应的可执行测试，跑真 spaCy + Benepar：
 
 ```bash
-uv run --script sidecar/golden_parse_checks.py    # 21 条，约 3 秒模型加载
+uv run --script sidecar/golden_parse_checks.py    # 直接跑：每次约 95 秒，全花在加载模型上
 ```
 
 该套件不叫 `test_*.py`，因此不会被 `python -m unittest discover -s sidecar` 收走——快测保持零依赖、毫秒级。改动拆句规则后必须跑一次：判据只有能执行才拦得住回归（见 LEARNINGS #42）。
+
+### 用常驻进程跑（推荐）
+
+模型加载约 70 秒且每次 `uv run --script` 都要重付一遍，改一条规则要等好几分钟才知道有没有用。`devrunner.py` 把模型常驻在一个 worker 里，脚本变成客户端：
+
+```bash
+# 起一次，之后一直用
+tmux new-session -d -s thorn-dev -c sidecar 'uv run --script devrunner.py --serve'
+
+cd sidecar
+python3 devrunner.py golden_parse_checks.py            # 95s -> 1.5s
+python3 devrunner.py corpus_report.py --constructions  # 150s -> 20s
+python3 devrunner.py /tmp/probe.py                     # 一次性探针也走这条路
+```
+
+客户端是纯标准库、跑在裸 `python3` 上，不经过 `uv`，否则每次调用又要解一遍环境。
+
+worker **每个 job 都把 sidecar 目录下的模块从 `sys.modules` 里清掉**，让脚本重新从磁盘 import——所以它永远跑的是当前工作区的代码，不会拿一小时前加载的旧规则报绿。唯一常驻的是 `nlp`。这一点是这个设计必须守住的：一个测的是旧代码的绿色套件，比一个慢套件危险得多。
 
 ## 已修复（2026-07-30）
 

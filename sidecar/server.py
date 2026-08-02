@@ -89,6 +89,13 @@ def require_auth(x_thorn_token: str | None = Header(default=None)):
 
 def load():
     global nlp
+    if nlp is not None:
+        # Already loaded. `devrunner` reimports this module for every job to
+        # guarantee the code under test is the code on disk, and hands the one
+        # loaded pipeline back afterwards. Without this guard each job builds a
+        # second pipeline and drops the one it was given -- slower every time,
+        # and a fresh copy of the transformer weights per job.
+        return
     # Model installation is an explicit setup action.  Starting the app must
     # never trigger a network download or mutate the user's model cache.
     nlp = spacy.load(SPACY_MODEL)

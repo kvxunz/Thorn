@@ -231,5 +231,5 @@ try:
     chunks, tokens = server.parse_text(sentence)
     print("TOKENS:", tokens)
     print(json.dumps(chunks, ensure_ascii=False, indent=1))
-except Exception:
+except Exception:  # noqa: BLE001 - a one-off probe must report any parser failure
     traceback.print_exc()

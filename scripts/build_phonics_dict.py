@@ -34,6 +34,7 @@ import sys
 import time
 import urllib.request
 from collections import defaultdict
+from itertools import pairwise
 from pathlib import Path
 
 CMUDICT_URL = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
@@ -161,9 +162,10 @@ def em_align(entries, max_iterations=12, tolerance=1e-4, log=print):
         prob = defaultdict(float, {k: v / mass for k, v in counts.items()})
         log(f"  EM iter {iteration}: ll={log_likelihood:.0f} "
             f"aligned={aligned}/{len(entries)} ({time.time() - started:.1f}s)")
-        if previous_ll is not None and previous_ll != 0:
-            if abs(log_likelihood - previous_ll) / abs(previous_ll) < tolerance:
-                break
+        if (previous_ll is not None
+                and previous_ll != 0
+                and abs(log_likelihood - previous_ll) / abs(previous_ll) < tolerance):
+            break
         previous_ll = log_likelihood
     return prob
 
@@ -229,7 +231,7 @@ def syllabify(stressed: tuple):
     if not nuclei:
         return [0] * len(stressed), [""]
     boundaries = [0]
-    for prev, cur in zip(nuclei, nuclei[1:]):
+    for prev, cur in pairwise(nuclei):
         cluster_start, cluster_end = prev + 1, cur  # consonants in between
         onset_start = cluster_end
         for take in range(min(MAX_ONSET, cluster_end - cluster_start), 0, -1):

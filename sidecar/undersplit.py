@@ -36,7 +36,22 @@ WIDE_LEAF_TOKENS = 8
 
 # Punctuation that opens a new constituent when it appears mid-card. A card
 # holding one of these is holding a boundary the splitter declined to draw.
-SEPARATORS = frozenset({",", ";", ":", "—", "–", "--", "(", ")"})
+# The comma is deliberately absent -- it is the one separator that is more
+# often *not* a boundary, and `_comma_opens_a_slot` below judges it per case.
+SEPARATORS = frozenset({";", ":", "—", "–", "--", "(", ")"})
+
+# Dependencies that make a token a pre-modifier of the word it hangs on rather
+# than the head of anything: "January Magazine" and "New York" reach their real
+# dependency one hop up, and it is that hop that says whether a comma before
+# them opened a slot.
+PREMODIFIER_DEPS = frozenset({"compound", "amod", "det", "nummod", "poss",
+                              "quantmod", "predet", "advmod"})
+
+# A comma before one of these continues the phrase instead of interrupting it:
+# "the retail, corporate and wholesale markets", "energy, labor, and other
+# inputs" are single slots with coordinated heads. Splitting them would be a
+# defect, so reporting them is one too.
+CONTINUATION_DEPS = frozenset({"conj", "cc"})
 
 # An appositive inside a leaf is a second naming of the head noun, a relative
 # or adverbial clause is a layer: two slots shown as one either way. Plain
@@ -44,6 +59,85 @@ SEPARATORS = frozenset({",", ";", ":", "—", "–", "--", "(", ")"})
 # with a coordinated head, and splitting it would be wrong. `pcomp` is handled
 # separately below because only some of them are clauses.
 STRUCTURE_DEPS = frozenset({"appos", "relcl", "acl", "advcl", "ccomp"})
+
+
+def _is_bare_name_appositive(token: Any, tokens: Sequence[Any]) -> bool:
+    """A second proper name hung on a first: "Rossie, New York".
+
+    spaCy labels these ``appos``, but an address is not a second naming worth
+    its own card. A teaching appositive introduces its noun with a determiner
+    ("Lloyd Nickson, a 54-year-old Darwin resident"), and that is what tells
+    the two apart.
+    """
+    return (
+        token.dep == "appos"
+        and token.pos == "PROPN"
+        and not any(
+            other.dep == "det" and other.head == token.index for other in tokens
+        )
+    )
+
+
+def _comma_opens_a_slot(
+    tokens: Sequence[Any],
+    position: int,
+    start: int,
+    end: int,
+) -> bool:
+    """Whether the comma at ``position`` fences off material of its own.
+
+    Most mid-card commas do not. A serial list ("energy, labor, and other
+    inputs of crop production") and a pair of coordinate adjectives ("such
+    large, impersonal manipulation") are each one slot with a coordinated
+    head, and a card that holds them whole is right. Reporting those buried
+    the real findings under correct cards -- the same mistake the raw width
+    threshold used to make, one level down.
+
+    What the comma is followed by settles it. A conjunct or a conjunction
+    continues the phrase; anything else -- an appositive, "such as", "i.e.",
+    an inserted "she said" -- interrupts it.
+    """
+    def phrase_head(token):
+        """Walk a bare modifier up to the word it actually modifies."""
+        seen = 0
+        while (
+            token.dep in PREMODIFIER_DEPS
+            and start <= token.head < end
+            and seen < len(tokens)
+        ):
+            token = tokens[token.head - start]
+            seen += 1
+        return token
+
+    raw_after = next(
+        (token for token in tokens[position + 1:] if token.pos != "PUNCT"),
+        None,
+    )
+    if raw_after is None:
+        return False
+    # "January Magazine", "New York": the first word is a bare modifier, so it
+    # is the phrase's head that carries the dependency worth reading.
+    after = phrase_head(raw_after)
+    if after.dep in CONTINUATION_DEPS:
+        return False
+
+    # Coordinate modifiers of one noun: "such large, impersonal manipulation",
+    # "the cautious, unadorned prose", "the inflexible, though tacit, rules".
+    # Both sides describe the same word, so the comma is punctuation inside one
+    # slot. There is no way to split it into cards anyway -- the two modifiers
+    # are not contiguous with each other once the noun is taken out.
+    before = next(
+        (token for token in reversed(tokens[:position]) if token.pos != "PUNCT"),
+        None,
+    )
+    if (
+        before is not None
+        and before.dep in PREMODIFIER_DEPS
+        and raw_after.dep in PREMODIFIER_DEPS
+        and phrase_head(before).index == after.index
+    ):
+        return False
+    return not _is_bare_name_appositive(after, tokens)
 
 
 @dataclass(frozen=True)
@@ -117,12 +211,17 @@ def classify_leaf(
     # inside the span.
     if len(content) < WIDE_LEAF_TOKENS:
         return None
-    if any(token.text in SEPARATORS for token in tokens[:-1]):
-        return "wide-leaf"
+    for position, token in enumerate(tokens[:-1]):
+        if token.text in SEPARATORS:
+            return "wide-leaf"
+        if token.text == "," and _comma_opens_a_slot(tokens, position, start, end):
+            return "wide-leaf"
     for token in tokens:
         if not start <= token.head < end:
             continue
-        if token.dep in STRUCTURE_DEPS:
+        if token.dep in STRUCTURE_DEPS and not _is_bare_name_appositive(
+            token, tokens
+        ):
             return "wide-leaf"
         # A `pcomp` is a clause only when it brings its own subject. "for
         # buying stock in certain industries", "of translating her eccentric

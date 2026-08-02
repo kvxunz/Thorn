@@ -193,6 +193,14 @@ CASES: dict[str, str] = {
         "might be listed with different authors' names in a catalog due to "
         "abbreviations and spelling variants and mistakes, among others."
     ),
+    "lone-appositive": (
+        "Some scientists claim that the finding is a triumph for yet another "
+        "scientific idea, a refinement of the Big Bang."
+    ),
+    "fenced-appositive-subject": (
+        "Her second novel, Cease to Blush, was published in 2006 and "
+        "subsequently chosen as one of the year's best books."
+    ),
     "bracketed-then-appositive": (
         "Her critically acclaimed first novel, Going Down Swinging (2000), was "
         "followed by The Chick at the Back of the Church (2001), a poetry book "
@@ -674,6 +682,39 @@ class GoldenParseTests(unittest.TestCase):
                 ("insertion", "(2001)"),
                 ("appositive", ", a poetry book"),
             ],
+        )
+
+    def test_a_lone_appositive_gets_its_own_card_when_a_comma_fences_it(self):
+        """", a refinement of the Big Bang" renames the idea; it is not more of it.
+
+        The split used to need two or more appositive members, so a single one
+        was taught as a continuation of the phrase it renames. The comma is
+        what licenses it: a bare renaming ("the poet Milton") is one phrase.
+        """
+        chunks = self.tree("lone-appositive")
+        appositive = node_starting_with(chunks, ", a refinement")
+        self.assertIsNotNone(appositive, "the appositive never got a card")
+        self.assertEqual(appositive["role"], "appositive")
+        self.assertIsNotNone(
+            node_with_text(chunks, "a triumph for yet another scientific idea"),
+            "the phrase it renames lost its own card",
+        )
+
+    def test_a_fencing_comma_never_falls_out_of_the_tree(self):
+        """Every token of "Her second novel, Cease to Blush, was published…".
+
+        The subject branch takes np_expand's bounds rather than the run's, so
+        a comma np_expand declined to claim belonged to no node and the
+        coverage invariant failed the whole sentence -- the panel shows
+        "引擎暂不可用", not a coarser card.
+        """
+        chunks, tokens = self.parse("fenced-appositive-subject")
+        covered = set()
+        for node in walk(chunks):
+            covered.update(range(node["s"], node["e"]))
+        self.assertEqual(
+            sorted(set(range(len(tokens))) - covered), [],
+            "tokens belong to no card",
         )
 
     def test_object_clause_exposes_its_relative_clause(self):

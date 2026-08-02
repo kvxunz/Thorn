@@ -135,6 +135,93 @@ class ClassifyLeafTests(unittest.TestCase):
         ])
         self.assertEqual(classify_leaf(0, 8, clausal), "wide-leaf")
 
+    def test_a_serial_list_is_one_slot_however_many_commas(self):
+        # "in energy, labor, and other inputs of crop production": every comma
+        # is followed by a conjunct, so none of them opens a slot.
+        serial = evidence([
+            ("in", "ADP", "IN", "prep", 1),
+            ("energy", "NOUN", "NN", "pobj", 0),
+            (",", "PUNCT", ",", "punct", 1),
+            ("labor", "NOUN", "NN", "conj", 1),
+            (",", "PUNCT", ",", "punct", 1),
+            ("and", "CCONJ", "CC", "cc", 1),
+            ("other", "ADJ", "JJ", "amod", 7),
+            ("inputs", "NOUN", "NNS", "conj", 1),
+            ("of", "ADP", "IN", "prep", 7),
+            ("crop", "NOUN", "NN", "compound", 10),
+            ("production", "NOUN", "NN", "pobj", 8),
+        ])
+        self.assertIsNone(classify_leaf(0, 11, serial))
+
+    def test_a_list_item_reached_through_its_modifier_still_continues(self):
+        # "by The Globe and Mail, January Magazine, and The Tyee": the token
+        # after the comma is a bare `compound`, and the dependency that says
+        # what it is sits one hop up on "Magazine".
+        listed = evidence([
+            ("by", "ADP", "IN", "prep", 3),
+            ("The", "DET", "DT", "det", 2),
+            ("Globe", "PROPN", "NNP", "pobj", 0),
+            ("and", "CCONJ", "CC", "cc", 2),
+            ("Mail", "PROPN", "NNP", "conj", 2),
+            (",", "PUNCT", ",", "punct", 2),
+            ("January", "PROPN", "NNP", "compound", 7),
+            ("Magazine", "PROPN", "NNP", "conj", 2),
+            (",", "PUNCT", ",", "punct", 2),
+            ("and", "CCONJ", "CC", "cc", 7),
+            ("The", "DET", "DT", "det", 11),
+            ("Tyee", "PROPN", "NNP", "conj", 7),
+        ])
+        self.assertIsNone(classify_leaf(0, 12, listed))
+
+    def test_a_place_name_is_not_an_appositive_worth_a_card(self):
+        # "at The Spirit Room in Rossie, New York" -- spaCy calls "York" an
+        # appositive of "Rossie". It is an address, not a second naming.
+        place = evidence([
+            ("at", "ADP", "IN", "prep", 3),
+            ("The", "DET", "DT", "det", 3),
+            ("Spirit", "PROPN", "NNP", "compound", 3),
+            ("Room", "PROPN", "NNP", "pobj", 0),
+            ("in", "ADP", "IN", "prep", 3),
+            ("Rossie", "PROPN", "NNP", "pobj", 4),
+            (",", "PUNCT", ",", "punct", 5),
+            ("New", "PROPN", "NNP", "compound", 8),
+            ("York", "PROPN", "NNP", "appos", 5),
+        ])
+        self.assertIsNone(classify_leaf(0, 9, place))
+
+    def test_an_appositive_that_introduces_its_noun_is_still_reported(self):
+        # "Lloyd Nickson, a 54-year-old Darwin resident" -- the determiner is
+        # what separates a teaching appositive from the address convention.
+        named = evidence([
+            ("Lloyd", "PROPN", "NNP", "compound", 1),
+            ("Nickson", "PROPN", "NNP", "nsubj", 1),
+            (",", "PUNCT", ",", "punct", 1),
+            ("a", "DET", "DT", "det", 6),
+            ("54-year-old", "ADJ", "JJ", "amod", 6),
+            ("Darwin", "PROPN", "NNP", "compound", 6),
+            ("resident", "NOUN", "NN", "appos", 1),
+            ("of", "ADP", "IN", "prep", 6),
+            ("the", "DET", "DT", "det", 9),
+            ("territory", "NOUN", "NN", "pobj", 7),
+        ])
+        self.assertEqual(classify_leaf(0, 10, named), "wide-leaf")
+
+    def test_an_exemplifying_comma_still_opens_a_slot(self):
+        # "proper adjustment of some parameters, such as penalisation" -- the
+        # comma introduces examples, which is a layer, not a continuation.
+        exemplified = evidence([
+            ("proper", "ADJ", "JJ", "amod", 1),
+            ("adjustment", "NOUN", "NN", "nsubj", 1),
+            ("of", "ADP", "IN", "prep", 1),
+            ("some", "DET", "DT", "det", 4),
+            ("parameters", "NOUN", "NNS", "pobj", 2),
+            (",", "PUNCT", ",", "punct", 4),
+            ("such", "ADJ", "JJ", "amod", 7),
+            ("as", "ADP", "IN", "prep", 4),
+            ("penalisation", "NOUN", "NN", "pobj", 7),
+        ])
+        self.assertEqual(classify_leaf(0, 9, exemplified), "wide-leaf")
+
     def test_a_short_phrase_is_not_reported(self):
         self.assertIsNone(classify_leaf(0, 6, FLAT_NP))
 

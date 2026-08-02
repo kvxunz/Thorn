@@ -201,6 +201,23 @@ CASES: dict[str, str] = {
         "Her second novel, Cease to Blush, was published in 2006 and "
         "subsequently chosen as one of the year's best books."
     ),
+    "comma-inside-a-parenthesis": (
+        "She has received fellowships from The Banff Centre, MacDowell Colony, "
+        "Escape to Create (Seaside, Florida), Ucross Foundation and Omi "
+        "International Arts Center."
+    ),
+    "coordinate-modifiers": (
+        "Students underestimate the extracurricular, yet still important, "
+        "aspects of university life."
+    ),
+    "double-fenced-appositive": (
+        "The journey was the highlight, not the totality, of his travels "
+        "through the region."
+    ),
+    "fenced-appositive-in-a-prep-phrase": (
+        "The island was settled by more than 300 cultural groups, each with "
+        "different customs, social structures, world views, and languages."
+    ),
     "bracketed-then-appositive": (
         "Her critically acclaimed first novel, Going Down Swinging (2000), was "
         "followed by The Chick at the Back of the Church (2001), a poetry book "
@@ -698,6 +715,76 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNotNone(
             node_with_text(chunks, "a triumph for yet another scientific idea"),
             "the phrase it renames lost its own card",
+        )
+
+    def test_a_second_comma_closes_the_insertion_it_opened(self):
+        """", not the totality," interrupts; "of his travels" resumes.
+
+        Opening the fence without closing it handed the rest of the phrase to
+        the renaming, so the card read ", not the totality, of his travels
+        through the region" -- travels the head noun has, not the totality.
+        """
+        chunks = self.tree("double-fenced-appositive")
+        appositive = node_starting_with(chunks, ", not the totality")
+        self.assertIsNotNone(appositive, "the insertion never got a card")
+        self.assertEqual(appositive["text"], ", not the totality,")
+        self.assertIsNotNone(
+            node_with_text(chunks, "the highlight"),
+            "the noun being renamed lost its own card",
+        )
+        self.assertIsNotNone(
+            node_starting_with(chunks, "of his travels"),
+            "the material after the fence never resumed",
+        )
+
+    def test_a_prep_phrase_shows_the_appositive_a_comma_fences_off(self):
+        """"by … 300 cultural groups" and what each of them has are two slots.
+
+        The prep card's expand gate wanted an appositive *list*; a single
+        fenced one left twenty-one tokens flat on one line.
+        """
+        chunks = self.tree("fenced-appositive-in-a-prep-phrase")
+        self.assertIsNotNone(
+            node_with_text(chunks, "by more than 300 cultural groups"),
+            "the prep phrase never separated from its appositive",
+        )
+        appositive = node_starting_with(chunks, ", each with different customs")
+        self.assertIsNotNone(appositive, "the appositive never got a card")
+        self.assertEqual(appositive["role"], "appositive")
+
+    def test_a_comma_inside_a_parenthesis_never_opens_a_card(self):
+        """"(Seaside, Florida)" is one aside, however the comma reads.
+
+        By every appositive test the enumeration split applies, the comma
+        after "Seaside" fences off a second naming — so the split ran, and
+        left ", Florida)" hanging off the item after it.
+        """
+        chunks = self.tree("comma-inside-a-parenthesis")
+        self.assertEqual(
+            [text for text in texts(chunks) if text.startswith(", Florida")],
+            [],
+            "the split cut the parenthesis open",
+        )
+        self.assertIsNotNone(
+            node_with_text(chunks, "(Seaside, Florida)"),
+            "the aside never got a card of its own",
+        )
+
+    def test_coordinate_modifiers_are_never_split_by_their_comma(self):
+        """"the extracurricular, yet still important, aspects" stays one card.
+
+        Both modifiers describe "aspects", so there is no split to make: take
+        the noun out and the two are not contiguous with each other. The comma
+        looks exactly like the fence above, which is why this is pinned.
+        """
+        chunks = self.tree("coordinate-modifiers")
+        self.assertIsNotNone(
+            node_with_text(
+                chunks,
+                "the extracurricular, yet still important, aspects of "
+                "university life.",
+            ),
+            "the modifiers were split off the noun they both describe",
         )
 
     def test_a_fencing_comma_never_falls_out_of_the_tree(self):

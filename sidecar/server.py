@@ -263,7 +263,8 @@ def chunk_roots(head):
                     prep_object_enumeration(c)
                     or contains_clause(c)
                     or is_adverbial_complex_prep(c)
-                    or has_bracketed_aside(c),
+                    or has_bracketed_aside(c)
+                    or has_comma_fenced_appositive(c),
                 ))
         elif d == "pobj":
             # Only reachable when the governing preposition was absorbed into a
@@ -475,6 +476,25 @@ def has_appositive_enumeration(noun):
     return len(members) >= 2
 
 
+# Words that sit in the fence rather than in the phrase either side of it.
+# "the highlight, not the totality, of his travels" hangs `not` off the noun
+# being renamed, not off the renaming, so the appositive's own subtree stops
+# one token short of the comma that introduced it.
+FENCE_ADVERB_DEPS = frozenset({"neg", "advmod"})
+
+
+def appositive_fence(doc, left):
+    """Index of the comma fencing off an appositive that starts at ``left``.
+
+    None when the renaming is bare — "the poet Milton", "my friend Sam" is one
+    phrase and splitting it would be wrong, which is what the older
+    two-or-more rule was really protecting.
+    """
+    while left > 0 and doc[left - 1].dep_ in FENCE_ADVERB_DEPS:
+        left -= 1
+    return left - 1 if left > 0 and doc[left - 1].text == "," else None
+
+
 def has_comma_fenced_appositive(noun):
     """Whether a nominal carries a single appositive set off by a comma.
 
@@ -482,15 +502,10 @@ def has_comma_fenced_appositive(noun):
     scientific idea, a refinement of the Big Bang" — one appositive, so
     `has_appositive_enumeration` (which wants a list) leaves the card flat and
     the second naming is taught as more of the first.
-
-    The comma is what makes it a card. A bare renaming — "the poet Milton", "my
-    friend Sam" — is one phrase and splitting it would be wrong, and that is
-    the case the two-or-more rule was really protecting.
     """
     return any(
         t.dep_ == "appos"
-        and (left := min(x.i for x in t.subtree)) > 0
-        and noun.doc[left - 1].text == ","
+        and appositive_fence(noun.doc, min(x.i for x in t.subtree)) is not None
         for t in noun.subtree
     )
 
@@ -853,6 +868,19 @@ def np_expand(head, doc, role, constituency, parent_span):
         # A list needs no comma test -- the members are the enumeration.
         lone = len(enum_members) < 2
         run_set = set(run)
+        # Never break inside a parenthesis. "(Seaside, Florida)" holds a comma
+        # that fences an appositive by every test below, but the aside is one
+        # card: cutting it open left ", Florida)" hanging off the next item.
+        # `split_brackets` owns everything between the brackets.
+        depth, inside = 0, set()
+        for i in run:
+            text = doc[i].text
+            if text in CLOSE_BRACKETS and depth:
+                depth -= 1
+            elif depth:
+                inside.add(i)
+            if text in OPEN_BRACKETS:
+                depth += 1
         starts = set()
         for member in enum_members:
             start = member
@@ -871,13 +899,26 @@ def np_expand(head, doc, role, constituency, parent_span):
                 if not (prev in run_set and doc[prev].text in (",", ";")):
                     continue
             if lone:
-                if not (left in run_set and doc[left].text == ","):
+                fence = appositive_fence(doc, start)
+                if fence is None or fence not in run_set:
                     continue
                 # Split at the fence, not after it: the comma introduces the
                 # appositive, so ", a poetry book" is the card. Leaving it
                 # behind strands it on whatever preceded ("(2001),").
-                start = left
+                start = fence
+                # A second comma closes the insertion. "the highlight, not the
+                # totality, of his travels" is three cards, and opening one
+                # without closing it would hand the tail to the appositive —
+                # "of his travels" is the head noun's, not the renaming's.
+                right = max(x.i for x in doc[member].subtree)
+                if (
+                    right + 1 in run_set
+                    and right + 2 in run_set
+                    and doc[right + 1].text == ","
+                ):
+                    starts.add(right + 2)
             starts.add(start)
+        starts -= inside
         parts, current = [], []
         for i in run:
             if i in starts and current:

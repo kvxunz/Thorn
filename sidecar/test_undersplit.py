@@ -222,6 +222,61 @@ class ClassifyLeafTests(unittest.TestCase):
         ])
         self.assertEqual(classify_leaf(0, 9, exemplified), "wide-leaf")
 
+    def test_an_inserted_she_said_is_one_card_on_purpose(self):
+        # "Human nature, they say, is not easily changed by law." The reporting
+        # clause is the interruption; showing "they" and "say" as two cards
+        # would teach nothing about what interrupted the sentence.
+        reported = evidence([
+            ("Human", "ADJ", "JJ", "amod", 1),
+            ("nature", "NOUN", "NN", "nsubjpass", 9),
+            (",", "PUNCT", ",", "punct", 4),
+            ("they", "PRON", "PRP", "nsubj", 4),
+            ("say", "VERB", "VBP", "parataxis", 9),
+            (",", "PUNCT", ",", "punct", 4),
+            ("is", "AUX", "VBZ", "auxpass", 9),
+            ("not", "PART", "RB", "neg", 9),
+            ("easily", "ADV", "RB", "advmod", 9),
+            ("changed", "VERB", "VBN", "ROOT", 9),
+        ])
+        self.assertIsNone(classify_leaf(2, 6, reported))
+
+    def test_a_reporting_clause_keeps_its_particle_and_its_quotes(self):
+        # ",” he went on, “" -- the closing quote belongs to the speech, not to
+        # the insertion, so its head sits outside the card.
+        quoted = evidence([
+            ("I", "PRON", "PRP", "nsubj", 1),
+            ("got", "VERB", "VBD", "ROOT", 1),
+            ("home", "NOUN", "NN", "npadvmod", 1),
+            (",", "PUNCT", ",", "punct", 6),
+            ("”", "PUNCT", "''", "punct", 6),
+            ("he", "PRON", "PRP", "nsubj", 6),
+            ("went", "VERB", "VBD", "parataxis", 1),
+            ("on", "ADP", "RP", "advmod", 6),
+            (",", "PUNCT", ",", "punct", 6),
+            ("“", "PUNCT", "``", "punct", 1),
+        ])
+        self.assertIsNone(classify_leaf(3, 10, quoted))
+
+    def test_an_inserted_clause_with_content_of_its_own_still_splits(self):
+        # "--for some reason it was the gloomiest event of my day--" is also
+        # `parataxis`, but it says something instead of naming a speaker, so
+        # one card really is hiding a layer.
+        aside = evidence([
+            ("I", "PRON", "PRP", "nsubj", 2),
+            ("never", "ADV", "RB", "neg", 2),
+            ("saw", "VERB", "VBD", "ROOT", 2),
+            ("--", "PUNCT", ":", "punct", 8),
+            ("for", "ADP", "IN", "prep", 8),
+            ("some", "DET", "DT", "det", 6),
+            ("reason", "NOUN", "NN", "pobj", 4),
+            ("it", "PRON", "PRP", "nsubj", 8),
+            ("was", "AUX", "VBD", "parataxis", 2),
+            ("the", "DET", "DT", "det", 10),
+            ("event", "NOUN", "NN", "attr", 8),
+            ("--", "PUNCT", ":", "punct", 8),
+        ])
+        self.assertEqual(classify_leaf(3, 12, aside), "clause-in-one-card")
+
     def test_a_short_phrase_is_not_reported(self):
         self.assertIsNone(classify_leaf(0, 6, FLAT_NP))
 

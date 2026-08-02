@@ -505,10 +505,6 @@ FENCE_ADVERB_DEPS = frozenset({"neg", "advmod"})
 # Punctuation that introduces a supplement rather than separating two equals.
 SUPPLEMENT_PUNCT = frozenset({":", ";"})
 
-# Parts of speech that cannot end a card: each one is waiting for a word that
-# a card boundary would have taken away from it.
-STRANDED_POS = frozenset({"ADP", "PART", "CCONJ", "SCONJ", "DET", "AUX"})
-
 
 
 def has_supplement_punctuation(token):
@@ -1110,19 +1106,7 @@ def np_expand(head, doc, role, constituency, parent_span):
             and doc[index].text in fence_texts
             and fences(index)
         ]
-        # A supplement may not end mid-phrase. "Those, unaware of what is
-        # happening in society today" and "an increased tolerance, with more and
-        # more of the substance required to…" both continue into a clause carved
-        # out above, so the card the fence opens is a stump ending on a stranded
-        # preposition. Which token ends a piece depends on where the next one
-        # starts, so this walks back from the last fence.
-        kept, end = [], run[-1]
-        for index in reversed(opened):
-            tail = [i for i in run if index < i <= end and doc[i].pos_ != "PUNCT"]
-            if tail and doc[tail[-1]].pos_ not in STRANDED_POS:
-                kept.append(index)
-                end = index - 1
-        starts = set(kept)
+        starts = set(opened)
         supplement_starts.update(starts)
 
         parts, current = [], []

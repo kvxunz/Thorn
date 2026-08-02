@@ -34,7 +34,7 @@ enum PhonicsService {
         let structure = decompose(word: word)
         onPartial?(structure)
 
-        let model = SettingsStore.shared.translationModel
+        let model = await MainActor.run { SettingsStore.shared.translationModel }
         guard !model.isEmpty else {
             return structure.withMeaning("（中文词义暂缺：请在设置里选择 Ollama 模型）")
         }

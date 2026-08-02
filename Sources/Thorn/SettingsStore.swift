@@ -2,6 +2,7 @@ import Foundation
 
 /// App settings, stored in UserDefaults. Local pipeline only: the sidecar
 /// delivers structure; the Ollama translation model is the single knob.
+@MainActor
 final class SettingsStore: ObservableObject {
     static let shared = SettingsStore()
 
@@ -11,8 +12,8 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(translationModel, forKey: "translationModel") }
     }
 
-    static let ollamaNativeBaseURL = "http://127.0.0.1:11434"
-    static let defaultTranslationModel = "hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K"
+    nonisolated static let ollamaNativeBaseURL = "http://127.0.0.1:11434"
+    nonisolated static let defaultTranslationModel = "hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K"
 
     /// Models retired from Thorn's local pipeline. Migrate an existing saved
     /// selection so deleting their Ollama weights cannot leave the app broken.

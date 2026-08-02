@@ -138,6 +138,18 @@ CASES: dict[str, str] = {
     "object-infinitive": (
         "The committee expects the government to publish the report before June."
     ),
+    "not-because-but-because": (
+        "She was criticized by her fellow lawyers not because she was not "
+        "hardworking, but because she so minutely prepared her cases that she "
+        "failed to bring the expected number to trial."
+    ),
+    "coordinated-relatives": (
+        'Towns like Bournemouth and Eastbourne sprang up to house large, '
+        '"comfortable" classes who had retired on their incomes, and who had '
+        "no relation to the rest of the community except that of drawing "
+        "dividends and occasionally attending a shareholders' meeting to "
+        "dictate their orders to the management."
+    ),
     "extraposed-relative": (
         "To do so, the Tallinners sent a spy to his house, who heard Olev's "
         "name in a song his wife sang."
@@ -400,6 +412,36 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNotNone(who)
         self.assertEqual(who["role"], "clause-relative")
         self.assertEqual(who["children"][0]["role"], "relative")
+
+    def test_a_clause_wrapper_never_shares_a_token_with_its_sibling(self):
+        """A wrapper measured by Benepar's span, not by the cards it grouped.
+
+        Benepar's clause span stops before the trailing comma that merge_tiny
+        glued onto the complement, so the complement fell outside the group
+        while staying inside the wrapper's span — `hardworking` sat in two
+        cards at once and the duplicate got the sentence rejected outright.
+        """
+        chunks = self.tree("not-because-but-because")
+        first = node_starting_with(chunks, "because she was not")
+        self.assertIsNotNone(first, "the first because-clause has no card")
+        self.assertEqual(first["text"], "because she was not hardworking,")
+        self.assertEqual(
+            texts(first["children"])[-1], "hardworking,",
+            "the complement is named by the wrapper but taught by a sibling",
+        )
+
+    def test_coordinated_relatives_do_not_both_claim_the_second_wh(self):
+        """The second conjunct's SBAR opens on a token the first already took.
+
+        Recursing over that untightened span put `who` inside both relative
+        clauses, and a child starting before its parent fails validation.
+        """
+        chunks = self.tree("coordinated-relatives")
+        relatives = [n for n in walk(chunks) if n["role"] == "clause-relative"]
+        self.assertGreaterEqual(len(relatives), 2)
+        spans = sorted((n["s"], n["e"]) for n in relatives)
+        for (_, end), (start, _) in itertools.pairwise(spans):
+            self.assertLessEqual(end, start, "two relative clauses overlap")
 
     def test_an_extraposed_relative_is_a_clause_not_part_of_the_prep_phrase(self):
         """A relative split from its noun is nobody's dependency child here.

@@ -660,6 +660,26 @@ def np_expand(head, doc, role, constituency, parent_span):
         for index in range(span.start, span.end):
             owner.setdefault(index, clause)
 
+    # `owner` is first-come, so a later clause whose Benepar span overlaps an
+    # earlier one keeps only the tokens still free — but its *recursion* span
+    # was not narrowed to match. "…classes who had retired on their incomes,
+    # and who had no relation…" gives the second conjunct an SBAR that opens at
+    # its own `who`, a token the first conjunct already took; recursing over
+    # the untightened span emits that `who` inside both clauses, and a child
+    # that starts before its parent gets the whole sentence rejected.
+    for clause in clause_heads:
+        span = clause_spans[clause.i]
+        held = [
+            index for index in range(span.start, span.end)
+            if owner.get(index) is clause
+        ]
+        if not held or not held[0] <= clause.i <= held[-1]:
+            # Nothing left, or the head itself went to a neighbour: tightening
+            # would hand build_chunks a span its own head sits outside.
+            continue
+        if held[0] != span.start or held[-1] != span.end - 1:
+            clause_spans[clause.i] = TokenSpan(held[0], held[-1] + 1, span.labels)
+
     # Appositive enumeration ("the Irish version: the poverty; the father; …"):
     # appos chain members hanging inside this NP. With two or more, the
     # semicolon/colon-separated items are a list, not a continuation of the
@@ -1515,6 +1535,21 @@ def group_constituency_clauses(chunks, role, doc, constituency, parent_span):
     clause_spans = constituency.coordinate_clause_children(parent_span)
     if not clause_spans:
         return chunks
+
+    def content_hi(chunk):
+        """A card's last non-punctuation token.
+
+        Benepar's clause spans stop before a trailing comma while merge_tiny
+        glues that comma onto the card, so comparing raw ``_hi`` against a
+        span end drops a card that belongs inside — the same seam as
+        LEARNINGS #42. "not because she was not hardworking, but …" lost its
+        complement that way and the wrapper read "because she was not".
+        """
+        hi = chunk.get("_hi", parent_span.end - 1)
+        lo = chunk.get("_lo", hi)
+        while hi > lo and not any(c.isalnum() for c in doc[hi].text):
+            hi -= 1
+        return hi
     for left, right in pairwise(clause_spans):
         separators = [
             chunk for chunk in chunks
@@ -1528,23 +1563,32 @@ def group_constituency_clauses(chunks, role, doc, constituency, parent_span):
         positions = [
             index for index, chunk in enumerate(result)
             if chunk.get("_lo", -1) >= span.start
-            and chunk.get("_hi", parent_span.end) < span.end
+            and content_hi(chunk) < span.end
         ]
         if not positions or positions != list(range(positions[0], positions[-1] + 1)):
             continue
         first, last = positions[0], positions[-1]
         selected = result[first:last + 1]
+        # Bounds come from the cards actually grouped, never from the Benepar
+        # span. `positions` keeps only cards falling wholly inside the span, so
+        # a card that straddles its edge is left outside — and a wrapper
+        # measured by the span would then cover tokens that also live in that
+        # sibling. "not because she was not hardworking, but because …" hit
+        # exactly this: `hardworking` sat in both the wrapper and the
+        # complement card beside it, and the duplicate killed the sentence.
+        lo = selected[0].get("_lo", span.start)
+        hi = selected[-1].get("_hi", span.end - 1)
         if (len(selected) == 1
-                and selected[0].get("_lo") == span.start
-                and selected[0].get("_hi") == span.end - 1):
+                and selected[0].get("_lo") == lo
+                and selected[0].get("_hi") == hi):
             continue
         wrapper = {
-            "text": doc[span.start:span.end].text,
+            "text": doc[lo:hi + 1].text,
             "role": role,
             "gloss": "",
             "children": selected,
-            "_lo": span.start,
-            "_hi": span.end - 1,
+            "_lo": lo,
+            "_hi": hi,
         }
         result[first:last + 1] = [wrapper]
     return result

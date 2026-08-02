@@ -22,6 +22,7 @@ from chunk_rules import (
     phrasal_prep_verb_preposition,
     prep_object_start,
     prepare_parse_text,
+    relative_pronoun_gloss,
     though_clause_verb,
     verb_group_indices,
 )
@@ -269,6 +270,29 @@ class PrepObjectStartTests(unittest.TestCase):
             ("fact", "pobj", 0, None, "NOUN"),
         ])
         self.assertIsNone(prep_object_start(doc[0], 0, 0))
+
+
+class RelativePronounGlossTests(unittest.TestCase):
+    def test_subject_relative_says_which_slot_it_fills(self):
+        self.assertEqual(
+            relative_pronoun_gloss("product", "nsubj"),
+            "指代前述的 product，在从句中作主语",
+        )
+
+    def test_object_relative_says_object(self):
+        self.assertEqual(
+            relative_pronoun_gloss("book", "dobj"),
+            "指代前述的 book，在从句中作宾语",
+        )
+
+    def test_unknown_slot_stays_silent_rather_than_guessing(self):
+        self.assertEqual(
+            relative_pronoun_gloss("place", "dep"),
+            "指代前述的 place",
+        )
+
+    def test_no_referent_means_no_gloss(self):
+        self.assertEqual(relative_pronoun_gloss(None, "nsubj"), "")
 
 
 class OrSoTests(unittest.TestCase):

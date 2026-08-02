@@ -107,6 +107,37 @@ def prep_object_start(prep, lo, hi):
     return start
 
 
+# What a relative word does inside its own clause. Only slots a relative
+# word can actually fill are listed; anything else leaves the slot unsaid
+# rather than guessed.
+RELATIVE_SLOT_LABELS = {
+    "nsubj": "主语",
+    "nsubjpass": "主语",
+    "dobj": "宾语",
+    "obj": "宾语",
+    "pobj": "介词宾语",
+    "attr": "表语",
+    "poss": "定语",
+    "advmod": "状语",
+    "npadvmod": "状语",
+}
+
+
+def relative_pronoun_gloss(referent, dep):
+    """What the relative word stands for, and what it does in the clause.
+
+    "a product **that** fails" — the card said only 指代前述的 product, which
+    leaves out the thing a learner has to see: ``that`` is holding the
+    subject position, which is why the clause has no other subject.
+    """
+    if not referent:
+        return ""
+    slot = RELATIVE_SLOT_LABELS.get(dep)
+    if slot is None:
+        return f"指代前述的 {referent}"
+    return f"指代前述的 {referent}，在从句中作{slot}"
+
+
 RELATIVE_INTRODUCERS = {
     "that", "which", "who", "whom", "whose", "where", "when",
 }

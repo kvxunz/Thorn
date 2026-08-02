@@ -48,6 +48,7 @@ from chunk_rules import (
     merge_or_so,
     prep_object_start,
     prepare_parse_text,
+    relative_pronoun_gloss,
     though_clause_verb,
     verb_group_indices,
 )
@@ -1064,7 +1065,7 @@ def build_chunks(
                     clause_role_of_head == "clause-relative"
                     and tok.dep_ != "mark"
                 ):
-                    gloss = f"指代前述的 {referent}" if referent else ""
+                    gloss = relative_pronoun_gloss(referent, tok.dep_)
                     chunks.append({"text": text, "role": "relative", "gloss": gloss, "children": None})
                 else:
                     chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
@@ -1075,7 +1076,7 @@ def build_chunks(
         if len(run_local) == 1 and (toks[0].tag_ in WH_TAGS or is_wh_relative_pronoun(toks[0])):
             tok = toks[0]
             if clause_role_of_head == "clause-relative":
-                gloss = f"指代前述的 {referent}" if referent else ""
+                gloss = relative_pronoun_gloss(referent, tok.dep_)
                 chunks.append({"text": text, "role": "relative", "gloss": gloss, "children": None})
             else:
                 chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})

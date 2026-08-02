@@ -274,7 +274,7 @@ struct ResultView: View {
                 guard let range = layout.spans[node.id] else { continue }
                 let displayRole = node.displayRole
                 switch displayRole {
-                case .subject, .verb, .object:
+                case .subject, .subjectVerb, .verb, .object:
                     apply(range, weight: .bold, color: displayRole.emphaticColor)
                 case .complement:
                     apply(range, weight: .semibold, color: displayRole.emphaticColor)

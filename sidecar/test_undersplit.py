@@ -323,6 +323,16 @@ class FindUndersplitTests(unittest.TestCase):
                    "children": None}]
         self.assertEqual(find_undersplit(chunks, dashed, ["—", "like"]), [])
 
+    def test_a_card_that_names_both_slots_is_not_a_miss(self):
+        # "I'm supposed" holds a subject and a verb and says so. There is no
+        # split to draw -- the boundary is inside a written word -- so
+        # reporting it invites a fix that does not exist.
+        chunks = [{
+            "role": "subject-verb", "text": "the committee had already voted",
+            "s": 0, "e": 5, "children": None,
+        }]
+        self.assertEqual(find_undersplit(chunks, CLAUSE, CLAUSE_TOKENS), [])
+
     def test_an_undrawn_clause_is_reported_with_its_text(self):
         chunks = [{
             "role": "clause-main", "text": "the committee had already voted",

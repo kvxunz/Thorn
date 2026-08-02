@@ -415,6 +415,21 @@ class PrepConjunctAndThoughTests(unittest.TestCase):
         who.lower_ = "who"
         self.assertTrue(is_wh_relative_pronoun(who))
 
+    def test_a_demonstrative_that_is_not_a_relative_pronoun(self):
+        # "That's the secret of Castle Rackrent" was taught with "That" as a
+        # 连词 introducing nothing: the lexical fallback accepts the bare word,
+        # and spaCy had already said DT/nsubj rather than WDT.
+        that = _ClauseTok(0, "That", "nsubj", "PRON")
+        that.tag_ = "DT"
+        that.lower_ = "that"
+        self.assertFalse(is_wh_relative_pronoun(that))
+
+    def test_a_relative_that_spacy_tagged_is_still_caught(self):
+        that = _ClauseTok(2, "that", "nsubj", "PRON")
+        that.tag_ = "WDT"
+        that.lower_ = "that"
+        self.assertTrue(is_wh_relative_pronoun(that))
+
     def test_dash_appositive_detects_em_dash_child(self):
         institute = _ClauseTok(0, "Institute", "nsubj", "PROPN")
         group = _ClauseTok(2, "group", "appos", "NOUN", head=institute)
@@ -558,6 +573,29 @@ class MergeSplitWordsTests(unittest.TestCase):
         ], doc)
         self.assertEqual(len(merged), 1)
         self.assertEqual(merged[0]["text"], "re-investigate")
+
+    def test_a_contraction_names_both_slots_it_fused(self):
+        # "I'm supposed": the merge has to happen -- the boundary is inside a
+        # written word -- but keeping the subject's role taught the learner
+        # that "I'm supposed" is a noun phrase.
+        doc = _FakeDoc("but I’m supposed", ["but", "I", "’m", "supposed"])
+        merged = merge_split_words([
+            {"text": "I", "_lo": 1, "_hi": 1, "role": "subject"},
+            {"text": "’m supposed", "_lo": 2, "_hi": 3, "role": "verb"},
+        ], doc)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "I’m supposed")
+        self.assertEqual(merged[0]["role"], "subject-verb")
+
+    def test_a_fused_pair_of_one_role_keeps_that_role(self):
+        # Only a mixed pair gets renamed: "re-investigate" is a verb twice
+        # over and must not come back as something new.
+        doc = _FakeDoc("and re-investigate some", ["and", "re", "-", "investigate", "some"])
+        merged = merge_split_words([
+            {"text": "re-", "_lo": 1, "_hi": 2, "role": "verb"},
+            {"text": "investigate", "_lo": 3, "_hi": 3, "role": "verb"},
+        ], doc)
+        self.assertEqual(merged[0]["role"], "verb")
 
     def test_a_dash_run_still_separates_two_cards(self):
         # "The plan--his own--failed": the dash appositive must keep splitting.

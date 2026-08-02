@@ -3,6 +3,10 @@ import Foundation
 enum ChunkRole: String, Decodable, CaseIterable, Sendable {
     case subject
     case verb
+    /// One card holding both, because a contraction glued them into a single
+    /// written word: "That's", "I'm supposed", "he'd miss". There is no split
+    /// to draw here, so the label is where the two slots get named.
+    case subjectVerb = "subject-verb"
     case object
     case complement
     case clauseRelative = "clause-relative"
@@ -22,6 +26,7 @@ enum ChunkRole: String, Decodable, CaseIterable, Sendable {
         switch self {
         case .subject: return "主语"
         case .verb: return "谓语"
+        case .subjectVerb: return "主语+谓语"
         case .object: return "宾语"
         case .complement: return "补语"
         case .clauseRelative: return "定语从句"

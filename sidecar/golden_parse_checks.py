@@ -201,6 +201,7 @@ CASES: dict[str, str] = {
         "Her second novel, Cease to Blush, was published in 2006 and "
         "subsequently chosen as one of the year's best books."
     ),
+    "contracted-subject": "That’s the secret of Castle Rackrent.",
     "comma-inside-a-parenthesis": (
         "She has received fellowships from The Banff Centre, MacDowell Colony, "
         "Escape to Create (Seaside, Florida), Ucross Foundation and Omi "
@@ -751,6 +752,19 @@ class GoldenParseTests(unittest.TestCase):
         appositive = node_starting_with(chunks, ", each with different customs")
         self.assertIsNotNone(appositive, "the appositive never got a card")
         self.assertEqual(appositive["role"], "appositive")
+
+    def test_a_contraction_card_names_the_two_slots_it_holds(self):
+        """"That's" is a subject and a verb in one written word.
+
+        Two things went wrong here at once: the lexical relative-pronoun
+        fallback took the bare word "that" and called it a 连词, and the
+        word-preserving merge then handed the fused card whichever role the
+        left half happened to carry.
+        """
+        chunks = self.tree("contracted-subject")
+        card = node_with_text(chunks, "That’s")
+        self.assertIsNotNone(card, "the contraction was split or renamed")
+        self.assertEqual(card["role"], "subject-verb")
 
     def test_a_comma_inside_a_parenthesis_never_opens_a_card(self):
         """"(Seaside, Florida)" is one aside, however the comma reads.

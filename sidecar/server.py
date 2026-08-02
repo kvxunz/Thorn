@@ -1689,7 +1689,20 @@ def build_chunks(
                 chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
             return
         if role is None:
-            chunks.append({"text": text, "role": "other", "gloss": "", "children": None})
+            # A leftover with no slot of its own is still teachable when it
+            # holds a colon or a fence. This short-circuit ran before the
+            # `expand` dispatch below, so "living without the haunting fear of
+            # his suffering: a terrifying death from his breathing condition"
+            # reached the learner as one unlabelled line of fifteen tokens no
+            # matter what the gates decided about it.
+            parts = np_expand(
+                c, doc, "other", constituency, recursive_span,
+            ) if expand else []
+            if len(parts) >= 2:
+                splice_flat(parts, recursive_span)
+            else:
+                chunks.append({"text": text, "role": "other", "gloss": "",
+                               "children": None})
         elif (
             role == "clause-noun"
             and c.dep_ in ("csubj", "csubjpass")

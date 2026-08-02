@@ -227,6 +227,10 @@ CASES: dict[str, str] = {
         "We demonstrate that proper adjustment of some parameters, such as "
         "penalisation, incentives, and resources, improves the outcome."
     ),
+    "colon-inside-an-unlabelled-card": (
+        "The law means he can get on with living without the haunting fear of "
+        "his suffering: a terrifying death from his breathing condition."
+    ),
     "dash-fenced-appositive": (
         "Most experts see in this a paradox — an endless conflict between the "
         "desire to conform and the desire to remain apart."
@@ -901,6 +905,21 @@ class GoldenParseTests(unittest.TestCase):
         supplement = node_starting_with(chunks, ", including deficits")
         self.assertIsNotNone(supplement, "the supplement never got a card")
         self.assertEqual(supplement["role"], "prep-phrase")
+
+    def test_a_card_with_no_slot_of_its_own_still_splits(self):
+        """A leftover holding a colon is still teachable.
+
+        spaCy gives "living without…" no role the card layer has a name for, so
+        it printed as 其他 — and the branch that did so returned before the
+        expand dispatch could ever look at it. Fifteen tokens on one unlabelled
+        line, whatever the gates had decided.
+        """
+        chunks = self.tree("colon-inside-an-unlabelled-card")
+        supplement = node_starting_with(
+            chunks, "a terrifying death from his breathing condition",
+        )
+        self.assertIsNotNone(supplement, "the colon never opened a card")
+        self.assertEqual(supplement["role"], "appositive")
 
     def test_a_dash_fences_an_appositive_as_firmly_as_a_comma(self):
         """"a paradox — an endless conflict…" names the same thing twice.

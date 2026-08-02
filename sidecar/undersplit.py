@@ -264,10 +264,13 @@ def classify_leaf(
 
     content = [token for token in tokens if token.pos != "PUNCT"]
 
-    # A card that *is* the wh-word ("who", "which") is the boundary drawn
-    # correctly, not a missed one -- only a wh-word buried among other material
-    # means the clause it introduces never got its own layer.
-    if len(content) >= 3 and any(token.tag in WH_TAGS for token in tokens):
+    # A card that *opens* on the wh-word is the boundary drawn correctly, not a
+    # missed one -- only a wh-word buried among other material means the clause
+    # it introduces never got its own layer. "whose ultimate goal" is the
+    # subject of a relative clause the tree already carved, and the relative
+    # word is there to say which slot it fills; "a new perspective on how to
+    # effectively noise unlabeled examples" buries one.
+    if len(content) >= 3 and any(token.tag in WH_TAGS for token in content[1:]):
         return "wh-word-in-leaf"
 
     # Length alone says nothing. "his distrust of human nature and human

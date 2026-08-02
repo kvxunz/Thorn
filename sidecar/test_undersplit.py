@@ -77,6 +77,18 @@ class ClassifyLeafTests(unittest.TestCase):
         # The tree gave "who" its own card: that is the split working.
         self.assertIsNone(classify_leaf(2, 3, relative))
 
+    def test_a_card_opening_on_the_wh_word_is_also_drawn_right(self):
+        # The relative clause is already its own layer and this is the subject
+        # slot inside it. The relative word leads because that is the slot it
+        # fills -- reporting it asked the tree to break a subject in half.
+        possessive = evidence([
+            ("whose", "PRON", "WP$", "poss", 2),
+            ("ultimate", "ADJ", "JJ", "amod", 2),
+            ("goal", "NOUN", "NN", "nsubj", 3),
+            ("is", "AUX", "VBZ", "relcl", 3),
+        ])
+        self.assertIsNone(classify_leaf(0, 3, possessive))
+
     def test_a_long_flat_noun_phrase_is_not_a_miss_however_long(self):
         # Width alone used to report this, and on a real corpus that buried
         # the true findings under correct cards -- then invited "fixes" that

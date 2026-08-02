@@ -449,10 +449,9 @@ def is_dash_appositive(token):
     right = max(getattr(token, "i", 0), getattr(head, "i", 0))
     for index in range(left, right + 1):
         text = doc[index].text
-        if text in ("--", "—", "–") or doc[index].dep_ == "punct" and text in (",",):
-            # comma alone is weak; prefer dash or both sides punct around appos
-            if text in ("--", "—", "–"):
-                return True
+        if text in ("--", "—", "–"):
+            # comma alone is weak; prefer dashes around the appositive
+            return True
     # spaCy often attaches ``--`` as punct children of the head noun
     for child in list(getattr(head, "children", []) or []) + list(
         getattr(token, "children", []) or []

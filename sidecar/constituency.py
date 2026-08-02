@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 
 CLAUSE_LABELS = frozenset({"S", "SBAR", "SBARQ", "SINV", "SQ"})
 WH_LABELS = frozenset({"WHNP", "WHADVP", "WHPP", "WHADJP"})
@@ -167,7 +168,7 @@ class ConstituencyIndex:
         # Real coordinated clauses leave at least one separator token (and/or,
         # punctuation) between siblings. Adjacent SBARs are commonly a bad
         # Benepar flattening of a relative nested under the preceding NP.
-        if any(left.end >= right.start for left, right in zip(ordered, ordered[1:])):
+        if any(left.end >= right.start for left, right in pairwise(ordered)):
             return ()
         return tuple(ordered)
 

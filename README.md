@@ -56,7 +56,7 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 ```
 
 - 解析与翻译**并发**跑，结构树先渲染，翻译落地后再填，谁也不等谁。
-- sidecar 每次启动用**随机端口 + 一次性 token** 鉴权，空闲 15 分钟自动退出，下次请求再拉起。
+- sidecar 每次启动用**随机端口 + 一次性 token** 鉴权，空闲 2 分钟自动退出，下次请求再拉起。
 - 返回的树要过一道**完整性校验**（span 严格递增不重叠、节点文本必须逐字等于对应 source token 拼接），过不了的树宁可报错也不显示。
 
 ## 环境要求
@@ -67,7 +67,7 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
   ```bash
   ollama pull hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K
   ```
-- 构建 App 需要完整 Xcode（CLT 缺 SwiftUI 宏插件，`swift build` 会报 `StateMacro could not be found`）
+- 构建 App 需要完整 Xcode（纯 CLT 不提供构建 SwiftUI 所需的完整 SDK/插件）；`scripts/bundle.sh` 会优先使用 `/Applications/Xcode.app`，也可用 `DEVELOPER_DIR` 指定位置
 
 ## 安装
 
@@ -79,10 +79,12 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 2. **构建并安装 App**：
    ```bash
    ./scripts/bundle.sh
-   cp -r build/Thorn.app /Applications/
+   # 先退出正在运行的 Thorn；明确替换同一个 .app 目标，避免复制进旧 bundle
+   sudo rm -rf /Applications/Thorn.app
+   sudo ditto --rsrc --extattr --acl build/Thorn.app /Applications/Thorn.app
    open /Applications/Thorn.app
    ```
-   `bundle.sh` 里用固定的开发者证书哈希签名（让 TCC 授权在重复构建间存活）——换成你自己钥匙串里的证书。
+   `ditto` 的目标固定为 `/Applications/Thorn.app`，重复执行会得到同一个干净 bundle。`bundle.sh` 默认使用仓库开发证书哈希；若要保留你自己的 TCC 授权，请通过 `THORN_CODESIGN_IDENTITY` 传入钥匙串中的签名身份。
 
 3. **授权**：
    - `⌥A` 需要「辅助功能」权限
@@ -90,15 +92,15 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 
 4. 菜单栏图标 → 「设置…」里选一个已安装的 Ollama 翻译模型。
 
-> sidecar 脚本路径默认写死在 `~/xznm/code/Thorn/sidecar/server.py`。仓库不在这个位置就改：
+> 安装后的 App 会使用包内自带的 sidecar，不再依赖仓库路径。开发时如需改用另一份脚本，可覆盖：
 > ```bash
 > defaults write com.xvz.thorn sidecarScript /你的路径/sidecar/server.py
 > ```
 
 ## 隐私
 
-- 运行时除了访问本机 `127.0.0.1` 的 sidecar 和 Ollama，不联网（只有装模型那一步下载权重）。
-- `⌥S` 的截图写到 `0700` 临时文件、读完立即删除，不经过全局剪贴板。
+- 解析和翻译请求只访问本机 `127.0.0.1` 的 sidecar 和 Ollama；首次运行 `uv run --script` 可能联网安装脚本声明的 Python 依赖，`--install-models` 也会联网下载句法权重。
+- `⌥S` 的截图写到创建时设为权限 `0700` 的临时目录中的单次 PNG，读入内存后立即删除，不经过全局剪贴板。
 - 诊断日志默认关闭；开启后（`defaults write com.xvz.thorn debugLog -bool true`）写到 Application Support、权限 `0600`、不记录捕获的文本。
 
 ## 项目结构

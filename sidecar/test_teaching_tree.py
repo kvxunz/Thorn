@@ -569,6 +569,63 @@ class TeachingTreeContractTests(unittest.TestCase):
         self.assertEqual(result[3]["function"], "complement")
         self.assertEqual(result[3]["form"], "infinitive-predicate")
 
+    def test_object_infinitive_split_survives_sentence_final_punctuation(self):
+        """The live shape: merge_tiny hands the node a trailing period.
+
+        Benepar's S/VP spans stop before it, so comparing labels against the
+        raw node span made the split fire only mid-sentence — invisible to a
+        fixture that omits the period, and to nothing else.
+        """
+        source = token_source("We expect Dotty to lash .")
+        chunks = [
+            {
+                "text": "We", "role": "subject", "gloss": "",
+                "children": None, "_lo": 0, "_hi": 0,
+            },
+            {
+                "text": "expect", "role": "verb", "gloss": "",
+                "children": None, "_lo": 1, "_hi": 1,
+            },
+            {
+                "text": "Dotty to lash .", "role": "clause-noun", "gloss": "",
+                "_lo": 2, "_hi": 5,
+                "children": [
+                    {
+                        "text": "Dotty", "role": "subject", "gloss": "",
+                        "children": None, "_lo": 2, "_hi": 2,
+                    },
+                    {
+                        "text": "to lash", "role": "verb", "gloss": "",
+                        "children": None, "_lo": 3, "_hi": 4,
+                    },
+                ],
+            },
+        ]
+        evidence = teaching_evidence(
+            [
+                ("We", "we", "PRON", "PRP", "nsubj", 1),
+                ("expect", "expect", "VERB", "VBP", "ROOT", 1),
+                ("Dotty", "Dotty", "PROPN", "NNP", "nsubj", 4),
+                ("to", "to", "PART", "TO", "aux", 4),
+                ("lash", "lash", "VERB", "VB", "ccomp", 1),
+                (".", ".", "PUNCT", ".", "punct", 1),
+            ],
+            [(2, 5, {"S"}), (3, 5, {"VP"})],
+        )
+
+        result = compile_teaching_tree(source, chunks, evidence=evidence)
+
+        self.assertEqual(
+            [(node["text"], node["role"]) for node in result],
+            [
+                ("We", "subject"),
+                ("expect", "verb"),
+                ("Dotty", "object"),
+                ("to lash .", "complement"),
+            ],
+        )
+        self.assertEqual(result[3]["form"], "infinitive-predicate")
+
     def test_with_participial_clause_is_annotated_only_with_dual_evidence(self):
         source = token_source("with retirees trading")
         chunks = [{

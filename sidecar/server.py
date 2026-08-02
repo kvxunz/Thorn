@@ -324,7 +324,14 @@ def chunk_roots(head):
             # bare coordinating "for" (= because) between clauses
             roots.append((c, "conjunction", False))
         else:
-            roots.append((c, None, contains_clause(c)))  # absorbed later
+            # Absorbed later, but a colon or a fence inside it still has to be
+            # taught: "living without the haunting fear of his suffering: a
+            # terrifying death from his breathing condition" reached the learner
+            # as one unlabelled line of fifteen tokens.
+            roots.append((c, None,
+                          contains_clause(c)
+                          or has_supplement_punctuation(c)
+                          or has_comma_supplement(c)))
 
     # Promote full-clause conjuncts nested under clausal complements so they
     # become siblings (see independent_verbal_conjuncts). Without this, spaCy's
@@ -410,7 +417,7 @@ def is_clause_appositive_npadvmod(token):
     if not any(child.dep_ == "det" for child in token.children):
         return False
     left = min(t.i for t in token.subtree)
-    return left > 0 and token.doc[left - 1].text in (",", "—", "–", "--")
+    return left > 0 and token.doc[left - 1].text in {",", *DASH_TOKENS}
 
 
 def is_complex_connective(token):
@@ -436,6 +443,8 @@ def is_complex_connective(token):
 # parse made of the inside: across three corpus sentences spaCy called the same
 # "(1905--1974)" shape `parataxis`, `npadvmod` and `prep`. The punctuation is
 # the only signal that holds, so it is what the split keys off.
+# The three shapes a dash arrives in, once the normalizer has had it.
+DASH_TOKENS = frozenset({"—", "–", "--"})
 OPEN_BRACKETS = frozenset({"(", "[", "（"})
 CLOSE_BRACKETS = frozenset({")", "]", "）"})
 
@@ -496,6 +505,11 @@ FENCE_ADVERB_DEPS = frozenset({"neg", "advmod"})
 # Punctuation that introduces a supplement rather than separating two equals.
 SUPPLEMENT_PUNCT = frozenset({":", ";"})
 
+# Parts of speech that cannot end a card: each one is waiting for a word that
+# a card boundary would have taken away from it.
+STRANDED_POS = frozenset({"ADP", "PART", "CCONJ", "SCONJ", "DET", "AUX"})
+
+
 
 def has_supplement_punctuation(token):
     """Whether a phrase holds a colon with material on both sides of it."""
@@ -507,15 +521,21 @@ def has_supplement_punctuation(token):
 
 
 def appositive_fence(doc, left):
-    """Index of the comma fencing off an appositive that starts at ``left``.
+    """Index of the punctuation fencing off an appositive starting at ``left``.
 
     None when the renaming is bare — "the poet Milton", "my friend Sam" is one
     phrase and splitting it would be wrong, which is what the older
-    two-or-more rule was really protecting.
+    two-or-more rule was really protecting. A dash fences as firmly as a comma:
+    "a paradox — an endless conflict between the desire to conform" names the
+    same thing twice and reads as two slots.
     """
     while left > 0 and doc[left - 1].dep_ in FENCE_ADVERB_DEPS:
         left -= 1
-    return left - 1 if left > 0 and doc[left - 1].text == "," else None
+    return (
+        left - 1
+        if left > 0 and doc[left - 1].text in {",", *DASH_TOKENS}
+        else None
+    )
 
 
 def has_comma_fenced_appositive(noun):
@@ -534,7 +554,7 @@ def has_comma_fenced_appositive(noun):
 
 
 def has_comma_supplement(token):
-    """Whether a comma sits after the head with material still to come.
+    """Whether a fence sits after the head with material still to come.
 
     "lifelong cognitive disability, including deficits in learning and memory",
     "the result of several modifications, for instance by Bernhard Severin
@@ -544,7 +564,8 @@ def has_comma_supplement(token):
     """
     indices = [t.i for t in token.subtree]
     return any(
-        token.i < t.i < max(indices) and t.text == "," for t in token.subtree
+        token.i < t.i < max(indices) and t.text in {",", *DASH_TOKENS}
+        for t in token.subtree
     )
 
 
@@ -818,7 +839,7 @@ def np_expand(head, doc, role, constituency, parent_span):
             # as an insertion; a tight, unpunctuated postmodifier ("the mother
             # moaning by the fire") is a reduced relative — a 定语从句.
             left = min(t.i for t in clause.subtree)
-            set_off = left > 0 and doc[left - 1].text in (",", "—", "–", "--")
+            set_off = left > 0 and doc[left - 1].text in {",", *DASH_TOKENS}
             crole = "insertion" if set_off else "clause-relative"
         else:
             crole = clause_role_for(clause)
@@ -1020,10 +1041,15 @@ def np_expand(head, doc, role, constituency, parent_span):
             return [run]
         run_set = set(run)
         inside = bracketed_indices(run)
-        content = [i for i in run if doc[i].pos_ != "PUNCT"]
-        if not content:
+        if not any(doc[i].pos_ != "PUNCT" for i in run):
             return [run]
-        last_content = content[-1]
+        # A lone dash fences the same way a comma does: "a paradox — an endless
+        # conflict between the desire", "the tallest church building in Estonia
+        # – 123.7 meters above ground level". A *pair* of them is a
+        # parenthetical with two edges, and `_split_paired_dash_parentheticals`
+        # in the card layer already knows where both of them go.
+        dashes = [i for i in run if doc[i].text in DASH_TOKENS]
+        fence_texts = {","} | ({doc[dashes[0]].text} if len(dashes) == 1 else set())
 
         def fences(comma):
             """Whether this comma has a whole supplement to its right."""
@@ -1054,30 +1080,20 @@ def np_expand(head, doc, role, constituency, parent_span):
             # a modifier that lost the thing it modifies.
             if len(reach) < 2:
                 return False
-            # The phrase to the right has to begin at the comma. Where it
+            # The phrase to the right has to begin at the fence. Where it
             # reaches back across it the comma is inside one phrase rather than
             # around it: "the medieval convention of symbolic, two-dimensional
             # space", "the cautious, unadorned prose of the day". Take the head
             # noun out and the modifiers either side are no longer next to each
             # other, so there is no split to draw.
             #
-            # And it has to end inside this run. "Those, unaware of what is
-            # happening in society today" continues into a clause carved out
-            # above, so the card the comma would open is a stump ending on a
-            # stranded preposition.
-            if not comma < min(reach) or max(reach) > run[-1]:
-                return False
-            # And it has to be the rest of the phrase, or all of it up to the
-            # comma that closes it. "in several books, notably The Demon-Haunted
-            # World" and "…and genuine, both as an individual and as a member of
-            # a society" hang the words that follow `notably` and `both` off
-            # something outside this run, leaving a one-word card that names
-            # nothing. Chains still work: in "of love, of money, of
-            # unquestionable practicality" each item ends where the next begins.
-            right = max(reach)
-            return right == last_content or (
-                right + 1 in run_set and doc[right + 1].text == ","
-            )
+            # And it has to be whole inside this run. "Livingston's story,
+            # Houdini Act, originally published by The Saturday Evening Post"
+            # and "a compensating involvement with religious writings,
+            # inoffensive to the church" each lose the phrase's own complement
+            # to a card carved out earlier, leaving a participle or an adjective
+            # with nothing to stand on.
+            return comma < min(reach) and max(reach) <= run[-1]
 
         def phrase_root(comma, tail):
             seen = 0
@@ -1091,18 +1107,32 @@ def np_expand(head, doc, role, constituency, parent_span):
                 seen += 1
             return tail
 
+        opened = [
+            index for index in run[1:-1]
+            if index not in inside
+            and doc[index].text in fence_texts
+            and fences(index)
+        ]
+        # A supplement may not end mid-phrase. "Those, unaware of what is
+        # happening in society today" and "an increased tolerance, with more and
+        # more of the substance required to…" both continue into a clause carved
+        # out above, so the card the fence opens is a stump ending on a stranded
+        # preposition. Which token ends a piece depends on where the next one
+        # starts, so this walks back from the last fence.
+        kept, end = [], run[-1]
+        for index in reversed(opened):
+            tail = [i for i in run if index < i <= end and doc[i].pos_ != "PUNCT"]
+            if tail and doc[tail[-1]].pos_ not in STRANDED_POS:
+                kept.append(index)
+                end = index - 1
+        starts = set(kept)
+        supplement_starts.update(starts)
+
         parts, current = [], []
         for index in run:
-            if (
-                index not in inside
-                and doc[index].text == ","
-                and index != run[-1]
-                and current
-                and fences(index)
-            ):
+            if index in starts and current:
                 parts.append(current)
                 current = []
-                supplement_starts.add(index)
             current.append(index)
         if current:
             parts.append(current)

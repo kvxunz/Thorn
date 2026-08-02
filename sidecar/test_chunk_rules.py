@@ -18,6 +18,7 @@ from chunk_rules import (
     is_wh_relative_pronoun,
     mark_discourse_insertions,
     merge_or_so,
+    merge_tiny,
     normalize_parse_text,
     phrasal_prep_verb_preposition,
     prep_object_start,
@@ -468,3 +469,44 @@ class DashParentheticalRepairTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MergeTinyTests(unittest.TestCase):
+    """merge_tiny owns whether a token can vanish between passes."""
+
+    def test_trailing_punctuation_joins_the_previous_chunk(self):
+        merged = merge_tiny([
+            {"text": "the cat", "_lo": 0, "_hi": 1},
+            {"text": ".", "_lo": 2, "_hi": 2},
+        ])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "the cat.")
+        self.assertEqual(merged[0]["_hi"], 2)
+
+    def test_leading_punctuation_joins_the_next_chunk(self):
+        merged = merge_tiny([
+            {"text": "—", "_lo": 0, "_hi": 0},
+            {"text": "like the egg", "_lo": 1, "_hi": 3},
+        ])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "—like the egg")
+        self.assertEqual(merged[0]["_lo"], 0)
+        self.assertEqual(merged[0]["_hi"], 3)
+
+    def test_an_all_punctuation_list_still_yields_its_tokens(self):
+        # spaCy splits "re-investigate" into three conj tokens and calls the
+        # bare hyphen a coordinate VERB, so its inline clause builds to exactly
+        # this. Returning [] here opened a one-token coverage gap that failed
+        # the whole sentence with "engine unavailable".
+        merged = merge_tiny([{"text": "-", "_lo": 22, "_hi": 22}])
+        self.assertEqual(merged, [{"text": "-", "_lo": 22, "_hi": 22}])
+
+    def test_consecutive_leading_punctuation_keeps_the_outer_bounds(self):
+        merged = merge_tiny([
+            {"text": "(", "_lo": 0, "_hi": 0},
+            {"text": "—", "_lo": 1, "_hi": 1},
+        ])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "(—")
+        self.assertEqual(merged[0]["_lo"], 0)
+        self.assertEqual(merged[0]["_hi"], 1)

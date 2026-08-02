@@ -14,24 +14,21 @@
 #     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 # ]
 # ///
-"""Thorn local language sidecar: raw spaCy + Benepar evidence.
+"""Thorn local language sidecar: deterministic spaCy + Benepar chunks.
 
 Run: uv run --script server.py [--port 48620] [--idle-exit 120]
 """
 import argparse
 import hmac
-import importlib.metadata
 import os
 import re
 import signal
 import threading
 import time
+from itertools import pairwise
 
 import benepar
 import spacy
-from fastapi import Depends, FastAPI, Header, HTTPException
-from pydantic import BaseModel, Field
-
 from alignment import annotate_chunk_spans
 from chunk_rules import (
     coordinated_prep_conjuncts,
@@ -53,8 +50,9 @@ from chunk_rules import (
     verb_group_indices,
 )
 from constituency import CLAUSE_LABELS, ConstituencyIndex, TokenSpan
-from evidence import ANALYSIS_PROTOCOL_VERSION, build_analysis_evidence
+from fastapi import Depends, FastAPI, Header, HTTPException
 from grammar_notes import annotate_grammar_notes
+from pydantic import BaseModel, Field
 from teaching_tree import TeachingEvidence, TokenSource, compile_teaching_tree
 
 SPACY_MODEL = "en_core_web_trf"
@@ -1463,7 +1461,7 @@ def group_constituency_clauses(chunks, role, doc, constituency, parent_span):
     clause_spans = constituency.coordinate_clause_children(parent_span)
     if not clause_spans:
         return chunks
-    for left, right in zip(clause_spans, clause_spans[1:]):
+    for left, right in pairwise(clause_spans):
         separators = [
             chunk for chunk in chunks
             if chunk.get("_lo", -1) >= left.end
@@ -1617,20 +1615,6 @@ def parse_text(text):
     ]
 
 
-def analyze_text(text):
-    """Return untouched parser evidence for the constrained Qwen stage."""
-    prepared, doc, offsets = _prepare_document(text)
-    return build_analysis_evidence(
-        doc,
-        prepared.surface,
-        spacy_model=SPACY_MODEL,
-        benepar_model=BENEPAR_MODEL,
-        spacy_version=spacy.__version__,
-        benepar_version=importlib.metadata.version("benepar"),
-        source_token_offsets=offsets,
-    )
-
-
 # ---------------------------------------------------------------- server
 
 app = FastAPI()
@@ -1644,29 +1628,11 @@ class ParseRequest(BaseModel):
 def health():
     return {
         "ok": nlp is not None,
-        # Keep the legacy key for older app builds while advertising endpoint
-        # versions independently so an /analyze-only bump cannot disable
-        # otherwise compatible /parse clients.
+        # Keep the legacy key for older app builds while advertising the parse
+        # endpoint version explicitly.
         "protocolVersion": PARSE_PROTOCOL_VERSION,
         "parseProtocolVersion": PARSE_PROTOCOL_VERSION,
-        "analysisProtocolVersion": ANALYSIS_PROTOCOL_VERSION,
     }
-
-
-@app.post("/analyze", dependencies=[Depends(require_auth)])
-def analyze(req: ParseRequest):
-    global last_request
-    last_request = time.time()
-    if len(re.findall(r"\w+|[^\w\s]", req.text)) > 512:
-        raise HTTPException(status_code=422, detail="source token limit exceeded")
-    if not parse_slots.acquire(blocking=False):
-        raise HTTPException(status_code=429, detail="sentence parser is busy")
-    try:
-        return analyze_text(req.text)
-    except (AttributeError, ValueError) as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
-    finally:
-        parse_slots.release()
 
 
 @app.post("/parse", dependencies=[Depends(require_auth)])

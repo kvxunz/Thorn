@@ -154,6 +154,30 @@ CASES: dict[str, str] = {
         "To do so, the Tallinners sent a spy to his house, who heard Olev's "
         "name in a song his wife sang."
     ),
+    "given-that-fronted": (
+        "Given that he previously expressed interest and the ambitious tone of "
+        "her recent speeches, the senator's attempt to convince the public "
+        "that she is not interested in running for a second term is futile."
+    ),
+    "appositive-with-relative": (
+        "Rousseau's short discourse, a work that was generally consistent with "
+        "the cautious, unadorned prose of the day, deviated from that prose "
+        "style in its unrestrained discussion of the physical sciences."
+    ),
+    "clause-commenting-appositive": (
+        "Our high differentiated vocabulary for street crime contrasts sharply "
+        "with our limited vocabulary for corporate crime, a fact that "
+        "corresponds to the general public's unawareness of the extent of "
+        "corporate crime."
+    ),
+    "chances-were-that": (
+        "I can't accept this fact because I know that if I wasn't able to "
+        "avoid a mistake, chances were that no other surgeon could have either."
+    ),
+    "as-long-as": (
+        "As long as nations cannot themselves accumulate enough physical power "
+        "to dominate all others, they must depend on allies."
+    ),
 }
 
 
@@ -462,6 +486,97 @@ class GoldenParseTests(unittest.TestCase):
         # The relative inside its own object surfaces too: it was buried in
         # the glue along with everything else.
         self.assertIsNotNone(node_with_text(chunks, "his wife sang"))
+
+    def test_coordinated_relatives_split_at_the_second_wh_word(self):
+        """The conjunct opens on its own `who`, not on its bare verb.
+
+        Ownership used to be first-come across two Benepar SBARs that both
+        start at the *first* `who`, so the second clause's subject stayed in
+        the first card and the conjunct began "had no relation…" — a relative
+        clause taught with no relative word in it.
+        """
+        chunks = self.tree("coordinated-relatives")
+        second = node_starting_with(chunks, "who had no relation")
+        self.assertIsNotNone(second, "the conjunct does not start at its `who`")
+        self.assertEqual(second["role"], "clause-relative")
+        self.assertEqual(second["children"][0]["text"], "who")
+        first = node_starting_with(chunks, "who had retired")
+        self.assertNotIn("who had no", first["text"])
+
+    def test_a_clause_hung_on_a_participial_preposition_is_not_other(self):
+        """`other` is an internal placeholder, never a label for the learner.
+
+        spaCy reads `Given` as a preposition and the whole finite clause as
+        its `pcomp`; with no branch for that dep the clause fell to the
+        catch-all with role None and the card printed the word "other".
+        """
+        chunks = self.tree("given-that-fronted")
+        self.assertEqual([n["role"] for n in walk(chunks) if n["role"] == "other"], [])
+        clause = node_starting_with(chunks, "that he previously expressed")
+        self.assertIsNotNone(clause, "the pcomp clause has no card")
+        self.assertEqual(clause["role"], "clause-noun")
+        self.assertEqual(roles(clause["children"])[:2], ["conjunction", "subject"])
+
+    def test_an_appositive_keeps_its_noun_out_of_the_relative_clause(self):
+        """"a work" and "that was…" are two cards, not "a work that".
+
+        The insertion recursed on the inner verb, which framed the relative
+        clause alone and left the head noun to the leftover pass — it landed
+        inside the relative's own subject card.
+        """
+        chunks = self.tree("appositive-with-relative")
+        aside = node_starting_with(chunks, "a work that")
+        self.assertIsNotNone(aside, "the appositive has no card")
+        self.assertEqual(texts(aside["children"])[0], "a work")
+        relative = node_starting_with(aside["children"], "that was generally")
+        self.assertIsNotNone(relative, "the relative clause has no card")
+        self.assertEqual(relative["role"], "clause-relative")
+
+    def test_a_clause_commenting_appositive_is_not_an_adverbial(self):
+        """", a fact that corresponds…" comments on the clause, it is not 状语.
+
+        With no clausal antecedent to hang an `appos` on, spaCy falls back to
+        `npadvmod` — which Thorn read as an adverb and showed flat, so a
+        seventeen-token noun phrase with a relative clause inside it was one
+        unopenable 状语 card.
+        """
+        chunks = self.tree("clause-commenting-appositive")
+        aside = node_starting_with(chunks, "a fact that")
+        self.assertIsNotNone(aside, "the trailing appositive has no card")
+        self.assertEqual(aside["role"], "insertion")
+        self.assertEqual(texts(aside["children"])[0], "a fact")
+        self.assertIn("clause-relative", roles(aside["children"]))
+
+    def test_a_that_clause_the_parser_mislabelled_leaves_the_verb_card(self):
+        """"chances were | that no other surgeon could have" — two cards.
+
+        spaCy makes `have` an *aux* of the adverb `either`, so the that-clause
+        carries no clausal dep at all; nothing claimed it and the leftover
+        pass welded six tokens onto the predicate, producing the verb card
+        "were that no other surgeon could have".
+        """
+        chunks = self.tree("chances-were-that")
+        verb = node_with_text(chunks, "were")
+        self.assertIsNotNone(verb, "the predicate is not a card of its own")
+        self.assertEqual(verb["role"], "verb")
+        clause = node_with_text(chunks, "that no other surgeon could have")
+        self.assertIsNotNone(clause, "the that-clause has no card")
+        self.assertEqual(roles(clause["children"]), ["conjunction", "subject", "verb"])
+
+    def test_a_multiword_subordinator_opens_a_clause(self):
+        """"As long as …" splits into connector, subject and predicate.
+
+        spaCy hangs the whole subordinate clause under the adverb `long`, so
+        the card never expanded: sixteen tokens as one flat 状语. The three
+        words of the connective must also stay one card — the leftover pass
+        used to reach across the `as` and glue "As long" to the subject.
+        """
+        chunks = self.tree("as-long-as")
+        clause = node_starting_with(chunks, "As long as nations")
+        self.assertIsNotNone(clause, "the fronted clause has no card")
+        self.assertEqual(clause["role"], "clause-adverbial")
+        self.assertEqual(texts(clause["children"])[:2], ["As long as", "nations"])
+        self.assertEqual(roles(clause["children"])[:2], ["conjunction", "subject"])
 
     def test_object_clause_exposes_its_relative_clause(self):
         self.assertTrue(

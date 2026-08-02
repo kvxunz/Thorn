@@ -151,6 +151,14 @@ def chunk_roots(head):
                           contains_clause(c) or has_appositive_enumeration(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
+        elif d == "pcomp" and is_clausal_pcomp(c):
+            # "Given that he previously expressed interest…", "given that the
+            # latter must be subject to…": spaCy reads the participle as a
+            # preposition and hangs the whole finite clause on it as pcomp.
+            # With no branch here the clause fell to the catch-all below with
+            # role None, and the card layer printed that as literal "other" —
+            # an internal placeholder shown to the learner as a grammar label.
+            roots.append((c, clause_role_for(c), True))
         elif d in ("ccomp", "csubj", "csubjpass"):
             # csubj/csubjpass are subject clauses ("How well… depends") — always
             # expand as a wrapped noun clause, never flatten onto the matrix.
@@ -251,7 +259,12 @@ def chunk_roots(head):
             # so they cannot steal nested degree modifiers (almost under certainly).
             if c.i in group:
                 continue
-            roots.append((c, "adverbial", False))
+            if is_clause_appositive_npadvmod(c):
+                roots.append((c, "insertion", True))
+            elif is_complex_connective(c):
+                roots.append((c, "clause-adverbial", True))
+            else:
+                roots.append((c, "adverbial", False))
         elif d == "cc":
             roots.append((c, "conjunction", False))
         elif d == "conj" or (d == "dep" and c.pos_ in ("VERB", "AUX")):
@@ -349,6 +362,43 @@ def contains_clause(tok):
         t.dep_ in ("relcl", "acl", "advcl", "ccomp", "csubj", "csubjpass")
         or is_clausal_pcomp(t)
         for t in tok.subtree if t is not tok)
+
+
+def is_clause_appositive_npadvmod(token):
+    """A comma-set-off, determined NP hung on the predicate as ``npadvmod``.
+
+    "…our limited vocabulary for corporate crime, a fact that corresponds to
+    …" — the NP comments on the whole preceding clause, but spaCy has no
+    clausal antecedent to attach an ``appos`` to and falls back on
+    ``npadvmod``, which Thorn reads as 状语. A genuine adverbial NP ("three
+    years later", "yesterday") carries no determiner; requiring one, plus the
+    comma, keeps those out.
+    """
+    if token.dep_ != "npadvmod" or token.pos_ not in ("NOUN", "PROPN"):
+        return False
+    if not any(child.dep_ == "det" for child in token.children):
+        return False
+    left = min(t.i for t in token.subtree)
+    return left > 0 and token.doc[left - 1].text in (",", "—", "–", "--")
+
+
+def is_complex_connective(token):
+    """An adverb that exists only to head a subordinate clause.
+
+    "As long as nations cannot …, they must depend on allies": spaCy makes
+    ``long`` an advmod of the matrix verb and hangs the entire subordinate
+    clause beneath it as ``advcl``. Treated as a plain adverb the card never
+    expands and the learner gets one sixteen-token 状语 with no
+    connector/subject/predicate split. Same shape for "as soon as", "so long
+    as", "now that", "much as".
+    """
+    return any(
+        child.dep_ == "advcl"
+        and child.pos_ in ("VERB", "AUX")
+        and has_own_subject(child)
+        and any(m.dep_ == "mark" for m in child.children)
+        for child in token.children
+    )
 
 
 def has_appositive_enumeration(noun):
@@ -660,6 +710,32 @@ def np_expand(head, doc, role, constituency, parent_span):
         for index in range(span.start, span.end):
             owner.setdefault(index, clause)
 
+    # First-come ownership settles a token that two Benepar spans both cover,
+    # but a token is only genuinely shared when neither clause governs it. In
+    # "…who had retired on their incomes, and who had no relation…" both SBARs
+    # open at the *first* `who`, so the second clause's own subject went to the
+    # first clause and the conjunct card started on its bare verb. A token
+    # belongs to the nearest clause head above it, not the earliest resolved.
+    clause_by_index = {clause.i: clause for clause in clause_heads}
+
+    def nearest_clause_head(index):
+        node = doc[index]
+        while True:
+            if node.i in clause_by_index:
+                return clause_by_index[node.i]
+            if node.head.i == node.i or not parent_span.contains(node.head.i):
+                return None
+            node = node.head
+
+    for index, holder in list(owner.items()):
+        governor = nearest_clause_head(index)
+        if (
+            governor is not None
+            and governor is not holder
+            and clause_spans[governor.i].contains(index)
+        ):
+            owner[index] = governor
+
     # `owner` is first-come, so a later clause whose Benepar span overlaps an
     # earlier one keeps only the tokens still free — but its *recursion* span
     # was not narrowed to match. "…classes who had retired on their incomes,
@@ -923,11 +999,16 @@ def build_chunks(
     # glue the whole finite clause onto whichever card sits to its left, and
     # it gets taught as part of that card's phrase. Give it its own root.
     # Requiring a subject of its own keeps stranded participles out: those are
-    # genuinely modifiers, and promoting them is a separate question.
+    # genuinely modifiers, and promoting them is a separate question. The
+    # dependency label is deliberately not consulted: "chances were that no
+    # other surgeon could have either" has spaCy read `have` as an *aux* of
+    # the adverb `either`, so the that-clause carries no clausal label at all
+    # and used to be welded onto the predicate card ("were that no other
+    # surgeon could have"). A verbal with its own subject that nothing else
+    # claimed is a clause whatever the parser called it.
     for t in subtree:
         if (
             t.i in assign
-            or t.dep_ not in CLAUSE_DEPS
             or t.pos_ not in ("VERB", "AUX")
             or not has_own_subject(t)
         ):
@@ -986,6 +1067,27 @@ def build_chunks(
         for t_i in range(wh_span.start, wh_span.end):
             if t_i not in assign:
                 assign[t_i] = key
+
+    # A multi-word subordinator ("as long as", "as soon as", "now that") is one
+    # connective, but spaCy splits it: the final `as`/`that` is this clause's
+    # mark while the adverbs before it govern the clause from outside. Inside
+    # this frame those adverbs are nobody's dependent, and the leftover pass
+    # below deliberately refuses to hand anything to a conjunction — so it
+    # reaches *across* the mark and the learner gets "As long" glued to the
+    # subject on the far side. Give them to the mark they belong to.
+    head_ancestors = {a.i for a in head.ancestors}
+    for key, entry in list(root_entries.items()):
+        if entry is None or entry[1] != "conjunction" or entry[0].dep_ != "mark":
+            continue
+        index = entry[3].start - 1
+        while (
+            index >= lo
+            and index not in assign
+            and doc[index].pos_ == "ADV"
+            and (index in head_ancestors or doc[index].head.i in head_ancestors)
+        ):
+            assign[index] = key
+            index -= 1
 
     # leftovers (punctuation, stray dets) -> nearest assigned neighbor.
     # Prefer the *adjacent* non-conjunction key (right if left is a pure
@@ -1263,7 +1365,16 @@ def build_chunks(
                     })
             elif role == "insertion":
                 kids = None
-                if c.pos_ in ("VERB", "AUX") or any(
+                if c.pos_ in ("NOUN", "PROPN", "PRON"):
+                    # A nominal aside carrying a relative clause ("…, a work
+                    # that was generally consistent with the prose of the
+                    # day, …"). Recursing on the inner verb would frame the
+                    # clause only, leaving "a work" to the leftover pass — it
+                    # landed inside the relative's subject card as "a work
+                    # that". np_expand keeps the noun and the clause apart.
+                    sub = np_expand(c, doc, role, constituency, recursive_span)
+                    kids = sub if len(sub) >= 2 else None
+                elif c.pos_ in ("VERB", "AUX") or any(
                     t.pos_ in ("VERB", "AUX") for t in c.subtree if t is not c
                 ):
                     verbal = c if c.pos_ in ("VERB", "AUX") else next(

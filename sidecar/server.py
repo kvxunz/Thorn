@@ -148,18 +148,21 @@ def chunk_roots(head):
             # multi-item appositive list also expands into a revealable block.
             roots.append((c, "subject",
                           contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)))
+                          or has_bracketed_aside(c)
+                          or has_comma_fenced_appositive(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
             # linking verbs never take an object: theirs is a predicative
             linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
                                       "look", "feel", "sound", "stay", "grow")
             roots.append((c, "complement" if linking else "object",
                           contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)))
+                          or has_bracketed_aside(c)
+                          or has_comma_fenced_appositive(c)))
         elif d in ("attr", "acomp"):
             roots.append((c, "complement",
                           contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)))
+                          or has_bracketed_aside(c)
+                          or has_comma_fenced_appositive(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
         elif d == "pcomp" and is_clausal_pcomp(c):
@@ -269,7 +272,8 @@ def chunk_roots(head):
             # rudeness" — 宾语, not 介词短语.
             roots.append((c, "object",
                           contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)))
+                          or has_bracketed_aside(c)
+                          or has_comma_fenced_appositive(c)))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
@@ -469,6 +473,26 @@ def has_appositive_enumeration(noun):
                 members.add(t.i)
                 changed = True
     return len(members) >= 2
+
+
+def has_comma_fenced_appositive(noun):
+    """Whether a nominal carries a single appositive set off by a comma.
+
+    "Lloyd Nickson, a 54-year-old Darwin resident", "a triumph for yet another
+    scientific idea, a refinement of the Big Bang" — one appositive, so
+    `has_appositive_enumeration` (which wants a list) leaves the card flat and
+    the second naming is taught as more of the first.
+
+    The comma is what makes it a card. A bare renaming — "the poet Milton", "my
+    friend Sam" — is one phrase and splitting it would be wrong, and that is
+    the case the two-or-more rule was really protecting.
+    """
+    return any(
+        t.dep_ == "appos"
+        and (left := min(x.i for x in t.subtree)) > 0
+        and noun.doc[left - 1].text == ","
+        for t in noun.subtree
+    )
 
 
 def prep_object_enumeration(prep):
@@ -821,8 +845,13 @@ def np_expand(head, doc, role, constituency, parent_span):
         # reliable separator (commas also fence off single amods); the member's
         # leading determiner/adjective run is. Everything before the first
         # member is the core ("a cacophony of hacking coughs").
-        if len(enum_members) < 2:
+        if not enum_members:
             return [run]
+        # With one member the comma is what licenses the split: a bare renaming
+        # ("the poet Milton") is one phrase, a fenced one ("Lloyd Nickson, a
+        # 54-year-old Darwin resident") is a second naming with its own card.
+        # A list needs no comma test -- the members are the enumeration.
+        lone = len(enum_members) < 2
         run_set = set(run)
         starts = set()
         for member in enum_members:
@@ -841,6 +870,13 @@ def np_expand(head, doc, role, constituency, parent_span):
                 prev = left - 1
                 if not (prev in run_set and doc[prev].text in (",", ";")):
                     continue
+            if lone:
+                if not (left in run_set and doc[left].text == ","):
+                    continue
+                # Split at the fence, not after it: the comma introduces the
+                # appositive, so ", a poetry book" is the card. Leaving it
+                # behind strands it on whatever preceded ("(2001),").
+                start = left
             starts.add(start)
         parts, current = [], []
         for i in run:
@@ -1480,7 +1516,15 @@ def build_chunks(
                     c, doc, role, constituency, recursive_span,
                 )
                 if len(sub) == 1:
-                    chunks.append(sub[0])
+                    # One card back, but it carries np_expand's bounds, not the
+                    # run's. Any run token np_expand did not claim -- the comma
+                    # fencing an appositive it declined to split -- would then
+                    # belong to no node at all and the coverage invariant would
+                    # fail the whole sentence. Give the card the run back.
+                    only = sub[0]
+                    only["text"] = text
+                    only["_lo"], only["_hi"] = run_local[0], run_local[-1]
+                    chunks.append(only)
                 else:
                     chunks.append({
                         "text": text, "role": "subject", "gloss": "",

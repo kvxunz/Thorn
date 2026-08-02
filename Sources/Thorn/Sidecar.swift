@@ -540,11 +540,38 @@ actor Sidecar {
     }
 
     private func sidecarScriptPath() -> String {
-        // Development layout: repo/sidecar/server.py next to the app sources.
-        // Overridable for custom installs.
+        // An explicit override remains useful while developing a sidecar in a
+        // separate checkout.
         if let custom = UserDefaults.standard.string(forKey: "sidecarScript") {
             return custom
         }
+
+        // Installed builds carry the complete runtime sidecar next to the app
+        // resources, so moving or deleting the source checkout cannot break
+        // parsing.
+        if let resourceURL = Bundle.main.resourceURL {
+            let bundled = resourceURL
+                .appendingPathComponent("sidecar", isDirectory: true)
+                .appendingPathComponent("server.py")
+            if FileManager.default.fileExists(atPath: bundled.path) {
+                return bundled.path
+            }
+        }
+
+        // SwiftPM development builds do not run bundle.sh. #filePath points
+        // back into Sources/Thorn, from which the repository sidecar is stable.
+        let sourceCheckout = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("sidecar", isDirectory: true)
+            .appendingPathComponent("server.py")
+        if FileManager.default.fileExists(atPath: sourceCheckout.path) {
+            return sourceCheckout.path
+        }
+
+        // Keep the historical fallback only to produce an actionable missing-
+        // script error for old unbundled installs.
         return NSString(string: "~/xznm/code/Thorn/sidecar/server.py").expandingTildeInPath
     }
 

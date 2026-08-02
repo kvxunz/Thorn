@@ -150,7 +150,7 @@ ValueError: parser token has no source text
 - `⌥A`：Accessibility 读取选中文字，失败后以模拟 `⌘C` 兜底。
 - `⌥S`：调用系统区域截图，以匿名管道把 PNG 直接送入内存，再由 Apple Vision 在本机 OCR；按 Esc 静默取消。
 - 两条路径共用 `normalizedInput` 与英文抽取、长度和语言比例校验，不上传截图或识别文本。
-- OCR 图像不写临时文件、不经过全局剪贴板；诊断日志位于用户 Application Support，权限为 `0600`，且不记录捕获文本。
+- OCR 图像由系统 `screencapture` 写入创建时设为权限 `0700` 的临时目录中的单次 PNG，读入内存后立即删除，不经过全局剪贴板；诊断日志位于用户 Application Support，权限为 `0600`，且不记录捕获文本。
 
 ## 本轮通过样本
 

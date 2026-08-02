@@ -28,6 +28,24 @@ python3 devrunner.py /tmp/probe.py                     # 一次性探针也走�
 
 worker **每个 job 都把 sidecar 目录下的模块从 `sys.modules` 里清掉**，让脚本重新从磁盘 import——所以它永远跑的是当前工作区的代码，不会拿一小时前加载的旧规则报绿。唯一常驻的是 `nlp`。这一点是这个设计必须守住的：一个测的是旧代码的绿色套件，比一个慢套件危险得多。
 
+### 快照：唯一看得见「切太碎」的东西
+
+`undersplit.py` 只报**粗卡**——切得不够。没有任何指标报切得太碎，而拆分规则的改动是在这两种失败之间做交易：列表被打散成一串「插入语」、卡片停在孤立介词上、日期在逗号处被切开——这六个缺陷当初**全部**是以「粗卡率下降」的形式出现的。指标说赢了，树其实坏了。
+
+`tree_snapshot.py` 把两个语料库每一句的整棵树冻在 `sidecar/snapshots/` 下：
+
+```bash
+cd sidecar
+python3 devrunner.py tree_snapshot.py           # 比对，有漂移退出 1
+python3 devrunner.py tree_snapshot.py --write   # 逐行看过之后再接受
+```
+
+它**不断言树该长什么样**，只断言树没有在没人过目的情况下变过。这里出现 diff 不是失败，是一次待审。改 `chunk_roots` 或 `np_expand` 拆分链之后，先跑它，把每一行读一遍——确认每处改动都是改进，再 `--write` 接受，并把快照和代码放进同一个 commit。
+
+两个语料库地位不同。`constructions` 随代码一起进仓库，所以快照缺失或过期一律算失败（`STALE`，退出 1）；`random` 是 `corpus_report.py --fetch` 从 Wikipedia/arXiv 现抓的，本机没有就跳过。快照头部记了语料的 `corpus-digest`：重抓后语料本身变了，比对会拒绝执行而不是把「语料变了」误报成「引擎变了」。
+
+模型太重，CI 里没有这一步——和 `golden_parse_checks.py` 一样，是提交前的本机纪律。
+
 ## 已修复（2026-07-30）
 
 ### P-001 `as` 省略从句没有收住后续修饰语

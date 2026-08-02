@@ -1,0 +1,2350 @@
+# Thorn teaching-tree snapshot -- random, 200 sentences.
+#
+# Regenerate: python3 devrunner.py tree_snapshot.py --write
+#
+# Read every changed line before committing one. This file is the only thing
+# in the repo that can see over-splitting; the coarse-card rate cannot.
+#
+# corpus-digest: sha256:a6d0a80d613defbee6a315ff813fc448
+
+== Her critically acclaimed first novel, Going Down Swinging (2000), was followed by The Chick at the Back of the Church (2001), a poetry book that was shortlisted for the Pat Lowther Award.
+  [subject] Her critically acclaimed first novel,
+  [insertion] Going Down Swinging
+    [verb] Going
+    [adverbial] Down
+    [clause-adverbial] Swinging
+  [insertion] (2000),
+  [verb] was followed
+  [prep-phrase] by The Chick at the Back of the Church (2001), a poetry book that was shortlisted for the Pat Lowther Award.
+    [prep-phrase] by The Chick at the Back of the Church
+    [insertion] (2001)
+    [appositive] , a poetry book
+    [clause-relative] that was shortlisted for the Pat Lowther Award
+      [relative] that
+      [verb] was shortlisted
+      [prep-phrase] for the Pat Lowther Award
+
+== This merger has seen the company double in size.
+  [subject] This merger
+  [verb] has seen
+  [clause-noun] the company double in size.
+    [subject] the company
+    [verb] double
+    [prep-phrase] in size
+
+== Gatsby, pale as death, with his hands plunged like weights in his coat pockets, was standing in a puddle of water glaring tragically into my eyes.
+  [subject] Gatsby,
+  [other] pale as death, with
+  [clause-adverbial] his hands plunged like weights in his coat pockets,
+    [subject] his hands
+    [verb] plunged
+    [prep-phrase] like weights
+    [prep-phrase] in his coat pockets
+  [verb] was standing
+  [prep-phrase] in a puddle of water
+  [adverbial] glaring tragically into my eyes.
+    [verb] glaring
+    [adverbial] tragically
+    [prep-phrase] into my eyes
+
+== They are not perfect ovals—like the egg in the Columbus story, they are both crushed flat at the contact end—but their physical resemblance must be a source of perpetual wonder to the gulls that fly overhead.
+  [subject] They
+  [verb] are not
+  [complement] perfect ovals
+  [insertion] —like the egg in the Columbus story, they are both crushed flat at the contact end—but their physical resemblance must be a source of perpetual wonder to the gulls that fly overhead.
+    [prep-phrase] —like the egg in the Columbus story,
+    [subject] they
+    [verb] are
+    [other] both
+    [verb] crushed
+    [object] flat
+    [prep-phrase] at the contact end—
+    [conjunction] but
+    [subject] their physical resemblance
+    [verb] must be
+    [complement] a source of perpetual wonder to the gulls
+    [clause-relative] that fly overhead.
+      [relative] that
+      [verb] fly
+      [adverbial] overhead
+
+== Eftel offers a range of services including: DSL and dial-up Internet access, web hosting and telephony services - to the retail, corporate and wholesale telecommunications markets.
+  [subject] Eftel
+  [verb] offers
+  [object] a range of services including:
+  [appositive] DSL and dial-up Internet access, web hosting and telephony services -
+  [prep-phrase] to the retail, corporate and wholesale telecommunications markets.
+
+== You can hold your tongue and, moreover, you can time any little irregularity of your own so that everybody else is so blind that they don’t see or care.
+  [subject] You
+  [verb] can hold
+  [object] your tongue
+  [conjunction] and
+  [adverbial] , moreover,
+  [subject] you
+  [verb] can time
+  [object] any little irregularity of your own
+  [clause-adverbial] so that everybody else is so blind that they don’t see or care.
+    [conjunction] so
+    [conjunction] that
+    [subject] everybody else
+    [verb] is
+    [complement] so blind
+    [clause-noun] that they don’t see or care
+      [conjunction] that
+      [subject] they
+      [verb] don’t see or care
+        [verb] don’t see
+        [conjunction] or
+        [verb] care
+
+== When brain activity is translated into commands for real applications, the potential for human capacities augmentation is promising.
+  [clause-adverbial] When brain activity is translated into commands for real applications,
+    [conjunction] When
+    [subject] brain activity
+    [verb] is translated
+    [prep-phrase] into commands for real applications
+  [subject] the potential for human capacities augmentation
+  [verb] is
+  [complement] promising.
+
+== While we did find some overlap between the results of our analysis and geographic clustering, there was no positive regression outcome from comparing our methodologies to population trends and the unemployment rate.
+  [clause-adverbial] While we did find some overlap between the results of our analysis and geographic clustering,
+    [conjunction] While
+    [subject] we
+    [verb] did find
+    [object] some overlap between the results of our analysis and geographic clustering
+  [subject] there
+  [verb] was
+  [complement] no positive regression outcome from comparing our methodologies to population trends and the unemployment rate.
+
+== He left feeling that if he had searched harder, he might have found her—that he was leaving her behind.
+  [subject] He
+  [verb] left
+  [object] feeling
+  [insertion] that if he had searched harder, he might have found her—that he was leaving her behind.
+    [clause-adverbial] that if he had searched harder, he might have found her—
+      [conjunction] that
+      [clause-adverbial] if he had searched harder,
+        [conjunction] if
+        [subject] he
+        [verb] had searched
+        [adverbial] harder
+      [subject] he
+      [verb] might have found
+      [object] her
+    [conjunction] that
+    [subject] he
+    [verb] was leaving
+    [object] her
+    [adverbial] behind
+
+== It was the only compliment I ever gave him, because I disapproved of him from beginning to end.
+  [subject] It
+  [verb] was
+  [complement] the only compliment
+  [clause-relative] I ever gave him,
+    [subject] I
+    [adverbial] ever
+    [verb] gave
+    [object] him
+  [clause-adverbial] because I disapproved of him from beginning to end.
+    [conjunction] because
+    [subject] I
+    [verb] disapproved
+    [prep-phrase] of him
+    [prep-phrase] from beginning to end
+
+== Gatsby shouldered the mattress and started for the pool.
+  [subject] Gatsby
+  [verb] shouldered
+  [object] the mattress
+  [conjunction] and
+  [verb] started
+  [prep-phrase] for the pool.
+
+== Using Bayesian estimation, we apply the dynamic food systems model to infer the sustainability of the UK pork industry.
+  [adverbial] Using Bayesian estimation,
+    [verb] Using
+    [object] Bayesian estimation
+  [subject] we
+  [verb] apply
+  [object] the dynamic food systems model
+  [adverbial] to infer the sustainability of the UK pork industry.
+    [verb] to infer
+    [object] the sustainability of the UK pork industry
+
+== A large part of his impressive work conveys the appearance of striking three-dimensional shapes and structures in a large-scale pictorial plane.
+  [subject] A large part of his impressive work
+  [verb] conveys
+  [object] the appearance of striking three-dimensional shapes and structures in a large-scale pictorial plane.
+
+== As a result of World War II, the church was left without active congregation, and the Soviet occupation regime handed the building over to Baptists in 1950.
+  [prep-phrase] As a result of World War II,
+  [subject] the church
+  [verb] was left
+  [prep-phrase] without active congregation,
+  [conjunction] and
+  [subject] the Soviet occupation regime
+  [verb] handed
+  [object] the building
+  [verb] over
+  [prep-phrase] to Baptists
+  [prep-phrase] in 1950.
+
+== Why don’t you—why don’t you stay for supper?
+  [adverbial] Why
+  [verb] don’t
+  [subject] you—
+  [verb] why don’t
+  [subject] you
+  [verb] stay
+  [prep-phrase] for supper?
+
+== Indeed, books written by a given author (such as F. Scott Fitzgerald) might be listed with different authors' names in a catalog due to abbreviations and spelling variants and mistakes, among others.
+  [adverbial] Indeed,
+  [subject] books written by a given author (such as F. Scott Fitzgerald)
+    [subject] books
+    [clause-relative] written by a given author (such as F. Scott Fitzgerald)
+      [verb] written
+      [prep-phrase] by a given author (such as F. Scott Fitzgerald)
+        [prep-phrase] by
+        [object] a given author
+        [insertion] (such as F. Scott Fitzgerald)
+  [verb] might be listed
+  [prep-phrase] with different authors' names
+  [prep-phrase] in a catalog
+  [prep-phrase] due to abbreviations and spelling variants and mistakes, among others.
+    [prep-phrase] due to
+    [object] abbreviations and spelling variants and mistakes
+    [prep-phrase] , among others
+
+== Since the city could not pay this sum, he proposed the following challenge: If they found out his name, he would forgive their debt.
+  [clause] Since the city could not pay this sum, he proposed the following challenge:
+    [clause-adverbial] Since the city could not pay this sum,
+      [conjunction] Since
+      [subject] the city
+      [verb] could not pay
+      [object] this sum
+    [subject] he
+    [verb] proposed
+    [object] the following challenge:
+  [clause-relative] If they found out his name, he would forgive their debt.
+    [clause-adverbial] If they found out his name,
+      [conjunction] If
+      [subject] they
+      [verb] found out
+      [object] his name
+    [subject] he
+    [verb] would forgive
+    [object] their debt
+
+== This shift was a crucial step in his path to the final theory of general relativity, which he eventually achieved in 1915.
+  [subject] This shift
+  [verb] was
+  [complement] a crucial step in his path to the final theory of general relativity,
+  [clause-relative] which he eventually achieved in 1915.
+    [relative] which
+    [subject] he
+    [adverbial] eventually
+    [verb] achieved
+    [prep-phrase] in 1915
+
+== Various approaches suggest the ventral subiculum (SUB) is a particular target region for neurodevelopemental disturbances in schizophrenia.
+  [subject] Various approaches
+  [verb] suggest
+  [clause-noun] the ventral subiculum (SUB) is a particular target region for neurodevelopemental disturbances in schizophrenia.
+    [subject] the ventral subiculum
+    [insertion] (SUB)
+    [verb] is
+    [complement] a particular target region for neurodevelopemental disturbances in schizophrenia
+
+== I could see nothing sinister about him.
+  [subject] I
+  [verb] could see
+  [object] nothing sinister about him.
+
+== The lyrics were written by the Danish poet N.F.S. Grundtvig in 1817, and the music was composed by Carl Christian Nicolaj Balle in 1850.
+  [subject] The lyrics
+  [verb] were written
+  [prep-phrase] by the Danish poet N.F.S. Grundtvig
+  [prep-phrase] in 1817,
+  [conjunction] and
+  [subject] the music
+  [verb] was composed
+  [prep-phrase] by Carl Christian Nicolaj Balle
+  [prep-phrase] in 1850.
+
+== Notable recordings have been made by Swedish singer Sven-Olof Sandberg (1905–1974) and Norwegian soloist Olav Werner (1913–1992).
+  [subject] Notable recordings
+  [verb] have been made
+  [prep-phrase] by Swedish singer Sven-Olof Sandberg (1905–1974) and Norwegian soloist Olav Werner (1913–1992).
+    [prep-phrase] by
+    [object] Swedish singer Sven-Olof Sandberg
+    [insertion] (1905–1974)
+    [prep-phrase] and Norwegian soloist Olav Werner
+    [insertion] (1913–1992)
+
+== They were sitting at either end of the couch, looking at each other as if some question had been asked, or was in the air, and every vestige of embarrassment was gone.
+  [subject] They
+  [verb] were sitting
+  [prep-phrase] at either end of the couch,
+  [clause-adverbial] looking at each other as if some question had been asked, or was in the air,
+    [verb] looking
+    [prep-phrase] at each other
+    [clause-adverbial] as if some question had been asked, or was in the air
+      [conjunction] as
+      [conjunction] if
+      [subject] some question
+      [verb] had been asked, or was
+        [verb] had been asked,
+        [conjunction] or
+        [verb] was
+      [prep-phrase] in the air
+  [conjunction] and
+  [subject] every vestige of embarrassment
+  [verb] was gone.
+
+== If we consider that noise is not so black and white, we could more colourfully regularize artificial neural networks and re-investigate some surprising results about how the brain benefits from noise.
+  [clause-adverbial] If we consider that noise is not so black and white,
+    [conjunction] If
+    [subject] we
+    [verb] consider
+    [clause-noun] that noise is not so black and white
+      [conjunction] that
+      [subject] noise
+      [verb] is not
+      [complement] so black and white
+  [subject] we
+  [verb] could more colourfully regularize
+  [object] artificial neural networks
+  [conjunction] and
+  [verb] re-investigate
+  [object] some surprising results about
+  [clause-noun] how the brain benefits from noise.
+    [adverbial] how
+    [subject] the brain
+    [verb] benefits
+    [prep-phrase] from noise
+
+== We got up, and she explained that we were going to find the host: I had never met him, she said, and it was making me uneasy.
+  [clause] We got up, and she explained that we were going to find the host:
+    [subject] We
+    [verb] got up,
+    [conjunction] and
+    [subject] she
+    [verb] explained
+    [clause-noun] that we were going to find the host:
+      [conjunction] that
+      [subject] we
+      [verb] were going
+      [complement] to find the host
+        [verb] to find
+        [object] the host
+  [clause] I had never met him, she said, and it was making me uneasy.
+    [subject] I
+    [verb] had never met
+    [object] him
+    [insertion] , she said,
+    [conjunction] and
+    [subject] it
+    [verb] was making
+    [clause-noun] me uneasy.
+
+== We focus on two challenging applications: dendritic calcium imaging data and voltage imaging data in the context of optogenetic stimulation.
+  [subject] We
+  [verb] focus
+  [prep-phrase] on two challenging applications: dendritic calcium imaging data and voltage imaging data in the context of optogenetic stimulation.
+    [prep-phrase] on two challenging applications:
+    [appositive] dendritic calcium imaging data and voltage imaging data in the context of optogenetic stimulation
+
+== The synthetic networks had high robustness against random attack as the empirical brain networks did.
+  [subject] The synthetic networks
+  [verb] had
+  [object] high robustness against random attack
+  [clause-adverbial] as the empirical brain networks did.
+    [conjunction] as
+    [subject] the empirical brain networks
+    [verb] did
+
+== In addition, we demonstrate that proper adjustment of some parameters, such as penalisation, incentives, and resources, and adequate control of availability can help reduce this conflict of interests.
+  [insertion] In addition,
+  [subject] we
+  [verb] demonstrate
+  [clause-noun] that proper adjustment of some parameters, such as penalisation, incentives, and resources, and adequate control of availability can help reduce this conflict of interests.
+    [conjunction] that
+    [subject] proper adjustment of some parameters, such as penalisation, incentives, and resources, and adequate control of availability
+      [subject] proper adjustment of some parameters
+      [insertion] , such as penalisation, incentives, and resources, and adequate control of availability
+    [verb] can help
+    [complement] reduce this conflict of interests
+      [verb] reduce
+      [object] this conflict of interests
+
+== We experiment with two large-scale datasets collected from Twitter and Reddit.
+  [subject] We
+  [verb] experiment
+  [prep-phrase] with two large-scale datasets collected from Twitter and Reddit.
+    [prep-phrase] with
+    [object] two large-scale datasets
+    [clause-relative] collected from Twitter and Reddit
+      [verb] collected
+      [prep-phrase] from Twitter and Reddit
+
+== In this paper, we investigate whether mixing cryptocurrencies to a German investor portfolio improves portfolio diversification.
+  [prep-phrase] In this paper,
+  [subject] we
+  [verb] investigate
+  [clause-noun] whether mixing cryptocurrencies to a German investor portfolio improves portfolio diversification.
+    [conjunction] whether
+    [clause-noun] mixing cryptocurrencies to a German investor portfolio
+      [verb] mixing
+      [object] cryptocurrencies
+      [prep-phrase] to a German investor portfolio
+    [verb] improves
+    [object] portfolio diversification
+
+== He has been a National Endowment for the Humanities fellow and has been on the editorial board of Hume Studies and Chronicles: A Magazine of American Culture.
+  [subject] He
+  [verb] has been
+  [complement] a National Endowment for the Humanities fellow
+  [conjunction] and
+  [verb] has been
+  [prep-phrase] on the editorial board of Hume Studies and Chronicles: A Magazine of American Culture.
+    [prep-phrase] on the editorial board of Hume Studies and Chronicles:
+    [appositive] A Magazine of American Culture
+
+== The first song, "Estrus", was released as the last song on Smile from the Streets You Hold under the title "Estress".
+  [subject] The first song, "
+  [insertion] Estrus",
+  [verb] was released
+  [prep-phrase] as the last song on Smile from the Streets You Hold
+    [prep-phrase] as the last song on Smile from the Streets
+    [clause-relative] You Hold
+      [subject] You
+      [verb] Hold
+  [prep-phrase] under the title "Estress".
+
+== A later adaptation bore the title "O Fir Tree Dark", and was recorded by Bing Crosby in 1947.
+  [subject] A later adaptation
+  [verb] bore
+  [object] the title "O Fir Tree Dark",
+  [conjunction] and
+  [verb] was recorded
+  [prep-phrase] by Bing Crosby
+  [prep-phrase] in 1947.
+
+== Random noise plays a beneficial role in cognitive processing and produces measurable improvement in simulations and biological agents' task performance.
+  [subject] Random noise
+  [verb] plays a beneficial role in cognitive processing and produces measurable improvement in simulations and biological agents' task performance.
+    [verb] plays a beneficial role in cognitive processing
+    [conjunction] and
+    [verb] produces
+    [object] measurable improvement in simulations and biological agents' task performance.
+
+== Moreover, our investigation documents a greater similarity among websites cited by RAG technologies compared to those ranked highest by conventional search engines.
+  [adverbial] Moreover,
+  [subject] our investigation
+  [verb] documents
+  [object] a greater similarity among websites
+  [clause-relative] cited by RAG technologies
+    [verb] cited
+    [prep-phrase] by RAG technologies
+  [object] compared to those
+  [clause-relative] ranked highest by conventional search engines.
+    [verb] ranked
+    [adverbial] highest
+    [prep-phrase] by conventional search engines
+
+== Visual perception is critically influenced by the focus of attention.
+  [subject] Visual perception
+  [verb] is critically influenced
+  [prep-phrase] by the focus of attention.
+
+== We both jumped up, and, a little harrowed myself, I went out into the yard.
+  [subject] We
+  [insertion] both
+  [verb] jumped up,
+  [conjunction] and
+  [clause-adverbial] , a little harrowed myself,
+    [adverbial] a little
+    [verb] harrowed
+    [object] myself
+  [subject] I
+  [verb] went out
+  [prep-phrase] into the yard.
+
+== Although a number of studies have explored deep learning in neuroscience, the application of these algorithms to neural systems on a microscopic scale, i.e. parameters relevant to lower scales of organization, remains relatively novel.
+  [clause-adverbial] Although a number of studies have explored deep learning in neuroscience,
+    [conjunction] Although
+    [subject] a number of studies
+    [verb] have explored
+    [object] deep learning
+    [prep-phrase] in neuroscience
+  [subject] the application of these algorithms to neural systems on a microscopic scale, i.e. parameters relevant to lower scales of organization,
+    [subject] the application of these algorithms to neural systems on a microscopic scale
+    [appositive] , i.e. parameters relevant to lower scales of organization,
+  [verb] remains
+  [complement] relatively novel.
+
+== Can pharmacological therapies be suggested to improve learning and memory in these disorders?
+  [verb] Can pharmacological therapies be suggested
+    [verb] Can
+    [subject] pharmacological therapies
+    [verb] be suggested
+  [complement] to improve learning and memory in these disorders?
+    [verb] to improve
+    [object] learning and memory in these disorders
+
+== A comparison with values for coherent oscillators is made.
+  [subject] A comparison with values for coherent oscillators
+  [verb] is made.
+
+== In 2025, Livingston's story, Houdini Act, originally published by The Saturday Evening Post, was nominated in the category of Best Crime Short Story for the Crime Writers of Canada Awards of Excellence.
+  [prep-phrase] In 2025,
+  [subject] Livingston's story,
+  [insertion] Houdini Act, originally published
+  [prep-phrase] by The Saturday Evening Post,
+  [verb] was nominated
+  [prep-phrase] in the category of Best Crime Short Story for the Crime Writers of Canada Awards of Excellence.
+
+== The hypothesis that committed revolving credit lines with fixed spreads can provide firms with interest rate insurance is a standard feature of models on these credit facilities' interest rate structure.
+  [subject] The hypothesis that committed revolving credit lines with fixed spreads can provide firms with interest rate insurance
+    [subject] The hypothesis
+    [clause-relative] that committed revolving credit lines with fixed spreads can provide firms with interest rate insurance
+      [conjunction] that
+      [subject] committed revolving credit lines with fixed spreads
+      [verb] can provide
+      [object] firms
+      [prep-phrase] with interest rate insurance
+  [verb] is
+  [complement] a standard feature of models on these credit facilities' interest rate structure.
+
+== We believe that our work can significantly improve the quality of an automatic itinerary generation service.
+  [subject] We
+  [verb] believe
+  [clause-noun] that our work can significantly improve the quality of an automatic itinerary generation service.
+    [conjunction] that
+    [subject] our work
+    [verb] can significantly improve
+    [object] the quality of an automatic itinerary generation service
+
+== The friends looked out at us with the tragic eyes and short upper lips of southeastern Europe, and I was glad that the sight of Gatsby’s splendid car was included in their sombre holiday.
+  [subject] The friends
+  [verb] looked
+  [adverbial] out
+  [prep-phrase] at us
+  [prep-phrase] with the tragic eyes and short upper lips of southeastern Europe,
+  [conjunction] and
+  [subject] I
+  [verb] was
+  [complement] glad
+  [clause-noun] that the sight of Gatsby’s splendid car was included in their sombre holiday.
+    [conjunction] that
+    [subject] the sight of Gatsby’s splendid car
+    [verb] was included
+    [prep-phrase] in their sombre holiday
+
+== He was crazy enough to kill me if I hadn’t told him who owned the car.
+  [subject] He
+  [verb] was
+  [complement] crazy enough to kill me
+  [clause-adverbial] if I hadn’t told him who owned the car.
+    [conjunction] if
+    [subject] I
+    [verb] hadn’t told
+    [object] him
+    [conjunction] who
+    [verb] owned
+    [object] the car
+
+== After that I felt a certain shame for Gatsby—one gentleman to whom I telephoned implied that he had got what he deserved.
+  [prep-phrase] After that
+  [subject] I
+  [verb] felt
+  [complement] a certain shame for Gatsby—
+  [subject] one gentleman to whom I telephoned
+    [subject] one gentleman
+    [clause-relative] to whom I telephoned
+      [prep-phrase] to whom
+      [subject] I
+      [verb] telephoned
+  [verb] implied
+  [clause-noun] that he had got what he deserved.
+    [conjunction] that
+    [subject] he
+    [verb] had got
+    [clause-noun] what he deserved
+      [adverbial] what
+      [subject] he
+      [verb] deserved
+
+== This work demonstrates that it is possible to automatically classify translation processes.
+  [subject] This work
+  [verb] demonstrates
+  [clause-noun] that it is possible to automatically classify translation processes.
+    [conjunction] that
+    [subject] it
+    [verb] is
+    [complement] possible
+    [complement] to automatically classify translation processes
+      [verb] to automatically classify
+      [object] translation processes
+
+== It was recorded at The Spirit Room in Rossie, New York on March 16, 1998, and was released later that year by CIMP.
+  [subject] It
+  [verb] was recorded
+  [prep-phrase] at The Spirit Room in Rossie, New York
+    [prep-phrase] at The Spirit Room in Rossie
+    [appositive] , New York
+  [prep-phrase] on March 16, 1998,
+  [conjunction] and
+  [verb] was released
+  [adverbial] later that year
+  [prep-phrase] by CIMP.
+
+== As we passed over the dark bridge her wan face fell lazily against my coat’s shoulder and the formidable stroke of thirty died away with the reassuring pressure of her hand.
+  [clause-adverbial] As we passed over the dark bridge
+    [conjunction] As
+    [subject] we
+    [verb] passed
+    [prep-phrase] over the dark bridge
+  [subject] her wan face
+  [verb] fell
+  [adverbial] lazily
+  [prep-phrase] against my coat’s shoulder
+  [conjunction] and
+  [subject] the formidable stroke of thirty
+  [verb] died away
+  [prep-phrase] with the reassuring pressure of her hand.
+
+== I got to West Egg by a side road,” he went on, “and left the car in my garage.
+  [subject] I
+  [verb] got
+  [prep-phrase] to West Egg
+  [prep-phrase] by a side road
+  [insertion] ,” he went on, “
+  [conjunction] and
+  [verb] left
+  [object] the car
+  [prep-phrase] in my garage.
+
+== I hadn’t gone twenty yards when I heard my name and Gatsby stepped from between two bushes into the path.
+  [subject] I
+  [verb] hadn’t gone
+  [adverbial] twenty yards
+  [clause-adverbial] when I heard my name and Gatsby stepped from between two bushes into the path.
+    [conjunction] when
+    [subject] I
+    [verb] heard
+    [object] my name
+    [conjunction] and
+    [clause-adverbial] Gatsby stepped from between two bushes into the path
+      [subject] Gatsby
+      [verb] stepped
+      [prep-phrase] from between two bushes
+      [prep-phrase] into the path
+
+== He received his doctorate at Washington University in St. Louis in 1965.
+  [subject] He
+  [verb] received
+  [object] his doctorate
+  [prep-phrase] at Washington University in St. Louis
+  [prep-phrase] in 1965.
+
+== When a man gets killed I never like to get mixed up in it in any way.
+  [clause-adverbial] When a man gets killed
+    [conjunction] When
+    [subject] a man
+    [verb] gets killed
+  [subject] I
+  [verb] never like
+  [complement] to get mixed up in it in any way.
+    [verb] to get mixed up
+    [prep-phrase] in it
+    [prep-phrase] in any way
+
+== Then out into the spring fields, where a yellow trolley raced them for a minute with people in it who might once have seen the pale magic of her face along the casual street.
+  [adverbial] Then out
+  [verb] into
+  [object] the spring fields,
+  [clause-relative] where a yellow trolley raced them for a minute with people in it who might once have seen the pale magic of her face along the casual street
+    [relative] where
+    [subject] a yellow trolley
+    [verb] raced
+    [object] them
+    [prep-phrase] for a minute
+    [prep-phrase] with people in it who might once have seen the pale magic of her face along the casual street
+      [prep-phrase] with people in it
+      [clause-relative] who might once have seen the pale magic of her face along the casual street
+        [relative] who
+        [verb] might once have seen
+        [object] the pale magic of her face along the casual street
+  [verb] .
+
+== Recent work on adversarial examples has demonstrated that most natural inputs can be perturbed to fool even state-of-the-art machine learning systems.
+  [subject] Recent work on adversarial examples
+  [verb] has demonstrated
+  [clause-noun] that most natural inputs can be perturbed to fool even state-of-the-art machine learning systems.
+    [conjunction] that
+    [subject] most natural inputs
+    [verb] can be perturbed
+    [adverbial] to fool even state-of-the-art machine learning systems
+      [verb] to fool
+      [object] even state-of-the-art machine learning systems
+
+== In particular, we use Siamese neural networks for an approximate match with known author names, and direct correction of the provided author's name using sequence-to-sequence learning with neural networks.
+  [insertion] In particular,
+  [subject] we
+  [verb] use
+  [object] Siamese neural networks
+  [prep-phrase] for an approximate match with known author names, and direct correction of the provided author's name
+  [adverbial] using sequence-to-sequence learning with neural networks.
+    [verb] using
+    [object] sequence-to-sequence learning
+    [prep-phrase] with neural networks
+
+== Eftel continues as a business unit.
+  [subject] Eftel
+  [verb] continues
+  [prep-phrase] as a business unit.
+
+== At frequencies of cortex-wide integration in the human brain ($4$\,Hz, theta band), optoelectronic systems could integrate information across the surface of the earth.
+  [prep-phrase] At frequencies of cortex-wide integration in the human brain ($4$\,Hz, theta band),
+    [prep-phrase] At frequencies of cortex-wide integration in the human brain
+    [insertion] ($4$\,Hz, theta band)
+  [subject] optoelectronic systems
+  [verb] could integrate
+  [object] information
+  [prep-phrase] across the surface of the earth.
+
+== Livingston is a convert from Anglicanism to the Eastern Orthodox Church.
+  [subject] Livingston
+  [verb] is
+  [complement] a convert from Anglicanism to the Eastern Orthodox Church.
+
+== Finally, simulations will be presented exploring the concept of the retina as a nonlinear system which can perform understandable computations converting a known input into a predictable output.
+  [adverbial] Finally,
+  [subject] simulations
+  [verb] will be presented
+  [clause-adverbial] exploring the concept of the retina as a nonlinear system which can perform understandable computations converting a known input into a predictable output.
+    [verb] exploring
+    [object] the concept of the retina as a nonlinear system
+    [clause-relative] which can perform understandable computations converting a known input into a predictable output
+      [relative] which
+      [verb] can perform
+      [object] understandable computations
+      [clause-adverbial] converting a known input into a predictable output
+        [verb] converting
+        [object] a known input
+        [prep-phrase] into a predictable output
+
+== She nodded and moved away from him just as George Wilson emerged with two chairs from his office door.
+  [subject] She
+  [verb] nodded and moved
+    [verb] nodded
+    [conjunction] and
+    [verb] moved
+  [adverbial] away from him
+  [clause-adverbial] just as George Wilson emerged with two chairs from his office door.
+    [adverbial] just
+    [conjunction] as
+    [subject] George Wilson
+    [verb] emerged
+    [prep-phrase] with two chairs
+    [prep-phrase] from his office door
+
+== They were at least agonizingly aware of the easy money in the vicinity and convinced that it was theirs for a few words in the right key.
+  [subject] They
+  [verb] were
+  [complement] at least agonizingly aware of the easy money in the vicinity and convinced
+  [clause-noun] that it was theirs for a few words in the right key.
+    [conjunction] that
+    [subject] it
+    [verb] was
+    [complement] theirs
+    [prep-phrase] for a few words in the right key
+
+== The Institute is named for the town of Abbeville, South Carolina, often regarded as the birthplace of the Confederacy.
+  [subject] The Institute
+  [verb] is named
+  [prep-phrase] for the town of Abbeville, South Carolina, often regarded as the birthplace of the Confederacy.
+    [prep-phrase] for the town of Abbeville
+    [appositive] , South Carolina,
+    [insertion] often regarded as the birthplace of the Confederacy
+      [adverbial] often
+      [verb] regarded
+      [prep-phrase] as the birthplace of the Confederacy
+
+== And as I walked on I was lonely no longer.
+  [conjunction] And
+  [clause-adverbial] as I walked on
+    [conjunction] as
+    [subject] I
+    [verb] walked
+    [adverbial] on
+  [subject] I
+  [verb] was
+  [complement] lonely
+  [adverbial] no longer.
+
+== Known as the Michanikos, Hero of Alexandria is considered the inventor of the world's first steam engine and of many other sophisticated devices.
+  [adverbial] Known as the Michanikos,
+    [verb] Known
+    [prep-phrase] as the Michanikos
+  [subject] Hero of Alexandria
+  [verb] is considered
+  [object] the inventor of the world's first steam engine and of many other sophisticated devices.
+
+== He got scared and fell to the ground.
+  [subject] He
+  [verb] got
+  [complement] scared
+  [conjunction] and
+  [verb] fell
+  [prep-phrase] to the ground.
+
+== Using this algorithm, we generated a population of synthetic networks with optimal but diverse cost-efficiency trade-offs.
+  [adverbial] Using this algorithm,
+    [verb] Using
+    [object] this algorithm
+  [subject] we
+  [verb] generated
+  [object] a population of synthetic networks with optimal but diverse cost-efficiency trade-offs.
+
+== Visitors differ in terms of many factors such as suffering from a disability, being of a particular dietary preference, travelling with a toddler, etc.
+  [subject] Visitors
+  [verb] differ
+  [prep-phrase] in terms of many factors such as suffering from a disability, being of a particular dietary preference, travelling with a toddler, etc.
+
+== I know you didn’t mean to, but you did do it.
+  [subject] I
+  [verb] know
+  [clause-noun] you didn’t mean to,
+    [subject] you
+    [verb] didn’t mean
+    [complement] to
+  [conjunction] but
+  [subject] you
+  [verb] did do
+  [object] it.
+
+== We observe that the external stimulus mask some effects of self-sustained activity (ceaseless dynamic) in the region where the dynamic range is calculated.
+  [subject] We
+  [verb] observe
+  [clause-noun] that the external stimulus mask some effects of self-sustained activity (ceaseless dynamic) in the region where the dynamic range is calculated.
+    [conjunction] that
+    [subject] the external stimulus
+    [verb] mask
+    [object] some effects of self-sustained activity
+    [insertion] (ceaseless dynamic)
+    [object] in the region
+    [clause-relative] where the dynamic range is calculated
+      [relative] where
+      [subject] the dynamic range
+      [verb] is calculated
+
+== The intonation and tuning of the Reval organ was already my work.
+  [subject] The intonation and tuning of the Reval organ
+  [verb] was
+  [adverbial] already
+  [complement] my work.
+
+== Her second novel, Cease to Blush, was published in 2006 and subsequently chosen as one of the year's best books by The Globe and Mail, January Magazine, and The Tyee.
+  [subject] Her second novel,
+  [insertion] Cease to Blush,
+    [verb] Cease
+    [prep-phrase] to Blush
+  [verb] was published
+  [prep-phrase] in 2006
+  [conjunction] and
+  [adverbial] subsequently
+  [verb] chosen
+  [prep-phrase] as one of the year's best books
+  [prep-phrase] by The Globe and Mail, January Magazine, and The Tyee.
+
+== I never saw this great-uncle, but I’m supposed to look like him—with special reference to the rather hard-boiled painting that hangs in father’s office.
+  [subject] I
+  [verb] never saw
+  [object] this great-uncle,
+  [conjunction] but
+  [subject-verb] I’m supposed
+  [complement] to look like him—with special reference to the rather hard-boiled painting that hangs in father’s office.
+    [verb] to look
+    [prep-phrase] like him—
+    [prep-phrase] with special reference to the rather hard-boiled painting that hangs in father’s office
+      [prep-phrase] with special reference to the rather hard-boiled painting
+      [clause-relative] that hangs in father’s office
+        [relative] that
+        [verb] hangs
+        [prep-phrase] in father’s office
+
+== It was found that these synthetic networks could not only reproduce a large portion of connections in the empirical brain networks but also embed a resembling small-world structure.
+  [subject] It
+  [verb] was found
+  [clause-noun] that these synthetic networks could not only reproduce a large portion of connections in the empirical brain networks but also embed a resembling small-world structure.
+    [conjunction] that
+    [subject] these synthetic networks
+    [verb] could
+    [other] not only
+    [verb] reproduce
+    [object] a large portion of connections in the empirical brain networks
+    [conjunction] but also
+    [verb] embed a resembling
+    [object] small-world structure
+
+== Specifically, using the CAMELS rating system as a general framework for supervision, we study how charter value relates to risk and supervision by means of classification and regression tree analysis.
+  [adverbial] Specifically,
+  [adverbial] using the CAMELS rating system as a general framework for supervision,
+    [verb] using
+    [object] the CAMELS rating system
+    [prep-phrase] as a general framework for supervision
+  [subject] we
+  [verb] study
+  [clause-noun] how charter value relates to risk and supervision by means of classification and regression tree analysis.
+    [adverbial] how
+    [subject] charter value
+    [verb] relates
+    [prep-phrase] to risk and supervision
+    [prep-phrase] by means of classification and regression tree analysis
+
+== She has received fellowships from The Banff Centre, MacDowell Colony, Escape to Create (Seaside, Florida), Ucross Foundation and Omi International Arts Center.
+  [subject] She
+  [verb] has received
+  [object] fellowships
+  [prep-phrase] from The Banff Centre, MacDowell Colony, Escape to Create (Seaside, Florida), Ucross Foundation and Omi International Arts Center.
+    [prep-phrase] from
+    [object] The Banff Centre, MacDowell Colony, Escape
+    [adverbial] to Create
+    [insertion] (Seaside, Florida)
+    [prep-phrase] , Ucross Foundation and Omi International Arts Center
+
+== Myrtle’ll be hurt if you don’t come up to the apartment.
+  [subject] Myrtle’ll
+  [verb] be hurt
+  [clause-adverbial] if you don’t come up to the apartment.
+    [conjunction] if
+    [subject] you
+    [verb] don’t come up
+    [prep-phrase] to the apartment
+
+== It was strange to reach the marble steps and find no stir of bright dresses in and out the door, and hear no sound but bird voices in the trees.
+  [subject] It
+  [verb] was
+  [complement] strange
+  [complement] to reach the marble steps and find no stir of bright dresses in and out the door, and hear no sound but bird voices in the trees.
+    [verb] to reach
+    [object] the marble steps
+    [conjunction] and
+    [verb] find
+    [object] no stir of bright dresses in and out the door,
+    [conjunction] and
+    [verb] hear
+    [object] no sound but bird voices in the trees
+
+== She wanted her life shaped now, immediately—and the decision must be made by some force—of love, of money, of unquestionable practicality—that was close at hand.
+  [subject] She
+  [verb] wanted
+  [clause-noun] her life shaped now, immediately—
+    [subject] her life
+    [verb] shaped
+    [adverbial] now,
+    [adverbial] immediately
+  [conjunction] and
+  [subject] the decision
+  [verb] must be made
+  [prep-phrase] by some force—of love, of money, of unquestionable practicality—that was close at hand.
+    [prep-phrase] by some force—of love
+    [prep-phrase] , of money
+    [prep-phrase] , of unquestionable practicality—
+    [clause-relative] that was close at hand
+      [relative] that
+      [verb] was
+      [complement] close at hand
+
+== In 2013, Eftel was acquired by the rival M2 Group (now Vocus Group) for approximately $44.1 million.
+  [prep-phrase] In 2013,
+  [subject] Eftel
+  [verb] was acquired
+  [prep-phrase] by the rival M2 Group (now Vocus Group)
+    [prep-phrase] by
+    [object] the rival M2 Group
+    [insertion] (now Vocus Group)
+  [prep-phrase] for approximately $44.1 million.
+
+== Since that time, St. Olaf is a Baptist church that continues to conduct services.
+  [adverbial] Since that time,
+  [subject] St. Olaf
+  [verb] is
+  [complement] a Baptist church
+  [clause-relative] that continues to conduct services.
+    [relative] that
+    [verb] continues
+    [complement] to conduct services
+      [verb] to conduct
+      [object] services
+
+== His eyes leaked continuously with excitement, and when I took the bag and umbrella from his hands he began to pull so incessantly at his sparse grey beard that I had difficulty in getting off his coat.
+  [subject] His eyes
+  [verb] leaked
+  [adverbial] continuously
+  [prep-phrase] with excitement,
+  [conjunction] and
+  [clause-adverbial] when I took the bag and umbrella from his hands
+    [conjunction] when
+    [subject] I
+    [verb] took
+    [object] the bag and umbrella
+    [prep-phrase] from his hands
+  [subject] he
+  [verb] began
+  [complement] to pull so incessantly at his sparse grey beard that I had difficulty in getting off his coat.
+    [verb] to pull
+    [adverbial] so incessantly
+    [prep-phrase] at his sparse grey beard
+    [clause-noun] that I had difficulty in getting off his coat
+      [conjunction] that
+      [subject] I
+      [verb] had
+      [object] difficulty in getting off his coat
+
+== The nature of Mr. Tostoff’s composition eluded me, because just as it began my eyes fell on Gatsby, standing alone on the marble steps and looking from one group to another with approving eyes.
+  [subject] The nature of Mr. Tostoff’s composition
+  [verb] eluded
+  [object] me,
+  [clause-adverbial] because just as it began my eyes fell on Gatsby, standing alone on the marble steps and looking from one group to another with approving eyes.
+    [conjunction] because
+    [clause-adverbial] just as it began
+      [adverbial] just
+      [conjunction] as
+      [subject] it
+      [verb] began
+    [subject] my eyes
+    [verb] fell
+    [prep-phrase] on Gatsby,
+    [clause-adverbial] standing alone on the marble steps and looking from one group to another with approving eyes
+      [verb] standing
+      [adverbial] alone
+      [prep-phrase] on the marble steps
+      [conjunction] and
+      [verb] looking
+      [prep-phrase] from one group to another
+      [prep-phrase] with approving eyes
+
+== Next morning I sent the butler to New York with a letter to Wolfshiem, which asked for information and urged him to come out on the next train.
+  [adverbial] Next morning
+  [subject] I
+  [verb] sent
+  [object] the butler
+  [prep-phrase] to New York
+  [prep-phrase] with a letter to Wolfshiem, which asked for information and urged him to come out on the next train.
+    [prep-phrase] with a letter to Wolfshiem,
+    [clause-relative] which asked for information and urged him to come out on the next train
+      [relative] which
+      [verb] asked
+      [prep-phrase] for information
+      [conjunction] and
+      [verb] urged
+      [object] him
+      [complement] to come out on the next train
+        [verb] to come out
+        [prep-phrase] on the next train
+
+== We do this by combining qualitative methods and machine learning.
+  [subject] We
+  [verb] do
+  [object] this
+  [prep-phrase] by combining qualitative methods and machine learning.
+
+== The merger doubled the size of the company, providing significant economies of scale, and extended broadband operations into four states.
+  [subject] The merger
+  [verb] doubled
+  [object] the size of the company,
+  [adverbial] providing significant economies of scale,
+    [verb] providing
+    [object] significant economies of scale
+  [conjunction] and
+  [verb] extended
+  [object] broadband operations
+  [prep-phrase] into four states.
+
+== Here, in the context of a two-layer network, we derive an algorithm for training a neural network which avoids this problem by not requiring explicit error computation and backpropagation.
+  [adverbial] Here,
+  [prep-phrase] in the context of a two-layer network,
+  [subject] we
+  [verb] derive
+  [object] an algorithm for training a neural network
+  [clause-relative] which avoids this problem by not requiring explicit error computation and backpropagation.
+    [relative] which
+    [verb] avoids
+    [object] this problem
+    [prep-phrase] by not requiring explicit error computation and backpropagation
+
+== Little is known about the early years of the Gothic church building.
+  [subject] Little
+  [verb] is known
+  [prep-phrase] about the early years of the Gothic church building.
+
+== The film was released in 2014.
+  [subject] The film
+  [verb] was released
+  [prep-phrase] in 2014.
+
+== The contrasts and similarities between the Transactional Interpretation's (TI) handling of a specific measurement result and that of GRW approaches are clarified.
+  [subject] The contrasts and similarities between the Transactional Interpretation's (TI) handling of a specific measurement result and that of GRW approaches
+    [subject] The contrasts and similarities between the Transactional Interpretation's
+    [insertion] (TI)
+    [subject] handling of a specific measurement result and that of GRW approaches
+  [verb] are clarified.
+
+== From 1944 until 1991, the Estonian branch of Soviet KGB, whose headquarters were located nearby, used St. Olaf's Church's spire as a radio tower and surveillance point.
+  [prep-phrase] From 1944
+  [prep-phrase] until 1991,
+  [subject] the Estonian branch of Soviet KGB, whose headquarters were located nearby,
+    [subject] the Estonian branch of Soviet KGB,
+    [clause-relative] whose headquarters were located nearby,
+      [subject] whose headquarters
+      [verb] were located
+      [adverbial] nearby
+  [verb] used
+  [object] St. Olaf's Church's spire
+  [prep-phrase] as a radio tower and surveillance point.
+
+== Recent advances extending deep learning techniques to non-Euclidean graph data provide a novel approach to interpreting neuronal spiking activity.
+  [subject] Recent advances extending deep learning techniques to non-Euclidean graph data
+    [subject] Recent advances
+    [clause-relative] extending deep learning techniques to non-Euclidean graph data
+      [verb] extending
+      [object] deep learning techniques
+      [prep-phrase] to non-Euclidean graph data
+  [verb] provide
+  [object] a novel approach to interpreting neuronal spiking activity.
+
+== She convinced herself of it, and cried into her handkerchief, as if the very suggestion was more than she could endure.
+  [subject] She
+  [verb] convinced
+  [object] herself
+  [prep-phrase] of it,
+  [conjunction] and
+  [verb] cried
+  [prep-phrase] into her handkerchief,
+  [conjunction] as
+  [conjunction] if
+  [subject] the very suggestion
+  [verb] was
+  [complement] more
+  [clause-adverbial] than she could endure.
+    [conjunction] than
+    [subject] she
+    [verb] could endure
+
+== But in the new silence I felt that silence had fallen within the house too.
+  [conjunction] But
+  [prep-phrase] in the new silence
+  [subject] I
+  [verb] felt
+  [clause-noun] that silence had fallen within the house too.
+    [conjunction] that
+    [subject] silence
+    [verb] had fallen
+    [prep-phrase] within the house
+    [adverbial] too
+
+== The Buchanans’ house floated suddenly toward us through the dark rustling trees.
+  [subject] The Buchanans’ house
+  [verb] floated
+  [adverbial] suddenly
+  [prep-phrase] toward us
+  [prep-phrase] through the dark rustling trees.
+
+== We rank by citizenship at the moment of the award, and by country of birth.
+  [subject] We
+  [verb] rank
+  [prep-phrase] by citizenship at the moment of the award,
+  [conjunction] and
+  [prep-phrase] by country of birth.
+
+== The only crazy I was was when I married him.
+  [subject] The only crazy I was
+    [subject] The only crazy
+    [clause-relative] I was
+      [subject] I
+      [verb] was
+  [verb] was
+  [clause-adverbial] when I married him.
+    [conjunction] when
+    [subject] I
+    [verb] married
+    [object] him
+
+== It is the tallest church building in Estonia – 123.7 meters above ground level, with an observation platform in the church tower at a height of 60 meters.
+  [subject] It
+  [verb] is
+  [complement] the tallest church building in Estonia
+  [insertion] – 123.7 meters above ground level
+  [prep-phrase] , with an observation platform in the church tower at a height of 60 meters.
+
+== We shook hands with him gravely and went back outdoors.
+  [subject] We
+  [verb] shook
+  [object] hands
+  [prep-phrase] with him
+  [adverbial] gravely
+  [conjunction] and
+  [verb] went back
+  [adverbial] outdoors.
+
+== As my train emerged from the tunnel into sunlight, only the hot whistles of the National Biscuit Company broke the simmering hush at noon.
+  [clause-adverbial] As my train emerged from the tunnel into sunlight,
+    [conjunction] As
+    [subject] my train
+    [verb] emerged
+    [prep-phrase] from the tunnel
+    [prep-phrase] into sunlight
+  [subject] only the hot whistles of the National Biscuit Company
+  [verb] broke
+  [object] the simmering hush
+  [prep-phrase] at noon.
+
+== The Abbeville Institute has a press, an Abbeville Institute Review, and a blog.
+  [subject] The Abbeville Institute
+  [verb] has
+  [object] a press, an Abbeville Institute Review, and a blog.
+
+== I ought to have dropped you in West Egg, Nick.
+  [subject] I
+  [verb] ought
+  [complement] to have dropped you in West Egg, Nick.
+    [verb] to have dropped
+    [object] you
+    [prep-phrase] in West Egg,
+    [adverbial] Nick
+
+== Lattices are an efficient and effective method to encode ambiguity of upstream systems in natural language processing tasks, for example to compactly capture multiple speech recognition hypotheses, or to represent multiple linguistic analyses.
+  [subject] Lattices
+  [verb] are
+  [complement] an efficient and effective method
+  [adverbial] to encode ambiguity of upstream systems in natural language processing tasks, for example to compactly capture multiple speech recognition hypotheses, or to represent multiple linguistic analyses.
+    [verb] to encode
+    [object] ambiguity of upstream systems
+    [prep-phrase] in natural language processing tasks,
+    [adverbial] for example to compactly capture multiple speech recognition hypotheses, or to represent multiple linguistic analyses
+      [insertion] for example
+      [verb] to compactly capture
+      [object] multiple speech recognition hypotheses,
+      [conjunction] or
+      [verb] to represent
+      [object] multiple linguistic analyses
+
+== Livingston was a member of the League of the South's Institute for the Study of Southern Culture and History, but left the group in the early 2000s.
+  [subject] Livingston
+  [verb] was
+  [complement] a member of the League of the South's Institute for the Study of Southern Culture and History,
+  [conjunction] but
+  [verb] left
+  [object] the group
+  [prep-phrase] in the early 2000s.
+
+== The paper concludes with a discussion of priority questions relating to suggestions of the two heavy isotopes as well as to their actual discoveries.
+  [subject] The paper
+  [verb] concludes
+  [prep-phrase] with a discussion of priority questions relating to suggestions of the two heavy isotopes as well as to their actual discoveries.
+    [prep-phrase] with a discussion of priority questions
+    [clause-relative] relating to suggestions of the two heavy isotopes as well as to their actual discoveries
+      [verb] relating
+      [prep-phrase] to suggestions of the two heavy isotopes
+      [conjunction] as well as
+      [prep-phrase] to their actual discoveries
+
+== The technology will enable theoretical speeds of up to 100 Mbit/s, about 4 times faster than ADSL2+.
+  [subject] The technology
+  [verb] will enable
+  [object] theoretical speeds of up to 100 Mbit/s
+  [appositive] , about 4 times faster than ADSL2+.
+
+== These initiatives helped the company to take advantage of two current trends: industry consolidation and the take-up of broadband Internet access.
+  [subject] These initiatives
+  [verb] helped
+  [object] the company
+  [complement] to take advantage of two current trends: industry consolidation and the take-up of broadband Internet access.
+    [verb] to take advantage
+    [prep-phrase] of two current trends: industry consolidation and the take-up of broadband Internet access
+      [prep-phrase] of two current trends:
+      [appositive] industry consolidation and the take-up of broadband Internet access
+
+== The current version of the hymn with nine stanzas is the result of several modifications, for instance by Bernhard Severin Ingemann, and was first published in a supplement to the 1877 edition of Fest-Psalmer.
+  [subject] The current version of the hymn with nine stanzas
+  [verb] is
+  [complement] the result of several modifications
+  [prep-phrase] , for instance by Bernhard Severin Ingemann,
+  [conjunction] and
+  [verb] was first published
+  [prep-phrase] in a supplement to the 1877 edition of Fest-Psalmer.
+
+== Only 400–500 copies of this vinyl EP were pressed and could be purchased through Birdman Recordings.
+  [subject] Only 400–500 copies of this vinyl EP
+  [verb] were pressed and could be purchased
+    [verb] were pressed
+    [conjunction] and
+    [verb] could be purchased
+  [prep-phrase] through Birdman Recordings.
+
+== Wild rumours were circulating about her—how her mother had found her packing her bag one winter night to go to New York and say goodbye to a soldier who was going overseas.
+  [subject] Wild rumours
+  [verb] were circulating
+  [prep-phrase] about her—
+  [clause-relative] how her mother had found her packing her bag one winter night to go to New York and say goodbye to a soldier who was going overseas.
+    [relative] how
+    [subject] her mother
+    [verb] had found
+    [clause-noun] her packing her bag one winter night to go to New York and say goodbye to a soldier who was going overseas
+      [subject] her
+      [verb] packing
+      [object] her bag
+      [adverbial] one winter night
+      [adverbial] to go to New York and say goodbye to a soldier who was going overseas
+        [verb] to go
+        [prep-phrase] to New York
+        [conjunction] and
+        [verb] say
+        [object] goodbye
+        [prep-phrase] to a soldier who was going overseas
+          [prep-phrase] to
+          [object] a soldier
+          [clause-relative] who was going overseas
+            [relative] who
+            [verb] was going
+            [adverbial] overseas
+
+== Most previous work considered each of these processes, learning and variability, in isolation -- here we study neural networks exhibiting both and show that their interaction leads to the emergence of powerful computational properties.
+  [subject] Most previous work
+  [verb] considered
+  [object] each of these processes, learning and variability,
+    [object] each of these processes,
+    [appositive] learning and variability
+  [prep-phrase] in isolation --
+  [adverbial] here
+  [subject] we
+  [verb] study
+  [object] neural networks
+  [clause-relative] exhibiting both
+    [verb] exhibiting
+    [object] both
+  [conjunction] and
+  [verb] show
+  [clause-noun] that their interaction leads to the emergence of powerful computational properties.
+    [conjunction] that
+    [subject] their interaction
+    [verb] leads
+    [prep-phrase] to the emergence of powerful computational properties
+
+== Livingston's short story collection, Greedy Little Eyes, was cited by The Globe and Mail as one of 2010's best books and by The Georgia Straight as one of the fifteen most outstanding books of the year.
+  [subject] Livingston's short story collection,
+  [insertion] Greedy Little Eyes,
+  [verb] was cited
+  [prep-phrase] by The Globe and Mail
+  [prep-phrase] as one of 2010's best books
+  [conjunction] and
+  [object] by The Georgia Straight as one of the fifteen most outstanding books of the year.
+
+== It’s better that the shock should all come at once.
+  [subject-verb] It’s
+  [complement] better
+  [clause-noun] that the shock should all come at once.
+    [conjunction] that
+    [subject] the shock
+    [verb] should
+    [other] all
+    [verb] come
+    [prep-phrase] at once
+
+== We use this method to propose a benchmark and lay the groundwork for future research in NLP interpretability by evaluating a wide range of current state of the art methods.
+  [subject] We
+  [verb] use
+  [object] this method
+  [complement] to propose a benchmark and lay the groundwork for future research in NLP interpretability by evaluating a wide range of current state of the art methods.
+    [verb] to propose
+    [object] a benchmark
+    [conjunction] and
+    [verb] lay
+    [object] the groundwork
+    [prep-phrase] for future research in NLP interpretability
+    [prep-phrase] by evaluating a wide range of current state of the art methods
+
+== Eftel Limited was an internet service provider and telecommunications provider in Australia, with approximately 120,000 active accounts.
+  [subject] Eftel Limited
+  [verb] was
+  [complement] an internet service provider and telecommunications provider in Australia,
+  [prep-phrase] with approximately 120,000 active accounts.
+
+== The prevailing view in neuroscience attributes changes in synaptic efficacy to memory acquisition.
+  [subject] The prevailing view in neuroscience
+  [verb] attributes
+  [object] changes in synaptic efficacy
+  [prep-phrase] to memory acquisition.
+
+== Moreover, a multi-objective programming problem was addressed that maximises the profits of both parties without losing the alignment of their interests.
+  [adverbial] Moreover,
+  [subject] a multi-objective programming problem
+  [verb] was addressed
+  [clause-relative] that maximises the profits of both parties without losing the alignment of their interests.
+    [relative] that
+    [verb] maximises
+    [object] the profits of both parties
+    [prep-phrase] without losing the alignment of their interests
+
+== St. Olaf's, or St. Olav's Church (Estonian: Oleviste kirik; German: Olaikirche), is a Baptist church in Tallinn, Estonia; originally a Roman Catholic Church, after the Reformation it is a Lutheran church.
+  [clause] St. Olaf's, or St. Olav's Church (Estonian: Oleviste kirik; German: Olaikirche), is a Baptist church in Tallinn, Estonia;
+    [subject] St. Olaf's, or St. Olav's Church
+    [insertion] (Estonian: Oleviste kirik; German: Olaikirche),
+    [verb] is
+    [complement] a Baptist church in Tallinn
+    [appositive] , Estonia;
+  [clause] originally a Roman Catholic Church, after the Reformation it is a Lutheran church.
+    [adverbial] originally
+    [complement] a Roman Catholic Church,
+    [prep-phrase] after the Reformation
+    [subject] it
+    [verb] is
+    [complement] a Lutheran church.
+
+== In late 2003, Datafast acquired ISPs KeyPoint, EZ Web, and Impaq.
+  [prep-phrase] In late 2003,
+  [subject] Datafast
+  [verb] acquired
+  [object] ISPs KeyPoint, EZ Web, and Impaq.
+
+== When he hit the ground, a toad and a snake came out of his mouth, which denoted the demonic possession of this man.
+  [clause-adverbial] When he hit the ground,
+    [conjunction] When
+    [subject] he
+    [verb] hit
+    [object] the ground
+  [subject] a toad and a snake
+  [verb] came
+  [prep-phrase] out of his mouth,
+  [clause-relative] which denoted the demonic possession of this man.
+    [relative] which
+    [verb] denoted
+    [object] the demonic possession of this man
+
+== To do so, the Tallinners sent a spy to his house, who heard Olev's name in a song his wife sang.
+  [adverbial] To do so,
+    [verb] To do
+    [adverbial] so
+  [subject] the Tallinners
+  [verb] sent
+  [object] a spy
+  [prep-phrase] to his house,
+  [clause-relative] who heard Olev's name in a song his wife sang.
+    [relative] who
+    [verb] heard
+    [object] Olev's name
+    [prep-phrase] in a song his wife sang
+      [prep-phrase] in
+      [object] a song
+      [clause-relative] his wife sang
+        [subject] his wife
+        [verb] sang
+
+== But his eyes, dimmed a little by many paintless days, under sun and rain, brood on over the solemn dumping ground.
+  [conjunction] But
+  [subject] his eyes,
+  [adverbial] dimmed a little by many paintless days, under sun and rain,
+    [verb] dimmed
+    [adverbial] a little
+    [prep-phrase] by many paintless days,
+    [prep-phrase] under sun and rain
+  [verb] brood on
+  [prep-phrase] over the solemn dumping ground.
+
+== St. Olaf's was originally a Catholic church, however, during the 16th century Reformation in Estonia it became part of the local Lutheran tradition and had a large, mostly German-speaking congregation until 1939.
+  [subject] St. Olaf's
+  [verb] was
+  [adverbial] originally
+  [complement] a Catholic church,
+  [adverbial] however,
+  [prep-phrase] during the 16th century Reformation in Estonia
+  [subject] it
+  [verb] became
+  [complement] part of the local Lutheran tradition
+  [conjunction] and
+  [verb] had
+  [object] a large, mostly German-speaking congregation
+  [prep-phrase] until 1939.
+
+== It also introduces two main ideas we will need in Part II: which will propose a framework for making comparisons of non-isomorphic spacetimes.
+  [clause] It also introduces two main ideas we will need in Part II:
+    [subject] It
+    [adverbial] also
+    [verb] introduces
+    [object] two main ideas
+    [clause-relative] we will need in Part II:
+      [subject] we
+      [verb] will need
+      [prep-phrase] in Part II
+  [clause-relative] which will propose a framework for making comparisons of non-isomorphic spacetimes.
+    [relative] which
+    [verb] will propose
+    [object] a framework for making comparisons of non-isomorphic spacetimes
+
+== My house was at the very tip of the egg, only fifty yards from the Sound, and squeezed between two huge places that rented for twelve or fifteen thousand a season.
+  [subject] My house
+  [verb] was
+  [prep-phrase] at the very tip of the egg, only fifty yards from the Sound,
+    [prep-phrase] at the very tip of the egg
+    [insertion] , only fifty yards from the Sound
+  [conjunction] and
+  [verb] squeezed
+  [prep-phrase] between two huge places that rented for twelve or fifteen thousand a season.
+    [prep-phrase] between
+    [object] two huge places
+    [clause-relative] that rented for twelve or fifteen thousand a season
+      [relative] that
+      [verb] rented
+      [prep-phrase] for twelve or fifteen thousand a season
+
+== On the album, which is the companion to Mark–n–Marshall: Tuesday, Allen is joined by saxophonist and clarinetist Mark Whitecage, bassist Dominic Duval, and drummer Luqman Ali.
+  [prep-phrase] On the album, which is the companion to Mark–n–Marshall:
+    [prep-phrase] On
+    [object] the album,
+    [clause-relative] which is the companion to Mark–n–Marshall
+      [relative] which
+      [verb] is
+      [complement] the companion to Mark–n–Marshall
+  [clause] Tuesday, Allen is joined by saxophonist and clarinetist Mark Whitecage, bassist Dominic Duval, and drummer Luqman Ali.
+    [adverbial] Tuesday,
+    [subject] Allen
+    [verb] is joined
+    [prep-phrase] by saxophonist and clarinetist Mark Whitecage, bassist Dominic Duval, and drummer Luqman Ali.
+
+== The instrument has 76 registers, 3 manuals and a pedal.
+  [subject] The instrument
+  [verb] has
+  [object] 76 registers, 3 manuals and a pedal.
+
+== Thus, the problem is both challenging and important for NLP researchers and practitioners.
+  [adverbial] Thus,
+  [subject] the problem
+  [verb] is
+  [complement] both challenging and important
+  [prep-phrase] for NLP researchers and practitioners.
+
+== The next April Daisy had her little girl, and they went to France for a year.
+  [adverbial] The next April
+  [subject] Daisy
+  [verb] had
+  [object] her little girl,
+  [conjunction] and
+  [subject] they
+  [verb] went
+  [prep-phrase] to France
+  [prep-phrase] for a year.
+
+== At that time, Queen Margaret of Denmark granted the Cistercian convent of St. Michael in Reval (Tallinn) the parish rights to St. Olaf's Church.
+  [prep-phrase] At that time,
+  [subject] Queen Margaret of Denmark
+  [verb] granted
+  [object] the Cistercian convent of St. Michael in Reval
+  [insertion] (Tallinn)
+  [object] the parish rights to St. Olaf's Church.
+
+== These results also hold, if the non-normality of cryptocurrency returns is considered.
+  [subject] These results
+  [adverbial] also
+  [verb] hold,
+  [clause-adverbial] if the non-normality of cryptocurrency returns is considered.
+    [conjunction] if
+    [subject] the non-normality of cryptocurrency returns
+    [verb] is considered
+
+== In 2011 Greedy Little Eyes won the Danuta Gleed Literary Award for Best Short Story Collection as well as the CBC's Bookie Award.
+  [prep-phrase] In 2011
+  [subject] Greedy Little Eyes
+  [verb] won
+  [object] the Danuta Gleed Literary Award for Best Short Story Collection as well as the CBC's Bookie Award.
+
+== I got him to join the American Legion and he used to stand high there.
+  [subject] I
+  [verb] got
+  [object] him
+  [complement] to join the American Legion
+    [verb] to join
+    [object] the American Legion
+  [conjunction] and
+  [subject] he
+  [verb] used
+  [complement] to stand high there.
+    [verb] to stand high
+    [adverbial] there
+
+== According to the Southern Poverty Law Center (SPLC), "Livingston told the Report that he was put off by the group’s racism and other 'political baggage'".
+  [prep-phrase] According to the Southern Poverty Law Center (SPLC), "
+    [verb] According
+    [prep-phrase] to the Southern Poverty Law Center (SPLC)
+      [prep-phrase] to
+      [object] the Southern Poverty Law Center
+      [insertion] (SPLC)
+  [subject] Livingston
+  [verb] told
+  [object] the Report
+  [clause-noun] that he was put off by the group’s racism and other 'political baggage'".
+    [conjunction] that
+    [subject] he
+    [verb] was put off
+    [prep-phrase] by the group’s racism and other 'political baggage'
+
+== They demonstrate metacognitive abilities in interpreting web information and crafting responses with human-like understanding and creativity.
+  [subject] They
+  [verb] demonstrate
+  [object] metacognitive abilities in interpreting web information and crafting responses with human-like understanding and creativity.
+
+== Specifically, we prove that in efficient markets, informed investors maximize return on volatility by being risk-neutral with riskless bonds, and risk-averse with equities, thereby resolving the puzzle.
+  [adverbial] Specifically,
+  [subject] we
+  [verb] prove
+  [clause-noun] that in efficient markets, informed investors maximize return on volatility by being risk-neutral with riskless bonds, and risk-averse with equities, thereby resolving the puzzle.
+    [conjunction] that
+    [prep-phrase] in efficient markets,
+    [subject] informed investors
+    [verb] maximize
+    [object] return on volatility
+    [prep-phrase] by being risk-neutral with riskless bonds, and risk-averse with equities, thereby resolving the puzzle
+      [prep-phrase] by being risk-neutral with riskless bonds, and risk-averse with equities,
+      [clause-adverbial] thereby resolving the puzzle
+        [adverbial] thereby
+        [verb] resolving
+        [object] the puzzle
+
+== After that, he stayed there alone with Wilson until dawn.
+  [prep-phrase] After that,
+  [subject] he
+  [verb] stayed
+  [adverbial] there
+  [adverbial] alone
+  [prep-phrase] with Wilson
+  [prep-phrase] until dawn.
+
+== I think he was afraid they would dart down a side-street and out of his life forever.
+  [subject] I
+  [verb] think
+  [clause-noun] he was afraid they would dart down a side-street and out of his life forever.
+    [subject] he
+    [verb] was
+    [complement] afraid
+    [clause-noun] they would dart down a side-street and out of his life forever
+      [subject] they
+      [verb] would dart
+      [prep-phrase] down a side-street
+      [conjunction] and
+      [prep-phrase] out of his life
+      [adverbial] forever
+
+== Have you got a church you go to sometimes, George?
+  [verb] Have you got
+    [verb] Have
+    [subject] you
+    [verb] got
+  [object] a church
+  [clause-relative] you go to sometimes,
+    [subject] you
+    [verb] go
+    [prep-phrase] to
+    [adverbial] sometimes
+  [adverbial] George?
+
+== It was Jordan Baker; she often called me up at this hour because the uncertainty of her own movements between hotels and clubs and private houses made her hard to find in any other way.
+  [clause] It was Jordan Baker;
+    [subject] It
+    [verb] was
+    [complement] Jordan Baker;
+  [clause] she often called me up at this hour because the uncertainty of her own movements between hotels and clubs and private houses made her hard to find in any other way.
+    [subject] she
+    [adverbial] often
+    [verb] called
+    [object] me
+    [verb] up
+    [prep-phrase] at this hour
+    [clause-adverbial] because the uncertainty of her own movements between hotels and clubs and private houses made her hard to find in any other way.
+      [conjunction] because
+      [subject] the uncertainty of her own movements between hotels and clubs and private houses
+      [verb] made
+      [clause-noun] her hard to find in any other way
+        [verb] her hard to find
+        [prep-phrase] in any other way
+
+== That’s the secret of Castle Rackrent.
+  [subject-verb] That’s
+  [complement] the secret of Castle Rackrent.
+
+== Datafast Telecommunications Ltd changes name to Eftel Limited.
+  [subject] Datafast Telecommunications Ltd
+  [verb] changes
+  [object] name
+  [prep-phrase] to Eftel Limited.
+
+== This fact is reflected in a mural painting on one of the sides of the church.
+  [subject] This fact
+  [verb] is reflected
+  [prep-phrase] in a mural painting on one of the sides of the church.
+
+== Moreover the concept of matter is much more subtle in quantum physics compared to classical physics, and quantum computing shows that quantum effects can be useful for information processing.
+  [adverbial] Moreover
+  [subject] the concept of matter
+  [verb] is
+  [complement] much more subtle
+  [prep-phrase] in quantum physics
+  [prep-phrase] compared to classical physics,
+  [conjunction] and
+  [subject] quantum computing
+  [verb] shows
+  [clause-noun] that quantum effects can be useful for information processing.
+    [conjunction] that
+    [subject] quantum effects
+    [verb] can be
+    [complement] useful for information processing
+
+== On 6 August 2012 Eftel announced the acquisition of Visage Telecom 2013 Eftel acquired by M2 Group.
+  [prep-phrase] On 6 August 2012
+  [subject] Eftel
+  [verb] announced
+  [object] the acquisition of Visage Telecom 2013
+  [clause-relative] Eftel acquired by M2 Group.
+    [subject] Eftel
+    [verb] acquired
+    [prep-phrase] by M2 Group
+
+== Donald W. Livingston is a former Professor of Philosophy at Emory University and a David Hume scholar.
+  [subject] Donald W. Livingston
+  [verb] is
+  [complement] a former Professor of Philosophy at Emory University and a David Hume scholar.
+
+== Her novel One Good Hustle was longlisted for the 2012 Scotiabank Giller Prize.
+  [subject] Her novel
+  [insertion] One Good Hustle
+  [verb] was longlisted
+  [prep-phrase] for the 2012 Scotiabank Giller Prize.
+
+== Ultimately the network extended to Mount Gambier in South Australia, with a hub in Melbourne and links to other state capitals.
+  [adverbial] Ultimately
+  [subject] the network
+  [verb] extended
+  [prep-phrase] to Mount Gambier in South Australia,
+  [prep-phrase] with a hub in Melbourne and links to other state capitals.
+
+== He came to the door while we were getting ready to leave, and when I sent down word that we weren’t in he tried to force his way upstairs.
+  [subject] He
+  [verb] came
+  [prep-phrase] to the door
+  [clause-adverbial] while we were getting ready to leave,
+    [conjunction] while
+    [subject] we
+    [verb] were getting
+    [complement] ready to leave
+  [conjunction] and
+  [clause-adverbial] when I sent down word that we weren’t in
+    [conjunction] when
+    [subject] I
+    [verb] sent down
+    [object] word
+    [clause-relative] that we weren’t in
+      [conjunction] that
+      [subject] we
+      [verb] weren’t
+      [adverbial] in
+  [subject] he
+  [verb] tried
+  [complement] to force his way upstairs.
+    [verb] to force
+    [object] his way
+    [adverbial] upstairs
+
+== I tried to make her stop, but she couldn’t, so I pulled on the emergency brake.
+  [subject] I
+  [verb] tried
+  [complement] to make her stop,
+    [verb] to make
+    [clause-noun] her stop
+      [subject] her
+      [verb] stop
+  [conjunction] but
+  [subject] she
+  [verb] couldn’t,
+  [adverbial] so
+  [subject] I
+  [verb] pulled on
+  [object] the emergency brake.
+
+== Michaelis advised him to go to bed, but Wilson refused, saying that he’d miss a lot of business if he did.
+  [subject] Michaelis
+  [verb] advised
+  [object] him
+  [complement] to go to bed,
+    [verb] to go
+    [prep-phrase] to bed
+  [conjunction] but
+  [subject] Wilson
+  [verb] refused,
+  [clause-adverbial] saying that he’d miss a lot of business if he did.
+    [verb] saying
+    [clause-noun] that he’d miss a lot of business if he did
+      [conjunction] that
+      [subject-verb] he’d miss
+      [object] a lot of business
+      [clause-adverbial] if he did
+        [conjunction] if
+        [subject] he
+        [verb] did
+
+== We differentiate between the existence of the WFP and its accessibility, as the mere existence of the WFP in an organisation is not enough.
+  [subject] We
+  [verb] differentiate
+  [prep-phrase] between the existence of the WFP and its accessibility,
+  [clause-adverbial] as the mere existence of the WFP in an organisation is not enough.
+    [conjunction] as
+    [subject] the mere existence of the WFP in an organisation
+    [verb] is not
+    [complement] enough
+
+== Then a stranger appeared and asked for a large amount of money to do it.
+  [adverbial] Then
+  [subject] a stranger
+  [verb] appeared and asked
+    [verb] appeared
+    [conjunction] and
+    [verb] asked
+  [prep-phrase] for a large amount of money
+  [adverbial] to do it.
+    [verb] to do
+    [object] it
+
+== The modeling of black holes is an important desideratum for any quantum theory of gravity.
+  [subject] The modeling of black holes
+  [verb] is
+  [complement] an important desideratum for any quantum theory of gravity.
+
+== In August 2011, Eftel acquired wholesale telecommunications service provider Platform Networks Pty Ltd. Platform Networks is a Sydney-based growing wholesale aggregator.
+  [prep-phrase] In August 2011,
+  [subject] Eftel
+  [verb] acquired
+  [object] wholesale telecommunications service provider Platform Networks Pty Ltd.
+  [subject] Platform Networks
+  [verb] is
+  [complement] a Sydney-based growing wholesale aggregator.
+
+== All night the saxophones wailed the hopeless comment of the “Beale Street Blues” while a hundred pairs of golden and silver slippers shuffled the shining dust.
+  [adverbial] All night
+  [subject] the saxophones
+  [verb] wailed
+  [object] the hopeless comment of the “Beale Street Blues”
+  [clause-adverbial] while a hundred pairs of golden and silver slippers shuffled the shining dust.
+    [conjunction] while
+    [subject] a hundred pairs of golden and silver slippers
+    [verb] shuffled
+    [object] the shining dust
+
+== On average, storage capacity reductions of 9% per household are possible in the base case, resulting in lower specific investments.
+  [prep-phrase] On average,
+  [subject] storage capacity reductions of 9% per household
+  [verb] are
+  [complement] possible
+  [prep-phrase] in the base case,
+  [adverbial] resulting in lower specific investments.
+    [verb] resulting
+    [prep-phrase] in lower specific investments
+
+== I’ve got something to tell you, old sport—” began Gatsby.
+  [subject-verb] I’ve got
+  [object] something
+  [adverbial] to tell you,
+    [verb] to tell
+    [object] you
+  [adverbial] old sport—”
+  [verb] began
+  [subject] Gatsby.
+
+== The main scientific contribution of this paper is the maintenance analysis of offshore wind farms from two perspectives: that of the owner and the maintenance supplier.
+  [subject] The main scientific contribution of this paper
+  [verb] is
+  [complement] the maintenance analysis of offshore wind farms from two perspectives:
+  [appositive] that of the owner and the maintenance supplier.
+
+== This story was also selected by series editor Otto Penzler and guest editor, Tess Gerritsen as one of twenty to appear in the 2026 edition of The Best Mystery Stories of the Year.
+  [subject] This story
+  [verb] was also selected
+  [prep-phrase] by series editor Otto Penzler and guest editor, Tess Gerritsen
+  [prep-phrase] as one of twenty to appear in the 2026 edition of The Best Mystery Stories of the Year.
+    [prep-phrase] as one of twenty
+    [adverbial] to appear in the 2026 edition of The Best Mystery Stories of the Year
+      [verb] to appear
+      [prep-phrase] in the 2026 edition of The Best Mystery Stories of the Year
+
+== The most popular tune was written by the clergyman C. Balle in 1850.
+  [subject] The most popular tune
+  [verb] was written
+  [prep-phrase] by the clergyman C. Balle
+  [prep-phrase] in 1850.
+
+== This system is a novel methodological contribution to the task of normalizing and linking phrases to a taxonomy, advancing data interchangeability in healthcare.
+  [subject] This system
+  [verb] is
+  [complement] a novel methodological contribution to the task of normalizing and linking phrases to a taxonomy, advancing data interchangeability in healthcare.
+
+== Is it hot enough for you?
+  [verb] Is
+  [subject] it
+  [complement] hot enough for you?
+
+== Each night he added to the pattern of his fancies until drowsiness closed down upon some vivid scene with an oblivious embrace.
+  [adverbial] Each night
+  [subject] he
+  [verb] added
+  [prep-phrase] to the pattern of his fancies
+  [clause-adverbial] until drowsiness closed down upon some vivid scene with an oblivious embrace.
+    [conjunction] until
+    [subject] drowsiness
+    [verb] closed down
+    [adverbial] upon some vivid scene
+    [prep-phrase] with an oblivious embrace
+
+== We first consider the McGurk effect, the phenomenon by which adding a carefully chosen video clip to the audio channel affects the viewer's perception of what is said (McGurk and MacDonald, 1976).
+  [subject] We
+  [adverbial] first
+  [verb] consider
+  [object] the McGurk effect, the phenomenon by which adding a carefully chosen video clip to the audio channel affects the viewer's perception of what is said (McGurk and MacDonald, 1976).
+    [object] the McGurk effect,
+    [appositive] the phenomenon
+    [clause-relative] by which adding a carefully chosen video clip to the audio channel affects the viewer's perception of what is said (McGurk and MacDonald, 1976)
+      [prep-phrase] by which
+      [clause-noun] adding a carefully chosen video clip to the audio channel
+        [verb] adding
+        [object] a carefully chosen video clip
+        [prep-phrase] to the audio channel
+      [verb] affects
+      [object] the viewer's perception of what is said (McGurk and MacDonald, 1976)
+        [object] the viewer's perception of
+        [clause-noun] what is said
+          [adverbial] what
+          [verb] is said
+        [insertion] (McGurk and MacDonald, 1976)
+
+== Crucially, the domain of (i), in which radiation is meaningful, has a significant overlap with the domain of (ii), in which energy conservation is meaningful.
+  [adverbial] Crucially,
+  [subject] the domain of (i), in which radiation is meaningful,
+    [subject] the domain of
+    [insertion] (i),
+    [clause-relative] in which radiation is meaningful,
+      [prep-phrase] in which
+      [subject] radiation
+      [verb] is
+      [complement] meaningful
+  [verb] has
+  [object] a significant overlap with the domain of
+  [insertion] (ii),
+  [clause-relative] in which energy conservation is meaningful.
+    [prep-phrase] in which
+    [subject] energy conservation
+    [verb] is
+    [complement] meaningful
+
+== Nevertheless, this hypothesis has not been tested.
+  [adverbial] Nevertheless,
+  [subject] this hypothesis
+  [verb] has not been tested.
+
+== He was reluctant to close the book, reading each item aloud and then looking eagerly at me.
+  [subject] He
+  [verb] was
+  [complement] reluctant to close the book,
+  [clause-adverbial] reading each item aloud and then looking eagerly at me.
+    [verb] reading
+    [object] each item
+    [adverbial] aloud
+    [conjunction] and
+    [adverbial] then
+    [verb] looking
+    [adverbial] eagerly
+    [prep-phrase] at me
+
+== Slowly the white wings of the boat moved against the blue cool limit of the sky.
+  [adverbial] Slowly
+  [subject] the white wings of the boat
+  [verb] moved
+  [prep-phrase] against the blue cool limit of the sky.
+
+== Americans, while willing, even eager, to be serfs, have always been obstinate about being peasantry.
+  [subject] Americans,
+  [clause-adverbial] while willing, even eager, to be serfs,
+    [verb] while willing, even eager, to be
+    [complement] serfs
+  [verb] have always been
+  [complement] obstinate about being peasantry.
+
+== Eftel's services are delivered through a nationwide network of points of presence in all capital cities and regional areas around Australia.
+  [subject] Eftel's services
+  [verb] are delivered
+  [prep-phrase] through a nationwide network of points of presence in all capital cities and regional areas around Australia.
+
+== The institute's work has been described as neo-Confederate by the Southern Poverty Law Center and sociologist James W. Loewen.
+  [subject] The institute's work
+  [verb] has been described
+  [prep-phrase] as neo-Confederate
+  [prep-phrase] by the Southern Poverty Law Center and sociologist James W. Loewen.
+
+== In 2010, it held a conference on secession and nullification.
+  [prep-phrase] In 2010,
+  [subject] it
+  [verb] held
+  [object] a conference on secession and nullification.
+
+== By half-past two he was in West Egg, where he asked someone the way to Gatsby’s house.
+  [prep-phrase] By half-past two
+  [subject] he
+  [verb] was
+  [prep-phrase] in West Egg, where he asked someone the way to Gatsby’s house.
+    [prep-phrase] in
+    [object] West Egg,
+    [clause-relative] where he asked someone the way to Gatsby’s house
+      [relative] where
+      [subject] he
+      [verb] asked
+      [object] someone
+      [object] the way to Gatsby’s house
+
+== In 2003 he founded the Abbeville Institute, which is devoted to the study of Southern culture and political ideas.
+  [prep-phrase] In 2003
+  [subject] he
+  [verb] founded
+  [object] the Abbeville Institute,
+  [clause-relative] which is devoted to the study of Southern culture and political ideas.
+    [relative] which
+    [verb] is devoted
+    [prep-phrase] to the study of Southern culture and political ideas
+
+== We develop a portfolio selection model based on the Half-Full/Half-Empty strategy, resulting in a nonconvex optimization problem, which, nonetheless, is proven to be equivalent to an alternative Mixed-Integer Linear Programming formulation.
+  [subject] We
+  [verb] develop
+  [object] a portfolio selection model
+  [clause-relative] based on the Half-Full/Half-Empty strategy,
+    [verb] based
+    [prep-phrase] on the Half-Full/Half-Empty strategy
+  [clause-adverbial] resulting in a nonconvex optimization problem, which, nonetheless, is proven to be equivalent to an alternative Mixed-Integer Linear Programming formulation.
+    [verb] resulting
+    [prep-phrase] in a nonconvex optimization problem, which, nonetheless, is proven to be equivalent to an alternative Mixed-Integer Linear Programming formulation
+      [prep-phrase] in
+      [object] a nonconvex optimization problem,
+      [clause-relative] which, nonetheless, is proven to be equivalent to an alternative Mixed-Integer Linear Programming formulation
+        [subject] which,
+        [adverbial] nonetheless,
+        [verb] is proven
+        [complement] to be equivalent to an alternative Mixed-Integer Linear Programming formulation
+          [verb] to be
+          [complement] equivalent to an alternative Mixed-Integer Linear Programming formulation
+
+== I took dinner usually at the Yale Club—for some reason it was the gloomiest event of my day—and then I went upstairs to the library and studied investments and securities for a conscientious hour.
+  [subject] I
+  [verb] took
+  [object] dinner
+  [adverbial] usually
+  [prep-phrase] at the Yale Club
+  [insertion] —for some reason it was the gloomiest event of my day—
+    [prep-phrase] —for some reason
+    [subject] it
+    [verb] was
+    [complement] the gloomiest event of my day—
+  [conjunction] and
+  [adverbial] then
+  [subject] I
+  [verb] went
+  [adverbial] upstairs
+  [prep-phrase] to the library
+  [conjunction] and
+  [verb] studied
+  [object] investments and securities
+  [prep-phrase] for a conscientious hour.
+
+== In addition to publications in journals and magazines around the world, Livingston's poetry has appeared in textbooks and on public transit through the TransLink "Poetry in Transit" program.
+  [prep-phrase] In addition to publications in journals and magazines around the world,
+  [subject] Livingston's poetry
+  [verb] has appeared
+  [prep-phrase] in textbooks
+  [conjunction] and
+  [prep-phrase] on public transit
+  [prep-phrase] through the TransLink "Poetry in Transit" program.
+
+== In this survey paper, we present the general systematical framework, illustrate the widely utilized models and summarize the classic applications of text generation.
+  [prep-phrase] In this survey paper,
+  [subject] we
+  [verb] present
+  [object] the general systematical framework,
+  [verb] illustrate
+  [object] the widely utilized models
+  [conjunction] and
+  [verb] summarize
+  [object] the classic applications of text generation.
+
+== At the request of Mr. Gatsby we are going to play for you Mr. Vladmir Tostoff’s latest work, which attracted so much attention at Carnegie Hall last May.
+  [prep-phrase] At the request of Mr. Gatsby
+  [subject] we
+  [verb] are going
+  [complement] to play for you Mr. Vladmir Tostoff’s latest work, which attracted so much attention at Carnegie Hall last May.
+    [verb] to play
+    [prep-phrase] for you
+    [object] Mr. Vladmir Tostoff’s latest work,
+    [clause-relative] which attracted so much attention at Carnegie Hall last May
+      [relative] which
+      [verb] attracted
+      [object] so much attention
+      [prep-phrase] at Carnegie Hall
+      [adverbial] last May
+
+== The citizens of Tallinn wanted to build the tallest church in the world, but since there was a curse that ensured the death of anyone who finished its construction, no one was willing to do the work.
+  [subject] The citizens of Tallinn
+  [verb] wanted
+  [complement] to build the tallest church in the world,
+    [verb] to build
+    [object] the tallest church in the world
+  [conjunction] but
+  [clause-adverbial] since there was a curse that ensured the death of anyone who finished its construction,
+    [conjunction] since
+    [subject] there
+    [verb] was
+    [complement] a curse
+    [clause-relative] that ensured the death of anyone who finished its construction
+      [relative] that
+      [verb] ensured
+      [object] the death of anyone
+      [clause-relative] who finished its construction
+        [relative] who
+        [verb] finished
+        [object] its construction
+  [subject] no one
+  [verb] was
+  [complement] willing to do the work.
+
+== However, as of October 2009, the VDSL2 rollout is still at the "expressions of interest" stage with no services in active operation; the aaNet VDSL2 EOI page can be seen here.
+  [clause] However, as of October 2009, the VDSL2 rollout is still at the "expressions of interest" stage with no services in active operation;
+    [adverbial] However,
+    [prep-phrase] as of October 2009,
+    [subject] the VDSL2 rollout
+    [verb] is
+    [adverbial] still
+    [prep-phrase] at the "expressions of interest" stage
+    [prep-phrase] with no services in active operation;
+  [clause] the aaNet VDSL2 EOI page can be seen here.
+    [subject] the aaNet VDSL2 EOI page
+    [verb] can be seen
+    [adverbial] here.
+
+== We find that cryptocurrencies can improve portfolio diversification in a few of the analyzed windows from our dataset (consisting of weekly observations from 2014-01-01 to 2019-05-31).
+  [subject] We
+  [verb] find
+  [clause-noun] that cryptocurrencies can improve portfolio diversification in a few of the analyzed windows from our dataset (consisting of weekly observations from 2014-01-01 to 2019-05-31).
+    [conjunction] that
+    [subject] cryptocurrencies
+    [verb] can improve
+    [object] portfolio diversification
+    [prep-phrase] in a few of the analyzed windows from our dataset (consisting of weekly observations from 2014-01-01 to 2019-05-31)
+      [prep-phrase] in a few of the analyzed windows from our dataset (
+      [clause-relative] consisting of weekly observations from 2014-01-01 to 2019-05-31)
+        [verb] consisting
+        [prep-phrase] of weekly observations from 2014-01-01 to 2019-05-31
+
+== It operates an annual summer school for graduate students and an annual scholars' conference.
+  [subject] It
+  [verb] operates
+  [object] an annual summer school for graduate students and an annual scholars' conference.
+
+== Memory representations are stored as time-varying attractors in neural state-space and support associative retrieval of learned information.
+  [subject] Memory representations
+  [verb] are stored
+  [prep-phrase] as time-varying attractors
+  [prep-phrase] in neural state-space
+  [conjunction] and
+  [verb] support
+  [object] associative retrieval of learned information.
+
+== We straggled down quickly through the rain to the cars.
+  [subject] We
+  [verb] straggled
+  [adverbial] down
+  [adverbial] quickly
+  [prep-phrase] through the rain
+  [prep-phrase] to the cars.
+
+== In this work, we present a new perspective on how to effectively noise unlabeled examples and argue that the quality of noising, specifically those produced by advanced data augmentation methods, plays a crucial role in semi-supervised learning.
+  [prep-phrase] In this work,
+  [subject] we
+  [verb] present
+  [object] a new perspective on how to effectively noise unlabeled examples
+  [conjunction] and
+  [verb] argue
+  [clause-noun] that the quality of noising, specifically those produced by advanced data augmentation methods, plays a crucial role in semi-supervised learning.
+    [conjunction] that
+    [subject] the quality of noising,
+    [insertion] specifically those produced by advanced data augmentation methods,
+      [insertion] specifically those
+      [clause-relative] produced by advanced data augmentation methods
+        [verb] produced
+        [prep-phrase] by advanced data augmentation methods
+    [verb] plays a crucial role
+    [prep-phrase] in semi-supervised learning
+
+== Then I walked slowly down the drive away from the house, intending to wait by the gate.
+  [adverbial] Then
+  [subject] I
+  [verb] walked
+  [adverbial] slowly
+  [prep-phrase] down the drive away from the house,
+  [clause-adverbial] intending to wait by the gate.
+    [verb] intending
+    [complement] to wait by the gate
+      [verb] to wait
+      [prep-phrase] by the gate
+
+== Eftel web and mail servers continue in place.
+  [subject] Eftel web and mail servers
+  [verb] continue
+  [prep-phrase] in place.
+
+== We then assess out-of-sample predictions from their algorithms using randomized audit manipulations of algorithm inputs and ground-truth math performance for 20K subjects.
+  [subject] We
+  [adverbial] then
+  [verb] assess
+  [object] out-of-sample predictions from their algorithms
+  [adverbial] using randomized audit manipulations of algorithm inputs and ground-truth math performance for 20K subjects.
+    [verb] using
+    [object] randomized audit manipulations of algorithm inputs and ground-truth math performance
+    [prep-phrase] for 20K subjects
+
+== Genetic disorders such as Rubinstein-Taybi syndrome (RTS) and Coffin-Lowry syndrome (CLS) cause lifelong cognitive disability, including deficits in learning and memory.
+  [subject] Genetic disorders such as Rubinstein-Taybi syndrome (RTS) and Coffin-Lowry syndrome (CLS)
+    [subject] Genetic disorders such as Rubinstein-Taybi syndrome
+    [insertion] (RTS)
+    [subject] and Coffin-Lowry syndrome
+    [insertion] (CLS)
+  [verb] cause
+  [object] lifelong cognitive disability
+  [prep-phrase] , including deficits in learning and memory.
+
+== Billie Livingston is a Canadian novelist, short story writer, essayist, and poet.
+  [subject] Billie Livingston
+  [verb] is
+  [complement] a Canadian novelist, short story writer, essayist, and poet.
+
+== On the other hand, no garage man who had seen him ever came forward, and perhaps he had an easier, surer way of finding out what he wanted to know.
+  [insertion] On the other hand,
+  [subject] no garage man who had seen him
+    [subject] no garage man
+    [clause-relative] who had seen him
+      [relative] who
+      [verb] had seen
+      [object] him
+  [adverbial] ever
+  [verb] came
+  [adverbial] forward,
+  [conjunction] and
+  [adverbial] perhaps
+  [subject] he
+  [verb] had
+  [object] an easier, surer way of finding out
+  [clause-noun] what he wanted to know.
+    [adverbial] what
+    [subject] he
+    [verb] wanted
+    [complement] to know
+
+== Once there they were introduced by somebody who knew Gatsby, and after that they conducted themselves according to the rules of behaviour associated with an amusement park.
+  [adverbial] Once there
+  [subject] they
+  [verb] were introduced
+  [prep-phrase] by somebody who knew Gatsby,
+    [prep-phrase] by
+    [object] somebody
+    [clause-relative] who knew Gatsby
+      [relative] who
+      [verb] knew
+      [object] Gatsby
+  [conjunction] and
+  [prep-phrase] after that
+  [subject] they
+  [verb] conducted
+  [object] themselves
+  [prep-phrase] according to the rules of behaviour associated with an amusement park.
+    [verb] according
+    [prep-phrase] to the rules of behaviour associated with an amusement park
+      [prep-phrase] to the rules of behaviour
+      [insertion] associated with an amusement park
+        [verb] associated
+        [prep-phrase] with an amusement park
+
+== In a well-fanned Forty-second Street cellar I met Gatsby for lunch.
+  [prep-phrase] In a well-fanned Forty-second Street cellar
+  [subject] I
+  [verb] met
+  [object] Gatsby
+  [prep-phrase] for lunch.
+
+== Plenty of gas,” said Tom boisterously.
+  [verb] Plenty
+  [prep-phrase] of gas,”
+  [verb] said
+  [subject] Tom
+  [adverbial] boisterously.
+
+== This paper analyzes the ergodic hypothesis in the context of Boltzmann's late work in statistical mechanics, where Boltzmann lays the foundations for what is today known as the typicality account.
+  [subject] This paper
+  [verb] analyzes
+  [object] the ergodic hypothesis
+  [prep-phrase] in the context of Boltzmann's late work in statistical mechanics, where Boltzmann lays the foundations for what is today known as the typicality account.
+    [prep-phrase] in the context of Boltzmann's late work in statistical mechanics,
+    [clause-relative] where Boltzmann lays the foundations for what is today known as the typicality account
+      [relative] where
+      [subject] Boltzmann
+      [verb] lays
+      [object] the foundations
+      [prep-phrase] for what is today known as the typicality account
+        [prep-phrase] for
+        [clause-noun] what is today known as the typicality account
+          [adverbial] what
+          [verb] is
+          [adverbial] today
+          [verb] known
+          [prep-phrase] as the typicality account
+
+== His wife Marie also received her Ph.D. in philosophy and has studied under Edmund Gettier and Alasdair MacIntyre.
+  [subject] His wife
+  [insertion] Marie
+  [adverbial] also
+  [verb] received
+  [object] her Ph.D. in philosophy
+  [conjunction] and
+  [verb] has studied
+  [prep-phrase] under Edmund Gettier and Alasdair MacIntyre.
+
+== In June 2004, Datafast acquired Bunbury based ISP OzzieNet, and in October Datafast acquired Affinity, a Melbourne-based ISP and its umbrella of brands, taking the total number of active accounts on the Datafast network to 120,000.
+  [prep-phrase] In June 2004,
+  [subject] Datafast
+  [verb] acquired
+  [object] Bunbury based ISP OzzieNet,
+  [conjunction] and
+  [prep-phrase] in October
+  [subject] Datafast
+  [verb] acquired
+  [object] Affinity
+  [appositive] , a Melbourne-based ISP and its umbrella of brands,
+  [adverbial] taking the total number of active accounts on the Datafast network to 120,000.
+    [verb] taking
+    [object] the total number of active accounts on the Datafast network
+    [prep-phrase] to 120,000
+
+== This consensus suggests that these text preferences intrinsically emerge from the underlying language models, rather than being explicitly crafted by Bing Chat's developers.
+  [subject] This consensus
+  [verb] suggests
+  [clause-noun] that these text preferences intrinsically emerge from the underlying language models, rather than being explicitly crafted by Bing Chat's developers.
+    [conjunction] that
+    [subject] these text preferences
+    [adverbial] intrinsically
+    [verb] emerge
+    [prep-phrase] from the underlying language models,
+    [conjunction] rather than being explicitly crafted by Bing Chat's developers

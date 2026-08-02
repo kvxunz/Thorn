@@ -163,7 +163,7 @@ def _node_from_builder(
     lo = payload.get("_lo")
     hi = payload.get("_hi")
     if not isinstance(lo, int) or not isinstance(hi, int):
-        raise ValueError("builder chunk is missing explicit token bounds")
+        raise TypeError("builder chunk is missing explicit token bounds")
     end = hi + 1
     if not (0 <= lo < end <= source.token_count):
         raise ValueError(f"builder chunk has invalid token bounds: {lo}:{hi}")
@@ -496,6 +496,101 @@ def _outside_governor(
     ]
 
 
+def _object_infinitive_parts(
+    node: TeachingNode,
+    evidence: TeachingEvidence,
+) -> tuple[TeachingNode, TeachingNode] | None:
+    """Expose the object in ``expect NP to VP`` on the matrix backbone.
+
+    spaCy labels the infinitive ``ccomp`` when it has an overt subject, while
+    Benepar correctly supplies ``S -> NP VP``.  The generic ccomp mapping then
+    hides the matrix object inside a nominal-clause card.  Require both parses
+    to agree on the narrow object-plus-to-infinitive shape before splitting;
+    finite content clauses remain nominal clauses.
+    """
+    if (
+        node.role != "clause-noun"
+        or len(node.children) < 2
+        or "S" not in evidence.labels_for(node.start, node.end)
+    ):
+        return None
+
+    object_node = node.children[0]
+    tail = node.children[1:]
+    if (
+        object_node.role != "subject"
+        or object_node.start != node.start
+        or tail[0].start != object_node.end
+        or tail[-1].end != node.end
+    ):
+        return None
+
+    infinitives = [
+        token
+        for token in evidence.tokens[node.start:node.end]
+        if (
+            token.dep == "ccomp"
+            and token.tag == "VB"
+            and not (node.start <= token.head < node.end)
+            and evidence.tokens[token.head].pos in {"VERB", "AUX"}
+        )
+    ]
+    if len(infinitives) != 1:
+        return None
+    infinitive = infinitives[0]
+
+    markers = [
+        token
+        for token in evidence.tokens[node.start:node.end]
+        if token.dep == "aux" and token.tag == "TO" and token.head == infinitive.index
+    ]
+    if len(markers) != 1:
+        return None
+    marker = markers[0]
+    if (
+        marker.index != object_node.end
+        or "VP" not in evidence.labels_for(marker.index, node.end)
+    ):
+        return None
+
+    has_overt_subject = any(
+        token.dep in {"nsubj", "nsubjpass", "expl"}
+        and token.head == infinitive.index
+        and object_node.start <= token.index < object_node.end
+        for token in evidence.tokens[object_node.start:object_node.end]
+    )
+    if not has_overt_subject:
+        return None
+
+    return (
+        replace(object_node, role="object"),
+        TeachingNode(
+            start=marker.index,
+            end=node.end,
+            role="complement",
+            children=tail,
+            kind="object-infinitive",
+            form="infinitive-predicate",
+        ),
+    )
+
+
+def _split_object_infinitive_complements(
+    nodes: Sequence[TeachingNode],
+    evidence: TeachingEvidence,
+) -> tuple[TeachingNode, ...]:
+    output: list[TeachingNode] = []
+    for node in nodes:
+        nested = (
+            node.with_children(
+                _split_object_infinitive_complements(node.children, evidence)
+            )
+            if node.children else node
+        )
+        output.extend(_object_infinitive_parts(nested, evidence) or (nested,))
+    return tuple(output)
+
+
 def _annotate_wh_infinitive(
     node: TeachingNode,
     evidence: TeachingEvidence,
@@ -822,6 +917,7 @@ def compile_teaching_tree(
     if evidence is not None:
         if len(evidence.tokens) != source.token_count:
             raise ValueError("teaching evidence does not match source tokens")
+        nodes = _split_object_infinitive_complements(nodes, evidence)
         nodes = _annotate_teaching_metadata(source, nodes, evidence)
     _validate_full_coverage(nodes, source.token_count)
     return [_alignment_payload(source, node) for node in nodes]

@@ -564,3 +564,37 @@ def prepare_parse_text(text: str) -> PreparedParseText:
 def normalize_parse_text(text: str) -> str:
     """Compatibility wrapper for callers that only need the parser view."""
     return prepare_parse_text(text).parser
+
+
+def merge_tiny(chunks):
+    """Attach punctuation-only chunks to the previous chunk (or the next one
+    when they lead)."""
+    out = []
+    pending = None
+    for ch in chunks:
+        if not any(c.isalnum() for c in ch["text"]):
+            if out:
+                out[-1]["text"] = out[-1]["text"] + ch["text"]
+                if "_hi" in ch:
+                    out[-1]["_hi"] = ch["_hi"]
+            elif pending is None:
+                pending = dict(ch)
+            else:
+                pending["text"] += ch["text"]
+                if "_hi" in ch:
+                    pending["_hi"] = ch["_hi"]
+        else:
+            if pending is not None:
+                ch = dict(ch, text=pending["text"] + ch["text"])
+                if "_lo" in pending:
+                    ch["_lo"] = pending["_lo"]
+                pending = None
+            out.append(ch)
+    if pending is not None:
+        # Nothing alphanumeric ever arrived to carry the leading punctuation.
+        # spaCy splits "re-investigate" into three conj tokens and labels the
+        # bare hyphen a coordinate VERB, so its inline clause builds to this
+        # single punctuation chunk. Dropping it leaves a one-token hole that
+        # fails the coverage check and kills the whole sentence.
+        out.append(pending)
+    return out

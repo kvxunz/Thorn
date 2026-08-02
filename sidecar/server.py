@@ -43,6 +43,7 @@ from chunk_rules import (
     is_wh_relative_pronoun,
     mark_discourse_insertions,
     merge_or_so,
+    merge_tiny,
     prep_object_start,
     prepare_parse_text,
     relative_pronoun_gloss,
@@ -1533,33 +1534,6 @@ def merge_idioms(chunks):
         out.append(ch)
     for ch in out:
         ch.pop("_lem", None)
-    return out
-
-
-def merge_tiny(chunks):
-    """Attach punctuation-only chunks to the previous chunk (or the next one
-    when they lead)."""
-    out = []
-    pending = ""
-    pending_lo = None
-    for ch in chunks:
-        if not any(c.isalnum() for c in ch["text"]):
-            if out:
-                out[-1]["text"] = out[-1]["text"] + ch["text"]
-                if "_hi" in ch:
-                    out[-1]["_hi"] = ch["_hi"]
-            else:
-                if pending_lo is None:
-                    pending_lo = ch.get("_lo")
-                pending += ch["text"]
-        else:
-            if pending:
-                ch = dict(ch, text=pending + ch["text"])
-                if pending_lo is not None:
-                    ch["_lo"] = pending_lo
-                pending = ""
-                pending_lo = None
-            out.append(ch)
     return out
 
 

@@ -71,9 +71,9 @@ final class PanelState: ObservableObject {
         task = Task {
             do {
                 let result = try await ParseService.parse(sentence: sentence) { partial in
-                    Task { @MainActor in
+                    await MainActor.run {
                         guard self.activeRunID == runID else { return }
-                        // Bare structure from the sidecar: tree now, translation later.
+                        // This awaited handoff completes before HY-MT2 starts.
                         self.status = .result(partial)
                     }
                 }

@@ -2,6 +2,35 @@ import XCTest
 @testable import Thorn
 
 final class ParseServiceTranslationTests: XCTestCase {
+    func testTranslationStartsOnlyAfterPartialPresentationCompletes() async throws {
+        let events = LockedEvents()
+        let structure = SidecarStructure(
+            chunks: [Chunk(text: "We", role: .subject, gloss: "")],
+            sourceTokens: ["We"]
+        )
+
+        let result = try await ParseService.completeAfterStructure(
+            sentence: "We wait.",
+            structure: structure,
+            onPartial: { partial in
+                events.append("partial-start")
+                XCTAssertTrue(partial.translation.isEmpty)
+                await Task.yield()
+                events.append("partial-finished")
+            },
+            translate: {
+                events.append("translation-started")
+                return "我们等待。"
+            }
+        )
+
+        XCTAssertEqual(
+            events.snapshot(),
+            ["partial-start", "partial-finished", "translation-started"]
+        )
+        XCTAssertEqual(result.translation, "我们等待。")
+    }
+
     func testNormalizesCJKPunctuationLeakedFromBilingualMaterial() {
         XCTAssertEqual(
             ParseService.normalizedInput("for your troubles，  or so the thinking has gone"),
@@ -104,5 +133,22 @@ final class ParseServiceTranslationTests: XCTestCase {
             SidecarFailure.invalidStructure.localizedDescription,
             SidecarFailure.unavailable.localizedDescription
         )
+    }
+}
+
+private final class LockedEvents: @unchecked Sendable {
+    private let lock = NSLock()
+    private var events: [String] = []
+
+    func append(_ event: String) {
+        lock.lock()
+        events.append(event)
+        lock.unlock()
+    }
+
+    func snapshot() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return events
     }
 }

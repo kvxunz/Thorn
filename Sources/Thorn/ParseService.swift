@@ -28,11 +28,11 @@ enum ParseService {
     /// 1. Sidecar `/parse` — deterministic teaching chunk tree (no LLM)
     /// 2. HY-MT2 whole-sentence translation only (no per-chunk glosses)
     ///
-    /// `onPartial` receives the bare structure as soon as the sidecar returns,
-    /// before the translation lands.
+    /// `onPartial` receives and presents the bare structure before HY-MT2 is
+    /// started, so translation can never delay the first useful result.
     static func parse(sentence: String,
-                      onPartial: (@Sendable (ParseResult) -> Void)? = nil) async throws -> ParseResult {
-        let model = SettingsStore.shared.translationModel
+                      onPartial: (@Sendable (ParseResult) async -> Void)? = nil) async throws -> ParseResult {
+        let model = await MainActor.run { SettingsStore.shared.translationModel }
         guard !model.isEmpty else {
             throw LocalPipelineError.modelNotConfigured
         }
@@ -43,9 +43,6 @@ enum ParseService {
             throw LocalPipelineError.noEnglishSentence
         }
 
-        // Parsing and whole-sentence translation are independent and run
-        // concurrently. Structure never waits on the translator.
-        async let translated = translateOnly(sentence: normalized, model: model)
         let structure: SidecarStructure
         do {
             structure = try await Sidecar.shared.structure(for: normalized)
@@ -59,13 +56,32 @@ enum ParseService {
         } catch {
             throw error
         }
+
+        return try await completeAfterStructure(
+            sentence: normalized,
+            structure: structure,
+            onPartial: onPartial
+        ) {
+            try await translateOnly(sentence: normalized, model: model)
+        }
+    }
+
+    /// The ordering boundary between the fast deterministic result and the
+    /// slower local translation. Kept as a small helper so the contract can be
+    /// tested without launching either model.
+    static func completeAfterStructure(
+        sentence: String,
+        structure: SidecarStructure,
+        onPartial: (@Sendable (ParseResult) async -> Void)? = nil,
+        translate: @Sendable () async throws -> String
+    ) async throws -> ParseResult {
         try Task.checkCancellation()
-        let bare = ParseResult(sentence: normalized, chunks: structure.chunks, translation: "")
-        onPartial?(bare) // tree on screen immediately, translation pending
+        let bare = ParseResult(sentence: sentence, chunks: structure.chunks, translation: "")
+        await onPartial?(bare)
         do {
-            let translation = try await translated
+            let translation = try await translate()
             try Task.checkCancellation()
-            return ParseResult(sentence: normalized, chunks: structure.chunks, translation: translation)
+            return ParseResult(sentence: sentence, chunks: structure.chunks, translation: translation)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -73,7 +89,7 @@ enum ParseService {
             // Structure alone still beats nothing — fill the translation slot
             // so the panel doesn't spin forever waiting for one.
             return ParseResult(
-                sentence: normalized,
+                sentence: sentence,
                 chunks: structure.chunks,
                 translation: "（中文释义暂缺：本地模型未响应，结构来自句法引擎）"
             )

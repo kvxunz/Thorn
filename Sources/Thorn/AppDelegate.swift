@@ -6,6 +6,7 @@ import Carbon.HIToolbox
 /// world-readable /tmp. Enable: defaults write com.xvz.thorn debugLog -bool true
 enum ThornLog {
     private static let enabled = UserDefaults.standard.bool(forKey: "debugLog")
+    private static let writeLock = NSLock()
     private static let logURL: URL? = {
         guard let base = FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -35,6 +36,8 @@ enum ThornLog {
     static func info(_ message: String) {
         guard enabled, let url = logURL else { return }
         let line = "\(Date()) \(message)\n"
+        writeLock.lock()
+        defer { writeLock.unlock() }
         if let handle = try? FileHandle(forWritingTo: url) {
             handle.seekToEndOfFile()
             handle.write(Data(line.utf8))
@@ -97,9 +100,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey.register(id: 3, keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(optionKey)) { [weak self] in
             self?.handleOCRHotkey()
         }
-
-        // Warm the structure sidecar so the first parse isn't a cold start.
-        Task.detached { _ = try? await Sidecar.shared.structure(for: "Warm up.") }
+        // Keep the first real sentence off the cold-start path. This only
+        // starts the deterministic structure engine; HY-MT2 stays idle until
+        // a sentence has already been split and shown.
+        Task.detached(priority: .utility) {
+            await Sidecar.shared.warmUp()
+        }
     }
 
     /// A single glyph as the menubar icon. SF Symbols carry fine detail that
@@ -127,8 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        let sidecar = Sidecar.shared
-        Task.detached { await sidecar.terminate() }
+        Sidecar.terminateSynchronously()
     }
 
     private var capturing = false

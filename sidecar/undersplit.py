@@ -60,6 +60,46 @@ CONTINUATION_DEPS = frozenset({"conj", "cc"})
 # separately below because only some of them are clauses.
 STRUCTURE_DEPS = frozenset({"appos", "relcl", "acl", "advcl", "ccomp"})
 
+# All a reporting clause is allowed to hang off its verb. Anything else -- an
+# object, a complement, a prepositional phrase -- means the clause carries
+# content of its own and is not the fixed "she said" frame.
+ATTRIBUTION_DEPS = frozenset({"nsubj", "nsubjpass", "aux", "auxpass", "neg",
+                              "advmod", "prt"})
+
+
+def _is_inserted_attribution(
+    tokens: Sequence[Any],
+    start: int,
+    end: int,
+) -> bool:
+    """Whether the span is a reporting clause spliced into another sentence.
+
+    ", she said," and ",” he went on, “" are meant to be single insertion
+    cards: the interruption reads as one thing, and "she" and "said" on
+    separate cards would teach nothing about it. spaCy calls the verb
+    `parataxis` -- but so is the verb of a genuinely embedded clause
+    ("--for some reason it was the gloomiest event of my day--"), which *does*
+    deserve the layer, so the label alone cannot tell them apart.
+
+    What separates them is that a reporting clause is bare. Its complement is
+    the surrounding sentence, so nothing but a subject hangs off the verb.
+    """
+    verbs = [
+        token for token in tokens
+        if token.dep == "parataxis" and not start <= token.head < end
+    ]
+    if len(verbs) != 1:
+        return False
+    verb = verbs[0]
+    return all(
+        # Punctuation is never the missing layer -- and the quotes around an
+        # interruption sit outside its clause, hanging off the verb it broke.
+        token.pos == "PUNCT"
+        or token.index == verb.index
+        or (token.head == verb.index and token.dep in ATTRIBUTION_DEPS)
+        for token in tokens
+    )
+
 
 def _is_bare_name_appositive(token: Any, tokens: Sequence[Any]) -> bool:
     """A second proper name hung on a first: "Rossie, New York".
@@ -190,7 +230,11 @@ def classify_leaf(
         token.dep in SUBJECT_DEPS and start <= token.head < end
         for token in tokens
     )
-    if has_finite_verb and has_own_subject:
+    if (
+        has_finite_verb
+        and has_own_subject
+        and not _is_inserted_attribution(tokens, start, end)
+    ):
         return "clause-in-one-card"
 
     content = [token for token in tokens if token.pos != "PUNCT"]

@@ -183,6 +183,21 @@ CASES: dict[str, str] = {
         "As long as nations cannot themselves accumulate enough physical power "
         "to dominate all others, they must depend on allies."
     ),
+    "bracketed-dates": (
+        "Notable recordings have been made by Swedish singer Sven-Olof "
+        "Sandberg (1905–1974) and Norwegian soloist Olav Werner "
+        "(1913–1992)."
+    ),
+    "bracketed-example": (
+        "Indeed, books written by a given author (such as F. Scott Fitzgerald) "
+        "might be listed with different authors' names in a catalog due to "
+        "abbreviations and spelling variants and mistakes, among others."
+    ),
+    "bracketed-then-appositive": (
+        "Her critically acclaimed first novel, Going Down Swinging (2000), was "
+        "followed by The Chick at the Back of the Church (2001), a poetry book "
+        "that was shortlisted for the Pat Lowther Award."
+    ),
 }
 
 
@@ -593,6 +608,73 @@ class GoldenParseTests(unittest.TestCase):
         chunks = self.tree("hyphenated-coordinate-verb")
         self.assertIsNotNone(node_with_text(chunks, "re-investigate"))
         self.assertEqual([n for n in walk(chunks) if n["text"] in ("re-", "re")], [])
+
+    def test_a_parenthesis_inside_a_prep_phrase_becomes_its_own_card(self):
+        """"(1905–1974)" is an aside, not part of the singer's name.
+
+        No dependency test finds these: spaCy read this bracket as
+        `parataxis`, the next sentence's as `npadvmod` and a third as `prep`.
+        The brackets themselves are the only reliable signal, so the split
+        keys off the punctuation.
+        """
+        chunks = self.tree("bracketed-dates")
+        phrase = node_starting_with(chunks, "by Swedish singer")
+        self.assertIsNotNone(phrase, "the agent phrase never expanded")
+        kids = phrase["children"] or []
+        self.assertEqual(
+            [(n["role"], n["text"]) for n in kids if n["text"].startswith("(")],
+            [("insertion", "(1905–1974)"), ("insertion", "(1913–1992)")],
+        )
+        self.assertIsNotNone(node_with_text(kids, "Swedish singer Sven-Olof Sandberg"))
+
+    def test_an_aside_stays_inside_the_phrase_that_owns_it(self):
+        """"(such as F. Scott Fitzgerald)" qualifies the author, not the sentence.
+
+        The bracket rule also runs on the sentence backbone, where it exists to
+        rescue asides a constituency span cut in half. When one card already
+        owns the whole bracket it must keep it — hoisting this one to the top
+        level would cut the subject away from the material it qualifies.
+        """
+        chunks = self.tree("bracketed-example")
+        self.assertEqual(
+            [t for t in texts(chunks) if t.startswith("(")], [],
+            "the aside was hoisted onto the sentence backbone",
+        )
+        subject = node_starting_with(chunks, "books written")
+        self.assertIsNotNone(subject, "the subject card is gone")
+        aside = node_starting_with([subject], "(such as")
+        self.assertIsNotNone(aside, "the aside never got a card")
+        self.assertEqual(aside["role"], "insertion")
+
+    def test_a_bracket_never_ends_a_card_in_the_middle(self):
+        """No card reads "Swinging (".
+
+        Benepar resolved a span that stopped on the open bracket, and the
+        leftover pass has no reason to refuse it — a card ending on half a
+        parenthesis is not a teaching unit whatever the constituency says.
+        """
+        chunks = self.tree("bracketed-then-appositive")
+        for node in walk(chunks):
+            text = node["text"].rstrip(",;.")
+            self.assertFalse(
+                text.count("(") != text.count(")"),
+                f"card {node['text']!r} splits a parenthesis",
+            )
+
+    def test_a_trailing_appositive_leaves_the_prep_phrase(self):
+        """", a poetry book" names the book; it is not more of the prep phrase."""
+        chunks = self.tree("bracketed-then-appositive")
+        phrase = node_starting_with(chunks, "by The Chick")
+        self.assertIsNotNone(phrase, "the agent phrase never expanded")
+        kids = phrase["children"] or []
+        self.assertEqual(
+            [(n["role"], n["text"]) for n in kids][:3],
+            [
+                ("prep-phrase", "by The Chick at the Back of the Church"),
+                ("insertion", "(2001)"),
+                ("appositive", ", a poetry book"),
+            ],
+        )
 
     def test_object_clause_exposes_its_relative_clause(self):
         self.assertTrue(

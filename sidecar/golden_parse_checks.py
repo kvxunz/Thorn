@@ -138,6 +138,10 @@ CASES: dict[str, str] = {
     "object-infinitive": (
         "The committee expects the government to publish the report before June."
     ),
+    "extraposed-relative": (
+        "To do so, the Tallinners sent a spy to his house, who heard Olev's "
+        "name in a song his wife sang."
+    ),
 }
 
 
@@ -385,6 +389,26 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNotNone(who)
         self.assertEqual(who["role"], "clause-relative")
         self.assertEqual(who["children"][0]["role"], "relative")
+
+    def test_an_extraposed_relative_is_a_clause_not_part_of_the_prep_phrase(self):
+        """A relative split from its noun is nobody's dependency child here.
+
+        Before it got its own root, the leftover pass glued all eleven tokens
+        onto the `to his house` card, so a finite clause was taught as part of
+        a prepositional phrase — and the relative inside it never surfaced.
+        """
+        chunks = self.tree("extraposed-relative")
+        relative = node_starting_with(chunks, "who heard")
+        self.assertIsNotNone(relative, "the extraposed relative has no card")
+        self.assertEqual(relative["role"], "clause-relative")
+        self.assertEqual(relative["children"][0]["role"], "relative")
+        self.assertEqual(
+            [node["text"] for node in chunks if node["role"] == "prep-phrase"],
+            ["to his house,"],
+        )
+        # The relative inside its own object surfaces too: it was buried in
+        # the glue along with everything else.
+        self.assertIsNotNone(node_with_text(chunks, "his wife sang"))
 
     def test_object_clause_exposes_its_relative_clause(self):
         self.assertTrue(

@@ -100,6 +100,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey.register(id: 3, keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(optionKey)) { [weak self] in
             self?.handleOCRHotkey()
         }
+        let hotkeyFailures = hotkey.failures
+        if !hotkeyFailures.isEmpty {
+            panelController.showError(
+                hotkeyFailures.map(\.message).joined(separator: "\n")
+            )
+        }
+
         // Keep the first real sentence off the cold-start path. This only
         // starts the deterministic structure engine; HY-MT2 stays idle until
         // a sentence has already been split and shown.

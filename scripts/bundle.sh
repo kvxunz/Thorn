@@ -22,7 +22,7 @@ swift build -c release
 
 APP="build/Thorn.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/sidecar"
 
 cp .build/release/Thorn "$APP/Contents/MacOS/Thorn"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
@@ -30,6 +30,11 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # Phonics dictionary (single-word ⌥A path); regenerate with
 # scripts/build_phonics_dict.py.
 cp Resources/phonics-en.tsv "$APP/Contents/Resources/phonics-en.tsv"
+# Runtime-only Python sidecar. Keeping these modules inside the signed app
+# removes the installed binary's dependency on the source checkout path.
+for file in server.py alignment.py chunk_rules.py constituency.py grammar_notes.py teaching_tree.py; do
+  cp "sidecar/$file" "$APP/Contents/Resources/sidecar/$file"
+done
 
 # Stable identity so the TCC accessibility grant survives rebuilds.
 # Hash, not name: two same-named "DocR Dev" certs in keychain make the name ambiguous.

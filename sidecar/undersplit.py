@@ -34,6 +34,17 @@ WH_TAGS = frozenset({"WDT", "WP", "WP$", "WRB"})
 # "the man in the black hat over there" are legitimately one card.
 WIDE_LEAF_TOKENS = 8
 
+# Punctuation that opens a new constituent when it appears mid-card. A card
+# holding one of these is holding a boundary the splitter declined to draw.
+SEPARATORS = frozenset({",", ";", ":", "—", "–", "--", "(", ")"})
+
+# An appositive inside a leaf is a second naming of the head noun, a relative
+# or adverbial clause is a layer: two slots shown as one either way. Plain
+# `conj` is deliberately absent -- "human nature and human motives" is one slot
+# with a coordinated head, and splitting it would be wrong. `pcomp` is handled
+# separately below because only some of them are clauses.
+STRUCTURE_DEPS = frozenset({"appos", "relcl", "acl", "advcl", "ccomp"})
+
 
 @dataclass(frozen=True)
 class UndersplitFinding:
@@ -96,8 +107,33 @@ def classify_leaf(
     if len(content) >= 3 and any(token.tag in WH_TAGS for token in tokens):
         return "wh-word-in-leaf"
 
-    if len(content) >= WIDE_LEAF_TOKENS:
+    # Length alone says nothing. "his distrust of human nature and human
+    # motives" and "no incentives for buying stock in certain industries" are
+    # nine and ten tokens of flat noun phrase, and one card is the right
+    # reading of both -- reported as misses they drowned the real findings and
+    # invited "fixes" that would have split correct phrases. A wide leaf is
+    # only a miss when it *holds* a boundary it declined to draw: separator
+    # punctuation in the middle, or a clause-forming dependency whose head sits
+    # inside the span.
+    if len(content) < WIDE_LEAF_TOKENS:
+        return None
+    if any(token.text in SEPARATORS for token in tokens[:-1]):
         return "wide-leaf"
+    for token in tokens:
+        if not start <= token.head < end:
+            continue
+        if token.dep in STRUCTURE_DEPS:
+            return "wide-leaf"
+        # A `pcomp` is a clause only when it brings its own subject. "for
+        # buying stock in certain industries", "of translating her eccentric
+        # prose" are gerunds inside a prepositional phrase -- one card is the
+        # right reading, and reporting them was the same length-not-structure
+        # mistake as the raw width threshold.
+        if token.dep == "pcomp" and any(
+            other.dep in SUBJECT_DEPS and other.head == token.index
+            for other in tokens
+        ):
+            return "wide-leaf"
     return None
 
 

@@ -43,6 +43,7 @@ from chunk_rules import (
     is_wh_relative_pronoun,
     mark_discourse_insertions,
     merge_or_so,
+    merge_split_words,
     merge_tiny,
     prep_object_start,
     prepare_parse_text,
@@ -1441,7 +1442,8 @@ def build_chunks(
             run_key = key
         run.append(t.i)
     flush()
-    result = mark_discourse_insertions(merge_tiny(merge_or_so(merge_idioms(chunks))))
+    result = mark_discourse_insertions(
+        merge_tiny(merge_or_so(merge_idioms(merge_split_words(chunks, doc)))))
     if clause_role_of_head is not None:
         result = group_constituency_clauses(
             result,

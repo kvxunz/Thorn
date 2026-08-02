@@ -174,6 +174,11 @@ CASES: dict[str, str] = {
         "I can't accept this fact because I know that if I wasn't able to "
         "avoid a mistake, chances were that no other surgeon could have either."
     ),
+    "hyphenated-coordinate-verb": (
+        "If we consider that noise is not so black and white, we could more "
+        "colourfully regularize artificial neural networks and re-investigate "
+        "some surprising results about how the brain benefits from noise."
+    ),
     "as-long-as": (
         "As long as nations cannot themselves accumulate enough physical power "
         "to dominate all others, they must depend on allies."
@@ -577,6 +582,17 @@ class GoldenParseTests(unittest.TestCase):
         self.assertEqual(clause["role"], "clause-adverbial")
         self.assertEqual(texts(clause["children"])[:2], ["As long as", "nations"])
         self.assertEqual(roles(clause["children"])[:2], ["conjunction", "subject"])
+
+    def test_a_card_never_splits_one_written_word(self):
+        """"re-investigate" is one card, not "[verb] re-" then "[verb] …".
+
+        spaCy splits it into three tokens and tags every one of them VERB
+        conj, so the coordinate rule gave each fragment a card. No parse
+        result justifies teaching half a word as a unit.
+        """
+        chunks = self.tree("hyphenated-coordinate-verb")
+        self.assertIsNotNone(node_with_text(chunks, "re-investigate"))
+        self.assertEqual([n for n in walk(chunks) if n["text"] in ("re-", "re")], [])
 
     def test_object_clause_exposes_its_relative_clause(self):
         self.assertTrue(

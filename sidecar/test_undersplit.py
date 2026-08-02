@@ -77,8 +77,63 @@ class ClassifyLeafTests(unittest.TestCase):
         # The tree gave "who" its own card: that is the split working.
         self.assertIsNone(classify_leaf(2, 3, relative))
 
-    def test_a_long_flat_noun_phrase_is_only_the_weakest_signal(self):
-        self.assertEqual(classify_leaf(0, 8, FLAT_NP), "wide-leaf")
+    def test_a_long_flat_noun_phrase_is_not_a_miss_however_long(self):
+        # Width alone used to report this, and on a real corpus that buried
+        # the true findings under correct cards -- then invited "fixes" that
+        # would have split phrases the tree had already got right.
+        self.assertIsNone(classify_leaf(0, 8, FLAT_NP))
+
+    def test_a_wide_leaf_holding_a_separator_is_a_boundary_never_drawn(self):
+        listed = evidence([
+            *[(t.text, t.pos, t.tag, t.dep, t.head) for t in FLAT_NP.tokens[:4]],
+            (",", "PUNCT", ",", "punct", 1),
+            ("a", "DET", "DT", "det", 6),
+            ("friend", "NOUN", "NN", "appos", 1),
+            ("of", "ADP", "IN", "prep", 6),
+            ("mine", "PRON", "PRP", "pobj", 7),
+        ])
+        self.assertEqual(classify_leaf(0, 9, listed), "wide-leaf")
+
+    def test_a_wide_leaf_holding_a_clause_dependency_is_reported(self):
+        reduced = evidence([
+            *[(t.text, t.pos, t.tag, t.dep, t.head) for t in FLAT_NP.tokens[:6]],
+            ("bought", "VERB", "VBN", "relcl", 5),
+            ("yesterday", "NOUN", "NN", "npadvmod", 6),
+            ("downtown", "ADV", "RB", "advmod", 6),
+        ])
+        self.assertEqual(classify_leaf(0, 9, reduced), "wide-leaf")
+
+    def test_a_subjectless_gerund_inside_a_prep_phrase_is_not_a_miss(self):
+        # "no incentives for buying stock in certain industries": `buying` is
+        # a pcomp, but with no subject of its own it is a gerund, not a layer.
+        gerund = evidence([
+            ("no", "DET", "DT", "det", 1),
+            ("incentives", "NOUN", "NNS", "attr", 1),
+            ("for", "ADP", "IN", "prep", 1),
+            ("buying", "VERB", "VBG", "pcomp", 2),
+            ("stock", "NOUN", "NN", "dobj", 3),
+            ("in", "ADP", "IN", "prep", 3),
+            ("certain", "ADJ", "JJ", "amod", 7),
+            ("industries", "NOUN", "NNS", "pobj", 5),
+        ])
+        self.assertIsNone(classify_leaf(0, 8, gerund))
+
+    def test_a_pcomp_with_its_own_subject_is_a_clause_never_shown(self):
+        # "no incentives for the government funding research locally" -- the
+        # gerund has a subject, so it is a clause. Non-finite on purpose: a
+        # tensed verb would trip the stronger clause-in-one-card signal first
+        # and this path would never be exercised.
+        clausal = evidence([
+            ("no", "DET", "DT", "det", 1),
+            ("incentives", "NOUN", "NNS", "attr", 1),
+            ("for", "ADP", "IN", "prep", 1),
+            ("the", "DET", "DT", "det", 4),
+            ("government", "NOUN", "NN", "nsubj", 5),
+            ("funding", "VERB", "VBG", "pcomp", 2),
+            ("research", "NOUN", "NN", "dobj", 5),
+            ("locally", "ADV", "RB", "advmod", 5),
+        ])
+        self.assertEqual(classify_leaf(0, 8, clausal), "wide-leaf")
 
     def test_a_short_phrase_is_not_reported(self):
         self.assertIsNone(classify_leaf(0, 6, FLAT_NP))

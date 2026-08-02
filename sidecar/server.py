@@ -150,7 +150,8 @@ def chunk_roots(head):
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
                           or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)))
+                          or has_supplement_punctuation(c)
+                          or has_comma_supplement(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
             # linking verbs never take an object: theirs is a predicative
             linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
@@ -159,13 +160,15 @@ def chunk_roots(head):
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
                           or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)))
+                          or has_supplement_punctuation(c)
+                          or has_comma_supplement(c)))
         elif d in ("attr", "acomp"):
             roots.append((c, "complement",
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
                           or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)))
+                          or has_supplement_punctuation(c)
+                          or has_comma_supplement(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
         elif d == "pcomp" and is_clausal_pcomp(c):
@@ -268,7 +271,8 @@ def chunk_roots(head):
                     or is_adverbial_complex_prep(c)
                     or has_bracketed_aside(c)
                     or has_comma_fenced_appositive(c)
-                    or has_supplement_punctuation(c),
+                    or has_supplement_punctuation(c)
+                    or has_comma_supplement(c),
                 ))
         elif d == "pobj":
             # Only reachable when the governing preposition was absorbed into a
@@ -279,7 +283,8 @@ def chunk_roots(head):
                           contains_clause(c) or has_appositive_enumeration(c)
                           or has_bracketed_aside(c)
                           or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)))
+                          or has_supplement_punctuation(c)
+                          or has_comma_supplement(c)))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
@@ -525,6 +530,21 @@ def has_comma_fenced_appositive(noun):
         t.dep_ == "appos"
         and appositive_fence(noun.doc, min(x.i for x in t.subtree)) is not None
         for t in noun.subtree
+    )
+
+
+def has_comma_supplement(token):
+    """Whether a comma sits after the head with material still to come.
+
+    "lifelong cognitive disability, including deficits in learning and memory",
+    "the result of several modifications, for instance by Bernhard Severin
+    Ingemann" — the phrase is complete before the comma, so what follows it is
+    supplementary and belongs on its own card. See `split_comma_supplement`,
+    which draws the split this gate opens the door to.
+    """
+    indices = [t.i for t in token.subtree]
+    return any(
+        token.i < t.i < max(indices) and t.text == "," for t in token.subtree
     )
 
 
@@ -872,6 +892,25 @@ def np_expand(head, doc, role, constituency, parent_span):
         elif t.dep_ == "conj" and t.head.i in enum_members:
             enum_members.add(t.i)
 
+    def bracketed_indices(run):
+        """The indices of ``run`` that sit between brackets, not the brackets.
+
+        Never break inside a parenthesis. "(Seaside, Florida)" holds a comma
+        that fences an appositive by every test there is, but the aside is one
+        card: cutting it open left ", Florida)" hanging off the next item.
+        `split_brackets` owns everything between the brackets.
+        """
+        depth, inside = 0, set()
+        for index in run:
+            text = doc[index].text
+            if text in CLOSE_BRACKETS and depth:
+                depth -= 1
+            elif depth:
+                inside.add(index)
+            if text in OPEN_BRACKETS:
+                depth += 1
+        return inside
+
     def split_enumeration(run):
         # Split at each appositive member's own start so comma-, semicolon- and
         # colon-separated lists all break into items. Punctuation is not a
@@ -886,19 +925,7 @@ def np_expand(head, doc, role, constituency, parent_span):
         # A list needs no comma test -- the members are the enumeration.
         lone = len(enum_members) < 2
         run_set = set(run)
-        # Never break inside a parenthesis. "(Seaside, Florida)" holds a comma
-        # that fences an appositive by every test below, but the aside is one
-        # card: cutting it open left ", Florida)" hanging off the next item.
-        # `split_brackets` owns everything between the brackets.
-        depth, inside = 0, set()
-        for i in run:
-            text = doc[i].text
-            if text in CLOSE_BRACKETS and depth:
-                depth -= 1
-            elif depth:
-                inside.add(i)
-            if text in OPEN_BRACKETS:
-                depth += 1
+        inside = bracketed_indices(run)
         starts = set()
         for member in enum_members:
             # The item starts where its own subtree does, not where its direct
@@ -978,6 +1005,109 @@ def np_expand(head, doc, role, constituency, parent_span):
             parts.append(current)
         return parts
 
+    supplement_starts = set()
+
+    def split_comma_supplement(run):
+        # A comma after the head noun closes the phrase, and what follows it
+        # expands rather than continues: "lifelong cognitive disability,
+        # including deficits in learning and memory", "at the very tip of the
+        # egg, only fifty yards from the Sound". spaCy has no one label for
+        # these -- `prep`, `advmod`, `amod`, `npadvmod` across the corpus -- so
+        # again the punctuation is what holds. `fences` below is where a comma
+        # earns the split; only the card's own core run is offered one, since
+        # every other splitter here has already named what it separated.
+        if head.i not in run:
+            return [run]
+        run_set = set(run)
+        inside = bracketed_indices(run)
+        content = [i for i in run if doc[i].pos_ != "PUNCT"]
+        if not content:
+            return [run]
+        last_content = content[-1]
+
+        def fences(comma):
+            """Whether this comma has a whole supplement to its right."""
+            tail = next(
+                (doc[i] for i in run if i > comma and doc[i].pos_ != "PUNCT"),
+                None,
+            )
+            # "such as penalisation, incentives, and resources": what follows is
+            # another item of the same list, not a supplement to it. A list is
+            # one slot -- `split_enumeration` is where a list earns its cards --
+            # and calling each item an 插入语 would teach the wrong thing about
+            # every one of them.
+            if tail is None or tail.pos_ == "CCONJ":
+                return False
+            # "on March 16, 1998" is a date, and "400, 500 and 600" a figure:
+            # a comma with a number either side joins them.
+            before = doc[comma - 1] if comma - 1 in run_set else None
+            if before is not None and before.pos_ == tail.pos_ == "NUM":
+                return False
+            root = phrase_root(comma, tail)
+            if root.dep_ == "conj":
+                return False
+            reach = [x.i for x in root.subtree]
+            # One word is never a supplement. "in several books, notably The
+            # Demon-Haunted World" and "…and genuine, both as an individual and
+            # as a member of a society" hang everything after `notably` and
+            # `both` off a word outside this run, so all the comma could open is
+            # a modifier that lost the thing it modifies.
+            if len(reach) < 2:
+                return False
+            # The phrase to the right has to begin at the comma. Where it
+            # reaches back across it the comma is inside one phrase rather than
+            # around it: "the medieval convention of symbolic, two-dimensional
+            # space", "the cautious, unadorned prose of the day". Take the head
+            # noun out and the modifiers either side are no longer next to each
+            # other, so there is no split to draw.
+            #
+            # And it has to end inside this run. "Those, unaware of what is
+            # happening in society today" continues into a clause carved out
+            # above, so the card the comma would open is a stump ending on a
+            # stranded preposition.
+            if not comma < min(reach) or max(reach) > run[-1]:
+                return False
+            # And it has to be the rest of the phrase, or all of it up to the
+            # comma that closes it. "in several books, notably The Demon-Haunted
+            # World" and "…and genuine, both as an individual and as a member of
+            # a society" hang the words that follow `notably` and `both` off
+            # something outside this run, leaving a one-word card that names
+            # nothing. Chains still work: in "of love, of money, of
+            # unquestionable practicality" each item ends where the next begins.
+            right = max(reach)
+            return right == last_content or (
+                right + 1 in run_set and doc[right + 1].text == ","
+            )
+
+        def phrase_root(comma, tail):
+            seen = 0
+            while (
+                tail.head.i in run_set
+                and tail.head.i > comma
+                and tail.head is not tail
+                and seen < len(run)
+            ):
+                tail = tail.head
+                seen += 1
+            return tail
+
+        parts, current = [], []
+        for index in run:
+            if (
+                index not in inside
+                and doc[index].text == ","
+                and index != run[-1]
+                and current
+                and fences(index)
+            ):
+                parts.append(current)
+                current = []
+                supplement_starts.add(index)
+            current.append(index)
+        if current:
+            parts.append(current)
+        return parts
+
     def split_supplement(run):
         # A colon introduces an expansion of whatever came before it, and the
         # dependency parse does not say so: across four corpus sentences spaCy
@@ -1012,7 +1142,8 @@ def np_expand(head, doc, role, constituency, parent_span):
                 piece
                 for item in split_enumeration(run)
                 for bracketed in split_brackets(item)
-                for piece in split_supplement(bracketed)
+                for fenced in split_comma_supplement(bracketed)
+                for piece in split_supplement(fenced)
             ]
             for part in parts:
                 part_role = role
@@ -1024,6 +1155,26 @@ def np_expand(head, doc, role, constituency, parent_span):
                     )
                 ):
                     part_role = "conjunction"
+                # A comma-fenced supplement is named by what it is. ", by Carl
+                # Sagan of Cornell University" and ", including deficits in
+                # learning and memory" are prepositional phrases and saying so
+                # teaches the learner where to look; ", only fifty yards from
+                # the Sound" is not, and 插入语 is the honest name for the rest.
+                # A renaming is neither, so this yields to the appositive
+                # rules below rather than replacing them — and it asks about
+                # the cut it made itself, since every other splitter here has
+                # already named what it separated.
+                if part[0] in supplement_starts:
+                    opener = next(
+                        (doc[i] for i in part
+                         if doc[i].pos_ not in ("PUNCT", "CCONJ")),
+                        None,
+                    )
+                    part_role = (
+                        "prep-phrase"
+                        if opener is not None and opener.dep_ == "prep"
+                        else "insertion"
+                    )
                 # An appositive is only labelled once it has a card to itself.
                 # Where the run stayed whole ("as a class, an element…") the
                 # label would demote the entire object NP instead of naming the

@@ -219,6 +219,18 @@ CASES: dict[str, str] = {
         "Students underestimate the extracurricular, yet still important, "
         "aspects of university life."
     ),
+    "comma-fenced-supplement": (
+        "Prenatal exposure to alcohol can cause lifelong cognitive "
+        "disability, including deficits in learning and memory."
+    ),
+    "comma-separated-list": (
+        "We demonstrate that proper adjustment of some parameters, such as "
+        "penalisation, incentives, and resources, improves the outcome."
+    ),
+    "modifier-across-a-comma": (
+        "Renaissance painters replaced the medieval convention of symbolic, "
+        "two-dimensional space with the illusion of actual space."
+    ),
     "double-fenced-appositive": (
         "The journey was the highlight, not the totality, of his travels "
         "through the region."
@@ -862,6 +874,55 @@ class GoldenParseTests(unittest.TestCase):
                 chunks,
                 "the extracurricular, yet still important, aspects of "
                 "university life.",
+            ),
+            "the modifiers were split off the noun they both describe",
+        )
+
+    def test_a_comma_hands_a_trailing_supplement_its_own_card(self):
+        """"lifelong cognitive disability, including deficits…" is two slots.
+
+        The phrase is complete before the comma, so what follows expands it
+        rather than continuing it. No dependency says so -- `prep`, `advmod`,
+        `amod` and `npadvmod` across the corpus -- so the comma is the signal.
+        """
+        chunks = self.tree("comma-fenced-supplement")
+        self.assertIsNotNone(
+            node_with_text(chunks, "lifelong cognitive disability"),
+            "the object never separated from its supplement",
+        )
+        supplement = node_starting_with(chunks, ", including deficits")
+        self.assertIsNotNone(supplement, "the supplement never got a card")
+        self.assertEqual(supplement["role"], "prep-phrase")
+
+    def test_a_list_is_never_shattered_into_supplements(self):
+        """"such as penalisation, incentives, and resources" stays one card.
+
+        Every comma in it passes the fence test, and cutting at each would call
+        three items of one list three 插入语 -- teaching the wrong thing about
+        all of them. A list earns its cards from `split_enumeration` or not at
+        all.
+        """
+        chunks = self.tree("comma-separated-list")
+        self.assertIsNotNone(
+            node_starting_with(
+                chunks, ", such as penalisation, incentives, and resources",
+            ),
+            "the list was cut into one card per item",
+        )
+
+    def test_a_modifier_reaching_across_a_comma_opens_nothing(self):
+        """"symbolic, two-dimensional space" stays one card.
+
+        Both adjectives describe "space", so the comma is inside one phrase
+        rather than around two -- and the noun sits well to the right of the
+        card's own head, which is why the test has to ask about the phrase at
+        the comma and not about the card.
+        """
+        chunks = self.tree("modifier-across-a-comma")
+        self.assertIsNotNone(
+            node_with_text(
+                chunks,
+                "the medieval convention of symbolic, two-dimensional space",
             ),
             "the modifiers were split off the noun they both describe",
         )

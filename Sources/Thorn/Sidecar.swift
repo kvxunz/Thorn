@@ -299,7 +299,11 @@ actor Sidecar {
         let parseProtocolVersion: Int?
     }
 
-    private func isHealthy(expectedGeneration: UInt64? = nil) async -> Bool {
+    /// Pure probe: asks whether *our* sidecar is answering with a protocol we
+    /// speak. Recording that fact is `markReady()`'s job — a predicate that
+    /// also flipped `sidecarReady` meant a bare health check silently decided
+    /// whether a later crash counted as a startup failure.
+    private func probeHealth(expectedGeneration: UInt64? = nil) async -> Bool {
         guard let url = URL(string: baseURL + "/health") else { return false }
         var req = URLRequest(url: url)
         req.timeoutInterval = 2
@@ -322,14 +326,22 @@ actor Sidecar {
            ) {
             return false
         }
+        return true
+    }
+
+    /// Startup is over: stop buffering the child's stderr, and stop reading a
+    /// later exit as a launch failure whose diagnostics are worth logging.
+    private func markReady() {
         startupDiagnostics?.stop()
         sidecarReady = true
-        return true
     }
 
     private func ensureHealthy() async -> Bool {
         let currentGeneration = process?.isRunning == true ? lifecycle.generation : nil
-        if await isHealthy(expectedGeneration: currentGeneration) { return true }
+        if await probeHealth(expectedGeneration: currentGeneration) {
+            markReady()
+            return true
+        }
         launchIfNeeded()
         guard process?.isRunning == true, lifecycle.phase == .running else { return false }
         let launchedGeneration = lifecycle.generation
@@ -340,7 +352,10 @@ actor Sidecar {
             } catch {
                 return false
             }
-            if await isHealthy(expectedGeneration: launchedGeneration) { return true }
+            if await probeHealth(expectedGeneration: launchedGeneration) {
+                markReady()
+                return true
+            }
         }
         return false
     }

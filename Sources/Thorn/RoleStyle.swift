@@ -8,7 +8,9 @@ extension ChunkRole {
     var ink: ThornInk {
         switch self {
         // 主干：三个强调色相，一眼能分开
-        case .subject: return ThornPalette.subject
+        // A contraction card is still the head of its clause, so it keeps
+        // the subject's ink: the eye needs the spine to start somewhere.
+        case .subject, .subjectVerb: return ThornPalette.subject
         case .verb: return ThornPalette.predicate
         case .object: return ThornPalette.object
         case .complement: return ThornPalette.complement
@@ -33,7 +35,7 @@ extension ChunkRole {
     /// so the sentence resolves into S-V-O before the eye reaches the tree.
     var emphaticColor: Color {
         switch self {
-        case .subject:
+        case .subject, .subjectVerb:
             return ThornInk(hue: 0.58, lightSat: 0.86, lightBri: 0.41,
                             darkSat: 0.60, darkBri: 0.91).color
         case .verb:

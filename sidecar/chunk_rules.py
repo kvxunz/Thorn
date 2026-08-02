@@ -467,7 +467,18 @@ def is_wh_relative_pronoun(token):
     if tag in ("WDT", "WP", "WP$", "WRB"):
         return True
     lower = getattr(token, "lower_", getattr(token, "text", "")).lower()
-    return lower in {"who", "whom", "whose", "which", "that", "where", "when"}
+    if lower not in {"who", "whom", "whose", "which", "that", "where", "when"}:
+        return False
+    # The lexical fallback above exists because spaCy mis-tags a real relative
+    # often enough to need it. A demonstrative is what it then catches by
+    # mistake: "That's the secret of Castle Rackrent" was taught with "That"
+    # as a 连词 introducing nothing. spaCy is dependable on this one -- it tags
+    # a relative `that` `WDT` and a complementizer `mark` -- so a plain `DT`
+    # standing as a subject is a pronoun in its own right.
+    return not (
+        tag == "DT"
+        and getattr(token, "dep_", "") in ("nsubj", "nsubjpass")
+    )
 
 
 _OCR_BRACKET_JUNK = re.compile(r"\[[A-Za-z0-9]{1,8}\]")
@@ -607,6 +618,17 @@ def splits_a_word(doc, index):
     )
 
 
+# What a fused card should be called when the two halves were different
+# slots. A contraction glues a subject to its verb ("I'm supposed", "he'd
+# miss", "That's"): the card has to hold both, because the boundary falls
+# inside a written word, but calling it a subject teaches the learner that
+# "I'm supposed" is a noun phrase.
+_FUSED_ROLES = {
+    ("subject", "verb"): "subject-verb",
+    ("verb", "subject"): "subject-verb",
+}
+
+
 def merge_split_words(chunks, doc):
     """Fuse adjacent leaf cards whose boundary sits inside one written word.
 
@@ -628,6 +650,9 @@ def merge_split_words(chunks, doc):
         ):
             previous["text"] = previous["text"] + chunk["text"]
             previous["_hi"] = chunk["_hi"]
+            previous["role"] = _FUSED_ROLES.get(
+                (previous.get("role"), chunk.get("role")), previous.get("role"),
+            )
             continue
         out.append(chunk)
     return out

@@ -315,14 +315,21 @@ def find_undersplit(
                 f"leaf {start}:{end} text {leaf.get('text')!r} does not match "
                 f"source tokens {expected!r}"
             )
+        role = str(leaf.get("role") or "other")
         signal = classify_leaf(start, end, evidence)
+        # A card whose own label says it holds two slots is not hiding either.
+        # "I'm supposed", "That's" cannot be split at all -- the boundary falls
+        # inside a written word -- so the role is the whole of what can be
+        # taught there, and reporting it invites a fix that does not exist.
+        if signal == "clause-in-one-card" and role == "subject-verb":
+            continue
         if signal is None:
             continue
         findings.append(
             UndersplitFinding(
                 start=start,
                 end=end,
-                role=str(leaf.get("role") or "other"),
+                role=role,
                 signal=signal,
                 text=str(leaf.get("text") or ""),
             )

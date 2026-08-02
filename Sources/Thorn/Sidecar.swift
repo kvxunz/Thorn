@@ -28,6 +28,149 @@ enum SidecarFailure: LocalizedError, Sendable {
     }
 }
 
+/// Pure lifecycle state for the sidecar process. A failed launch returns to
+/// `idle`, allowing the next parse request to retry; an idle-exited process
+/// follows the same path and is therefore respawned on demand.
+enum SidecarLifecyclePhase: Equatable, Sendable {
+    case idle
+    case launching
+    case running
+}
+
+struct SidecarLifecycleState: Equatable, Sendable {
+    private(set) var phase: SidecarLifecyclePhase = .idle
+    private(set) var generation: UInt64 = 0
+
+    mutating func beginLaunch() -> Bool {
+        guard phase == .idle else { return false }
+        phase = .launching
+        return true
+    }
+
+    mutating func launchSucceeded() -> Bool {
+        guard phase == .launching else { return false }
+        phase = .running
+        generation &+= 1
+        return true
+    }
+
+    mutating func launchFailed() {
+        phase = .idle
+    }
+
+    mutating func processExited() {
+        phase = .idle
+    }
+
+    func acceptsHealthResponse(generation expected: UInt64, processIsRunning: Bool) -> Bool {
+        phase == .running && generation == expected && processIsRunning
+    }
+}
+
+struct SidecarShutdownState: Equatable, Sendable {
+    private(set) var isShuttingDown = false
+
+    var allowsProcessRegistration: Bool { !isShuttingDown }
+
+    mutating func beginShutdown() {
+        isShuttingDown = true
+    }
+}
+
+/// Process output is useful when a model fails to load, but it must not be
+/// retained indefinitely (or include a sentence sent after startup). The
+/// buffer is shared with Pipe readability callbacks, hence the small lock.
+private final class SidecarDiagnosticBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private let limit: Int
+    private var bytes = Data()
+    private var accepting = true
+
+    init(limit: Int) {
+        self.limit = max(0, limit)
+    }
+
+    func append(_ data: Data, stream: String) {
+        guard !data.isEmpty else { return }
+        lock.lock()
+        defer { lock.unlock() }
+        guard accepting, bytes.count < limit else { return }
+        let prefix = Data(("\(stream): ").utf8)
+        let remaining = limit - bytes.count
+        bytes.append(prefix.prefix(remaining))
+        guard bytes.count < limit else { return }
+        bytes.append(data.prefix(limit - bytes.count))
+    }
+
+    func stopAndSnapshot() -> String {
+        lock.lock()
+        accepting = false
+        let captured = bytes
+        lock.unlock()
+        guard !captured.isEmpty else { return "" }
+
+        // Startup diagnostics are emitted only before /health succeeds. Keep
+        // control characters out of the log and cap the rendered message too.
+        let text = String(decoding: captured, as: UTF8.self)
+        let lines = text.split(whereSeparator: \.isNewline).prefix(24)
+        let sanitized = lines.map { line in
+            line.unicodeScalars.filter { scalar in
+                scalar == "\t" || scalar.value >= 0x20
+            }
+        }.map(String.init).joined(separator: " | ")
+        return String(sanitized.prefix(2_000))
+    }
+
+    func stop() {
+        lock.lock()
+        accepting = false
+        lock.unlock()
+    }
+}
+
+/// A synchronous shutdown hook for AppKit's non-async termination delegate.
+/// The actor remains the source of truth during normal operation; this holder
+/// only protects the Process reference needed to send SIGTERM before the app
+/// exits.
+private final class SidecarProcessRegistry: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var shutdown = SidecarShutdownState()
+
+    /// Atomically hands a launched process to the termination path. If AppKit
+    /// has already begun shutdown, the just-launched process is terminated
+    /// here so it cannot escape through the run/register race window.
+    @discardableResult
+    func register(_ process: Process) -> Bool {
+        lock.lock()
+        guard shutdown.allowsProcessRegistration else {
+            lock.unlock()
+            process.terminate()
+            return false
+        }
+        self.process = process
+        lock.unlock()
+        return true
+    }
+
+    func clear(_ process: Process) {
+        lock.lock()
+        if self.process === process {
+            self.process = nil
+        }
+        lock.unlock()
+    }
+
+    func terminateSynchronously() {
+        lock.lock()
+        shutdown.beginShutdown()
+        let process = self.process
+        self.process = nil
+        lock.unlock()
+        process?.terminate()
+    }
+}
+
 /// Client + lifecycle for the Python structure sidecar (spaCy + benepar).
 /// The sidecar delivers deterministic teaching chunk trees; whole-sentence
 /// translation comes separately from the local HY-MT2 model.
@@ -41,9 +184,14 @@ actor Sidecar {
     private let port: Int
     private let authToken: String
     private var process: Process?
-    private var launchAttempted = false
+    private var lifecycle = SidecarLifecycleState()
+    private var startupDiagnostics: SidecarDiagnosticBuffer?
+    private var sidecarReady = false
     private var structureCache: [String: SidecarStructure] = [:]
     private var structureOrder: [String] = []
+
+    private static let processRegistry = SidecarProcessRegistry()
+    private static let maxStartupDiagnosticBytes = 16 * 1024
 
     private var baseURL: String { "http://127.0.0.1:\(port)" }
 
@@ -151,7 +299,7 @@ actor Sidecar {
         let parseProtocolVersion: Int?
     }
 
-    private func isHealthy() async -> Bool {
+    private func isHealthy(expectedGeneration: UInt64? = nil) async -> Bool {
         guard let url = URL(string: baseURL + "/health") else { return false }
         var req = URLRequest(url: url)
         req.timeoutInterval = 2
@@ -162,18 +310,29 @@ actor Sidecar {
               let health = try? JSONDecoder().decode(HealthResponse.self, from: data) else {
             return false
         }
-        // Structure compatibility is independent from the optional /analyze
-        // evidence schema. New sidecars advertise it explicitly; historical
-        // v3/v4 sidecars only have the legacy protocolVersion key.
+        // Prefer the endpoint-specific key; historical v3/v4 sidecars only
+        // advertised the legacy protocolVersion key.
         guard health.ok,
-              let version = health.parseProtocolVersion ?? health.protocolVersion
-        else { return false }
-        return version == 3 || version == 4
+              let version = health.parseProtocolVersion ?? health.protocolVersion,
+              version == 3 || version == 4 else { return false }
+        if let expectedGeneration,
+           !lifecycle.acceptsHealthResponse(
+               generation: expectedGeneration,
+               processIsRunning: process?.isRunning == true
+           ) {
+            return false
+        }
+        startupDiagnostics?.stop()
+        sidecarReady = true
+        return true
     }
 
     private func ensureHealthy() async -> Bool {
-        if await isHealthy() { return true }
+        let currentGeneration = process?.isRunning == true ? lifecycle.generation : nil
+        if await isHealthy(expectedGeneration: currentGeneration) { return true }
         launchIfNeeded()
+        guard process?.isRunning == true, lifecycle.phase == .running else { return false }
+        let launchedGeneration = lifecycle.generation
         // Transformer + Benepar cold starts can exceed 10s. Poll up to 30s.
         for _ in 0..<60 {
             do {
@@ -181,9 +340,15 @@ actor Sidecar {
             } catch {
                 return false
             }
-            if await isHealthy() { return true }
+            if await isHealthy(expectedGeneration: launchedGeneration) { return true }
         }
         return false
+    }
+
+    /// Start and load the deterministic parser without parsing a fake sentence.
+    /// App launch uses this so the first user request can return structure fast.
+    func warmUp() async {
+        _ = await ensureHealthy()
     }
 
     private func authorize(_ request: inout URLRequest) {
@@ -247,38 +412,130 @@ actor Sidecar {
     private func launchIfNeeded() {
         if let process, process.isRunning { return }
         // Re-allow launching after a previous sidecar exited (idle timeout).
-        if launchAttempted, let process, !process.isRunning { launchAttempted = false }
-        guard !launchAttempted else { return }
-        launchAttempted = true
+        if let staleProcess = process {
+            Self.processRegistry.clear(staleProcess)
+            self.process = nil
+            lifecycle.processExited()
+        }
+        guard lifecycle.beginLaunch() else { return }
 
         let script = sidecarScriptPath()
         guard FileManager.default.fileExists(atPath: script) else {
             ThornLog.info("sidecar script not found at \(script)")
+            lifecycle.launchFailed()
             return
         }
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        Self.configureProcess(
+            p,
+            script: script,
+            port: port,
+            idleExitSeconds: Self.idleExitSeconds,
+            authToken: authToken,
+            environment: ProcessInfo.processInfo.environment
+        )
+        let diagnostics = SidecarDiagnosticBuffer(limit: Self.maxStartupDiagnosticBytes)
+        let stdout = Pipe()
+        let stderr = Pipe()
+        stdout.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            diagnostics.append(data, stream: "stdout")
+            if data.isEmpty { handle.readabilityHandler = nil }
+        }
+        stderr.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            diagnostics.append(data, stream: "stderr")
+            if data.isEmpty { handle.readabilityHandler = nil }
+        }
+        p.standardOutput = stdout
+        p.standardError = stderr
+        p.terminationHandler = { [weak self, diagnostics] terminated in
+            let summary = diagnostics.stopAndSnapshot()
+            let reason = terminated.terminationReason
+            let status = terminated.terminationStatus
+            Task { [weak self] in
+                await self?.sidecarDidTerminate(
+                    terminated,
+                    reason: reason,
+                    status: status,
+                    diagnostics: summary
+                )
+            }
+        }
+        do {
+            try p.run()
+            guard Self.processRegistry.register(p) else {
+                diagnostics.stop()
+                lifecycle.launchFailed()
+                ThornLog.info("sidecar launch cancelled because the app is terminating")
+                return
+            }
+            process = p
+            startupDiagnostics = diagnostics
+            sidecarReady = false
+            _ = lifecycle.launchSucceeded()
+            ThornLog.info("sidecar launched, pid \(p.processIdentifier)")
+        } catch {
+            diagnostics.stop()
+            lifecycle.launchFailed()
+            ThornLog.info("sidecar launch failed: \(error)")
+        }
+    }
+
+    /// Finder launches UI-element apps with `/` as their working directory.
+    /// NLTK's import-security hook treats every absolute module path as being
+    /// inside that directory and aborts during startup, so anchor the child to
+    /// the narrow directory that contains its script instead.
+    static func configureProcess(
+        _ process: Process,
+        script: String,
+        port: Int,
+        idleExitSeconds: Int,
+        authToken: String,
+        environment inheritedEnvironment: [String: String]
+    ) {
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.currentDirectoryURL = URL(fileURLWithPath: script)
+            .deletingLastPathComponent()
         // Login shell keeps uv on PATH. Values are passed as positional
         // parameters so a custom path cannot be interpreted as shell syntax.
-        p.arguments = [
+        process.arguments = [
             "-lc",
             "exec uv run --script \"$1\" --port \"$2\" --idle-exit \"$3\"",
             "thorn-sidecar",
             script,
             String(port),
-            String(Self.idleExitSeconds),
+            String(idleExitSeconds),
         ]
-        var environment = ProcessInfo.processInfo.environment
+        var environment = inheritedEnvironment
         environment["THORN_SIDECAR_TOKEN"] = authToken
-        p.environment = environment
-        p.standardOutput = FileHandle.nullDevice
-        p.standardError = FileHandle.nullDevice
-        do {
-            try p.run()
-            process = p
-            ThornLog.info("sidecar launched, pid \(p.processIdentifier)")
-        } catch {
-            ThornLog.info("sidecar launch failed: \(error)")
+        process.environment = environment
+    }
+
+    private func sidecarDidTerminate(
+        _ terminated: Process,
+        reason: Process.TerminationReason,
+        status: Int32,
+        diagnostics: String
+    ) {
+        let isCurrent = process === terminated
+        let wasReady = sidecarReady
+        if isCurrent {
+            process = nil
+            lifecycle.processExited()
+            startupDiagnostics = nil
+            sidecarReady = false
+            Self.processRegistry.clear(terminated)
+        }
+        // A process that never reached /health failed before any sentence was
+        // sent. Its bounded startup diagnostics are safe and actionable.
+        if !wasReady, !diagnostics.isEmpty {
+            let reasonText = reason == .uncaughtSignal ? "signal" : "exit"
+            ThornLog.info(
+                "sidecar \(reasonText) status=\(status), startup diagnostics: \(diagnostics)"
+            )
+        } else if status != 0 {
+            ThornLog.info("sidecar exited with status \(status)")
         }
     }
 
@@ -292,7 +549,22 @@ actor Sidecar {
     }
 
     func terminate() {
-        process?.terminate()
+        let activeProcess = process
+        activeProcess?.terminate()
+        if let activeProcess {
+            Self.processRegistry.clear(activeProcess)
+        }
         process = nil
+        lifecycle.processExited()
+        startupDiagnostics?.stop()
+        startupDiagnostics = nil
+        sidecarReady = false
+    }
+
+    /// Called synchronously by `applicationWillTerminate`; unlike an
+    /// un-awaited detached task this sends SIGTERM before AppKit tears down
+    /// the process hosting the actor.
+    nonisolated static func terminateSynchronously() {
+        processRegistry.terminateSynchronously()
     }
 }

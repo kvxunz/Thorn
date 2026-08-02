@@ -227,6 +227,14 @@ CASES: dict[str, str] = {
         "We demonstrate that proper adjustment of some parameters, such as "
         "penalisation, incentives, and resources, improves the outcome."
     ),
+    "dash-fenced-appositive": (
+        "Most experts see in this a paradox — an endless conflict between the "
+        "desire to conform and the desire to remain apart."
+    ),
+    "supplement-losing-its-complement": (
+        "In 2025, Livingston's story, Houdini Act, originally published by The "
+        "Saturday Evening Post, was nominated for a prize."
+    ),
     "modifier-across-a-comma": (
         "Renaissance painters replaced the medieval convention of symbolic, "
         "two-dimensional space with the illusion of actual space."
@@ -893,6 +901,35 @@ class GoldenParseTests(unittest.TestCase):
         supplement = node_starting_with(chunks, ", including deficits")
         self.assertIsNotNone(supplement, "the supplement never got a card")
         self.assertEqual(supplement["role"], "prep-phrase")
+
+    def test_a_dash_fences_an_appositive_as_firmly_as_a_comma(self):
+        """"a paradox — an endless conflict…" names the same thing twice.
+
+        A single dash is a fence. A pair of them is a parenthetical with two
+        edges, and the card layer's own splitter knows where both of those go,
+        which is why only a lone one is taken here.
+        """
+        chunks = self.tree("dash-fenced-appositive")
+        self.assertIsNotNone(
+            node_with_text(chunks, "a paradox"),
+            "the object never separated from the renaming",
+        )
+        appositive = node_starting_with(chunks, "— an endless conflict")
+        self.assertIsNotNone(appositive, "the appositive never got a card")
+        self.assertEqual(appositive["role"], "appositive")
+
+    def test_a_supplement_that_lost_its_complement_gets_no_card(self):
+        """", originally published" is not a card: the agent is missing.
+
+        The participle's own "by The Saturday Evening Post" was carved off
+        earlier, so opening a card at the comma leaves a phrase with nothing to
+        stand on. The fence only counts when the phrase behind it is whole.
+        """
+        chunks = self.tree("supplement-losing-its-complement")
+        self.assertIsNone(
+            node_with_text(chunks, ", originally published"),
+            "a supplement was cut away from the complement it needs",
+        )
 
     def test_a_list_is_never_shattered_into_supplements(self):
         """"such as penalisation, incentives, and resources" stays one card.

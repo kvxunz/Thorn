@@ -179,7 +179,12 @@ actor Sidecar {
 
     /// Passed explicitly rather than left to server.py's default, so the cost
     /// of an idle sidecar (~3.2 GB) is visible on the side that spawns it.
-    private static let idleExitSeconds = 120
+    ///
+    /// 120s was too eager to be a study tool: reading one paragraph between two
+    /// lookups already exceeded it, and a restart costs 3.2s warm or ~19s once
+    /// the OS has evicted torch's pages. Ten minutes covers a reading session
+    /// while still releasing the memory when the app is genuinely idle.
+    private static let idleExitSeconds = 600
 
     private let port: Int
     private let authToken: String
@@ -345,8 +350,13 @@ actor Sidecar {
         launchIfNeeded()
         guard process?.isRunning == true, lifecycle.phase == .running else { return false }
         let launchedGeneration = lifecycle.generation
-        // Transformer + Benepar cold starts can exceed 10s. Poll up to 30s.
-        for _ in 0..<60 {
+        // Measured on this machine: a warm start reaches /health in ~3.2s, but
+        // once the OS has evicted torch's pages the import alone costs 15s and
+        // the whole start ~19s. Eviction happens precisely under memory
+        // pressure, i.e. when everything else is slow too, so a 30s budget had
+        // barely 1.5x headroom and would have reported "engine unavailable" for
+        // a sidecar that was merely still loading. 60s costs nothing when fast.
+        for _ in 0..<120 {
             do {
                 try await Task.sleep(nanoseconds: 500_000_000)
             } catch {

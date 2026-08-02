@@ -2,6 +2,14 @@
 
 只记录会影响主干、从句归属或嵌套关系的问题。词性、措辞和细粒度标签不进入待修范围。
 
+下面每条的「回归判据」都有一条对应的可执行测试，跑真 spaCy + Benepar：
+
+```bash
+uv run --script sidecar/golden_parse_checks.py    # 21 条，约 3 秒模型加载
+```
+
+该套件不叫 `test_*.py`，因此不会被 `python -m unittest discover -s sidecar` 收走——快测保持零依赖、毫秒级。改动拆句规则后必须跑一次：判据只有能执行才拦得住回归（见 LEARNINGS #42）。
+
 ## 已修复（2026-07-30）
 
 ### P-001 `as` 省略从句没有收住后续修饰语

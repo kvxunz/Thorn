@@ -101,3 +101,11 @@
 40. **同一个构式，spaCy 会给出三种依存形状——词表写完必须逐条拿真句子打靶**：给"动词+副词+介词"短语动词（live up to / fall back on / face up to）建 25 条词表，按 `particle=prt` + `prep 挂在动词上` 这一种形状写匹配，跑真句子发现 **6 条永远不触发**：`face up to` 的 `up` 被标成 **prep** 不是 prt；`fall back on` / `go back on` / `break away from` 的介词挂在**小品词**上而不是动词上；`drop out of` / `grow out of` 两者兼有。没有规律可循，就是模型碰巧这么标的。做法：写完词表立刻拿每条各造一句跑一遍断言"这条真的命中了"（`tmp/lex.py` 那种打靶脚本），命中率不到 100% 就是形状假设错了，而不是词表写少了。这类"绿色单测 + 死规则"是 #18 的同一个坑，词表类改动尤其容易中招——因为漏掉的条目不报错，只是安静地不生效。
 
 41. **判据用相邻性，不用语义**：短语动词的三个词必须**紧邻**（`head.i+1`、`head.i+2`），这一条同时挡住了 "put the book up on the shelf"（宾语插在中间，`up on` 不是一体）和 "look up at the sky"（组合不在表里）。依存树对 "live up to the promise"（短语动词）和 "live up in the attic"（动词+地点状语）给的是同一个形状，树本身分不开——所以词表是唯一诚实的来源，而相邻性是唯一不靠语义的护栏。
+
+## 2026-08-02 回归判据可执行化
+
+42. **`docs/parsing-issues.md` 的"回归判据"写了却没法跑，等于没写——可执行化后第一次运行就抓到一个死规则**：判据一直以裸 `assert` 堆在 `probe_sentence.py --self-test` 里，靠人工偶尔跑一次。改写成 `golden_parse_checks.py`（unittest + 每个 case 独立 test + 真模型只加载一次）后首跑 21 条，20 过 1 挂：**新加的 `expect NP to VP` 宾语拆分只在句子中段生效，句末必然失效**。根因是一格错位——Benepar 的 `S` 成分止于句号前（3:11），而 `merge_tiny` 把句号粘进了教学节点（3:12），`labels_for(node.start, node.end)` 于是查不到 S，守卫直接返回 None。修法：查标签前先剥掉节点尾部的 PUNCT（`content_end`），但发射出的新节点仍覆盖到 `node.end`，否则破坏覆盖不变量。这是 #18 / #40 的第三次复发，前两次的结论"绿色单测 + 死规则"这次是被工具而不是被用户发现的。
+
+43. **fixture 省略句号 = 规则在真实输入上永远不触发**：上面那条的单测 fixture 是 `"We expect Dotty to lash"`，没有句号，所以 `node.end` 和 Benepar 的 `S` 边界恰好重合，测试全绿。**真实句子必然带句末标点**，而 sidecar 的两条流水线对标点的归属口径不同（Benepar 排除、merge_tiny 吸附）——凡是拿"节点 span"去查"成分标签"的代码，fixture 都必须带上句末标点，否则测的是一个现实中不存在的形状。新增的回归单测就是把同一个 fixture 加一个 `.`：加之前必挂，加之后才绿（真测试的最低验收标准是"没有修复时它会失败"）。
+
+44. **断言按内容寻址，不按子节点位置**：旧探针里 `coordinate_modifier["children"][1:]` 假设介词短语只有 4 个子节点。后来某个提交把 `New York` 拆成独立 object 卡片，位置整体后移一位，探针开始把一棵**完全正确**的树报成坏的——排查时先怀疑解析器，A/B 跑了两次真模型才定罪到断言本身。教训：结构断言一律用 `role` + `text` 找节点（`children_with_role(node, "clause-relative")`），位置索引只在断言"顺序"本身时才用。渐进披露的展示哲学意味着卡片增删是常态，位置永远会漂。

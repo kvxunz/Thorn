@@ -45,6 +45,10 @@ final class HotkeyManager {
             manager.callbackLock.lock()
             let callback = manager.callbacks[hotKeyID.id]
             manager.callbackLock.unlock()
+            // Logged for every id: this is the only line that separates "the
+            // key never reached us" from "it reached us and the handler did
+            // nothing visible".
+            ThornLog.info("hotkey event id=\(hotKeyID.id), bound=\(callback != nil)")
             if let callback {
                 DispatchQueue.main.async { callback() }
             }

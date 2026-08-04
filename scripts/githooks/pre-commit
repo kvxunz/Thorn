@@ -1,0 +1,87 @@
+#!/bin/bash
+# Refuse a splitter change that nobody looked at.
+#
+# The trees this repo produces have exactly one instrument that can see
+# over-splitting: sidecar/snapshots/, frozen per sentence. `undersplit.py`
+# reports only coarse cards, so every metric here is one-directional -- six real
+# defects arrived disguised as "the coarse-card rate went down" (see
+# docs/parsing-issues.md). The snapshot is the counterweight, and it only works
+# if it is actually consulted.
+#
+# This hook consults it, rather than asking whether the file happens to have
+# changed: a correct refactor moves no tree at all, and a gate that treats "no
+# drift" as "no evidence" would fire on exactly the commits that deserve to pass.
+#
+# Install:
+#   git config core.hooksPath scripts/githooks
+#
+# Caveat worth knowing: the comparison runs against the working tree, not the
+# staged content. With a partially staged file it is answering a slightly
+# different question than the commit asks.
+set -euo pipefail
+
+SPLITTER_SOURCES=(
+  sidecar/server.py
+  sidecar/chunk_rules.py
+  sidecar/teaching_tree.py
+  sidecar/constituency.py
+)
+SNAPSHOT=sidecar/snapshots/constructions.txt
+SOCKET=/tmp/thorn-devrunner.sock
+
+staged() { git diff --cached --name-only --diff-filter=ACM; }
+
+touched=()
+for source in "${SPLITTER_SOURCES[@]}"; do
+  if staged | grep -Fxq "$source"; then
+    touched+=("$source")
+  fi
+done
+
+# Nothing that can move a tree.
+[[ ${#touched[@]} -eq 0 ]] && exit 0
+
+# Drift was reviewed and is being committed alongside the rules.
+staged | grep -Fxq "$SNAPSHOT" && exit 0
+
+if [[ -S "$SOCKET" ]]; then
+  echo "pre-commit: splitter changed, checking ${#touched[@]} file(s) against the snapshot..." >&2
+  if (cd "$(git rev-parse --show-toplevel)/sidecar" \
+        && python3 devrunner.py tree_snapshot.py) >/dev/null 2>&1; then
+    echo "pre-commit: no tree moved." >&2
+    exit 0
+  fi
+  cat >&2 <<EOF
+
+pre-commit: the snapshot moved and the new one is not staged.
+
+  staged: ${touched[*]}
+
+Read every diff line before accepting it -- this is the only place
+over-splitting is visible:
+
+  cd sidecar
+  python3 devrunner.py tree_snapshot.py            # show the drift
+  python3 devrunner.py tree_snapshot.py --write    # accept, once you have read it
+  git add $SNAPSHOT
+EOF
+  exit 1
+fi
+
+cat >&2 <<EOF
+pre-commit: splitter changed and the snapshot could not be checked.
+
+  staged: ${touched[*]}
+  no devrunner worker at $SOCKET
+
+Start the worker, then commit again:
+
+  tmux new-session -d -s thorn-dev -c sidecar 'uv run --script devrunner.py --serve'
+
+Or compare directly (~95 s, loads the model):
+
+  cd sidecar && uv run --script tree_snapshot.py
+
+If this edit truly cannot move a tree: git commit --no-verify
+EOF
+exit 1

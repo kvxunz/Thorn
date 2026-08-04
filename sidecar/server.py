@@ -27,8 +27,6 @@ import threading
 import time
 from itertools import pairwise
 
-import benepar
-import spacy
 from alignment import annotate_chunk_spans
 from chunk_rules import (
     coordinated_prep_conjuncts,
@@ -96,6 +94,16 @@ def load():
         # second pipeline and drops the one it was given -- slower every time,
         # and a fresh copy of the transformer weights per job.
         return
+    # Imported here, not at module scope: torch/transformers/benepar cost ~1 s
+    # warm and ~15 s once the OS has evicted their pages, and nothing above this
+    # line needs them. Keeping the import inside the one function that loads a
+    # model is what lets `service_checks.py` exercise the request gate with only
+    # fastapi installed -- an auth check that cannot run in CI is an auth check
+    # that runs when someone remembers. `import benepar` must stay ahead of
+    # `add_pipe("benepar")`: importing it is what registers the spaCy factory.
+    import benepar  # noqa: F401  (registers the spaCy pipeline component)
+    import spacy
+
     # Model installation is an explicit setup action.  Starting the app must
     # never trigger a network download or mutate the user's model cache.
     nlp = spacy.load(SPACY_MODEL)
@@ -2308,10 +2316,14 @@ if __name__ == "__main__":
     import uvicorn
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=48620)
-    # The transformer models cost ~3.2 GB resident but only ~2.7 s to reload,
-    # so idling for a quarter of an hour trades a lot of RAM for a saving the
-    # user rarely collects. Two minutes still covers a reading session.
-    ap.add_argument("--idle-exit", type=int, default=120)
+    # The models cost ~3.2 GB resident. Reloading them is 3.2 s warm but ~19 s
+    # once the OS has evicted torch's pages -- and eviction happens exactly when
+    # memory is tight, i.e. when everything else is slow too. Two minutes was
+    # too eager to be a study tool: reading one paragraph between two lookups
+    # already exceeded it. Ten minutes covers a reading session and still
+    # releases the memory when the app is genuinely idle. The app passes this
+    # explicitly (Sidecar.idleExitSeconds); keep the two in step.
+    ap.add_argument("--idle-exit", type=int, default=600)
     ap.add_argument(
         "--install-models",
         action="store_true",
@@ -2319,6 +2331,7 @@ if __name__ == "__main__":
     )
     args = ap.parse_args()
     if args.install_models:
+        import benepar
         benepar.download(BENEPAR_MODEL)
         raise SystemExit(0)
     if not auth_token:

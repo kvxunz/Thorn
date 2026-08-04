@@ -107,14 +107,23 @@ enum ParseService {
     /// punctuation ("troubles，or so") and invisible control/format characters
     /// (zero-width spaces, bidi marks) wedged between words. spaCy's English
     /// models misattach dependencies around the former and render the latter as
-    /// tofu boxes in the header, so clean both before parsing. Curly
-    /// quotes/apostrophes are normal English typography and stay as-is.
+    /// tofu boxes in the header, so clean both before parsing.
     /// Exposed internally for unit tests.
     static func normalizedInput(_ sentence: String) -> String {
         let cjkPunctuation: [Character: String] = [
             "，": ", ", "。": ". ", "、": ", ", "；": "; ", "：": ": ",
             "？": "? ", "！": "! ", "（": " (", "）": ") ", "\u{3000}": " ",
             "．": ". ", // fullwidth dot: bilingual books number sentences "15．"
+            // Curly quotes were left alone for years as "normal English
+            // typography", which is true of the text and false of the parser.
+            // Measured on "It’s all deliciously ironic ...": with U+2019,
+            // spaCy tags `all` PRON/dep — its no-label-fits fallback, which no
+            // chunk rule claims, so the card reads 其他. Swap in an ASCII
+            // apostrophe and the same sentence gives ADV/advmod, i.e. 状语.
+            // Everything copied out of a web page or an ebook arrives this
+            // way, so this was the common case degrading, not an edge one.
+            "\u{2018}": "'", "\u{2019}": "'", "\u{02BC}": "'",
+            "\u{201C}": "\"", "\u{201D}": "\"",
         ]
         var mapped = ""
         mapped.reserveCapacity(sentence.count)

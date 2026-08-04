@@ -36,10 +36,22 @@ final class ParseServiceTranslationTests: XCTestCase {
             ParseService.normalizedInput("for your troubles，  or so the thinking has gone"),
             "for your troubles, or so the thinking has gone"
         )
-        // Curly apostrophes are normal English typography and must survive.
+        // Curly quotes read as normal English typography and parse as junk:
+        // in "It’s all deliciously ironic", U+2019 costs `all` its ADV/advmod
+        // reading and spaCy falls back to PRON/dep, which no chunk rule claims
+        // — the card degrades to 其他. Copying from anywhere but a code editor
+        // produces these, so the parser gets ASCII.
         XCTAssertEqual(
             ParseService.normalizedInput("their customers’ misfortunes。"),
-            "their customers’ misfortunes."
+            "their customers' misfortunes."
+        )
+        XCTAssertEqual(
+            ParseService.normalizedInput("It’s ‘all’ deliciously ironic"),
+            "It's 'all' deliciously ironic"
+        )
+        XCTAssertEqual(
+            ParseService.normalizedInput("he called it “deliciously ironic”"),
+            "he called it \"deliciously ironic\""
         )
         // Invisible control/format characters (ZWSP, BOM, LRM) become tofu in
         // the header — strip them without leaving a stray space.

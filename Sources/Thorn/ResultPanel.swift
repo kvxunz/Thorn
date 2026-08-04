@@ -16,6 +16,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     private var expandObserver: AnyCancellable?
     private var pendingShrink: DispatchWorkItem?
     private var userResized = false
+    private var anchor: PanelAnchor = .mouse
     let state = PanelState()
 
     func show(sentence: String) {
@@ -23,6 +24,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         // begins a new one — do not cancel twice (that left empty partials).
         hidePanel()
         userResized = false
+        anchor = .mouse
         state.start(sentence: sentence)
         presentPanel()
     }
@@ -31,14 +33,20 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
     func show(word: String) {
         hidePanel()
         userResized = false
+        anchor = .mouse
         state.start(word: word)
         presentPanel()
     }
 
-    /// ⌥X compose: Chinese in, English sentence and its tree out.
-    func show(chinese: String) {
+    /// Compose: Chinese in, English sentence and its tree out.
+    ///
+    /// The anchor is the caller's to decide, not the mode's — compose is
+    /// reached both by typing into the ⌥X box (eyes on the box) and by
+    /// selecting Chinese on screen (eyes on the pointer).
+    func show(chinese: String, anchor: PanelAnchor) {
         hidePanel()
         userResized = false
+        self.anchor = anchor
         state.start(chinese: chinese)
         presentPanel()
     }
@@ -140,13 +148,11 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.panel = panel
 
-        // Compose was typed at eye level, not clicked at the pointer: opening
-        // its result near the mouse throws the answer somewhere the user is
-        // not looking.
-        if state.mode == .compose {
-            positionAtComposeAnchor(panel)
-        } else {
-            positionNearMouse(panel)
+        // Typed at eye level, not clicked at the pointer: opening that result
+        // near the mouse throws the answer somewhere the user is not looking.
+        switch anchor {
+        case .composeBox: positionAtComposeAnchor(panel)
+        case .mouse: positionNearMouse(panel)
         }
         panel.orderFrontRegardless()
         ThornLog.info("panel shown, frame=\(panel.frame), visible=\(panel.isVisible)")

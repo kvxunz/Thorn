@@ -55,6 +55,41 @@ final class ComposeServiceTests: XCTestCase {
         )
     }
 
+    /// A Chinese selection routes to compose instead of erroring. The guard
+    /// that decides this must not be `!looksEnglish`: that would drag every
+    /// other script onto a path that only speaks Chinese.
+    func testChineseCapturesAreRoutedToComposeAndOtherScriptsAreNot() {
+        XCTAssertTrue(ComposeService.looksChinese("我昨天本来该把那封信寄出去的。"))
+        // A Chinese sentence quoting an English term is still Chinese.
+        XCTAssertTrue(ComposeService.looksChinese("这个功能叫做 progressive disclosure，很好用。"))
+
+        XCTAssertFalse(ComposeService.looksChinese("I should have mailed that letter."))
+        XCTAssertFalse(ComposeService.looksChinese(""))
+        XCTAssertFalse(ComposeService.looksChinese("。，！2026"))
+        // Scripts Thorn cannot help with must keep their error, not be sent
+        // to a Chinese-to-English translator.
+        XCTAssertFalse(ComposeService.looksChinese("Съешь же ещё этих мягких булок."))
+        XCTAssertFalse(ComposeService.looksChinese("すもももももももものうち"))
+        // Kanji cannot carry the decision on its own: this is Japanese, and
+        // half its letters are Han.
+        XCTAssertFalse(ComposeService.looksChinese("私は学生で、毎日図書館に行きます。"))
+        // A lone CJK glyph inside another script is not a Chinese sentence.
+        XCTAssertFalse(ComposeService.looksChinese("한국어 문장 中 하나"))
+    }
+
+    /// The route is only reachable where an English sentence could not be
+    /// found, so bilingual study material must still yield its English.
+    func testBilingualMaterialIsNotMistakenForAChineseCapture() {
+        let mixed = "【翻译技巧】the big seven industrial economies 是指西方七大工业国。"
+            + "15．Economists have been particularly surprised by favorable inflation "
+            + "figures in Britain and the United States."
+        XCTAssertFalse(ComposeService.looksChinese(mixed))
+        XCTAssertFalse(
+            ParseService.extractEnglish(ParseService.normalizedInput(mixed)).isEmpty,
+            "sanity: this is the path that must keep winning"
+        )
+    }
+
     func testComposePromptAsksForOneEnglishSentenceAndNothingElse() {
         let source = "我昨天本来该把那封信寄出去的。"
         let prompt = HYMT2TranslationPolicy.englishPrompt(source: source)

@@ -117,3 +117,11 @@
 47. **句子数不等于构式覆盖率**：200 句（arXiv + Wikipedia + Gatsby）跑出契约 200/200、粗卡 48.5%，看着像"成熟了"。但用户随手截一张图就撞上一个明确缺陷——谓语卡吞了两个介词短语——而按角色拆开 113 条 wide-leaf 发现落在 `[verb]` 上的是 **0 条**：那 200 句里**一句动词省略都没有**。语料能证明的只有"抽到的构式"，抽不到的构式无论跑多少句都是零信息。所以扩语料要按构式清单抽（省略、倒装、外置、there-移位…），不是无脑加句数；也所以肉眼看真实使用场景仍然是不可替代的一条独立通道。
 
 48. **测试绿 ≠ 卡片对，因为测试只证明它断言过的那一句话**：P-001 的判据是"两个 after 短语留在 as 从句内"，这一条从来都成立；但"它们不在谓语卡里"从没被断言过，于是一个把整条尾巴染成谓语色的树在 golden 套件里一路绿灯，还是 docs 里挂了名的用例。写回归判据时要问的不是"它现在对不对"，而是"这条断言在树坏成什么样时仍然会绿"。
+
+## 2026-08-04 ⌥X 输入框「按了没反应」排查
+
+49. **`NSHostingController` 装成 `contentViewController`，窗口会缩成 0×0——"显示了"和"看得见"是两回事**：⌥X 弹不出输入框，现象与热键没注册完全一致（无窗口、无声音、无日志）。根因是 AppKit 在设置 `contentViewController` 时用该控制器视图的 fitting size 重设窗口，而首次布局之前那个值是零；`makeKeyAndOrderFront` 照常成功，`isVisible` 也是 `true`，屏幕上却是一个 0×0 的窗口。`ResultPanelController` 没中招纯属走的是另一条路（`panel.contentView = view` + 显式 `layoutIfNeeded` 后测 `fittingSize`，且有小于 50 的兜底）——同一个进程里两个面板用了两种装法，只有一种是对的。修法：设完 `contentViewController` 先 `panel.layoutIfNeeded()`，再拿 `fittingSize` 显式 `setContentSize`，测量不合理（宽 < 100 或高 < 20）时回落到设计尺寸。判据：日志里打 `frame` 而不只是 `visible`——`visible=true, frame=(…, 0.0, 0.0)` 一眼就定罪，光看 `visible` 永远查不出来。
+
+50. **入口日志要打在分发器上，不是打在每个 handler 里**：#35 的结论是"每个用户可触发的入口都要有一行入口日志"，这次照做了仍然瞎——因为新写的 ⌥X handler 又忘了加，于是日志无法区分"按键没到"和"到了但窗口没出来"，白烧一轮 build。改成在 `HotkeyManager` 的 Carbon 事件回调里对**任何** id 打一行 `hotkey event id=N, bound=…`：分发器只有一处，新增热键自动被覆盖，靠人记得加日志的方案迟早失效。同理，`RegisterEventHotKey` 返回 `noErr`**不能**证明热键归你——它不拒绝跨进程重复注册（实测：另一个进程去注册 Thorn 明明已占用的 ⌥A 也返回成功），所以"registered=true"只排除本进程的失败，真正的判据是事件有没有到。
+
+51. **合成按键触发不了 Carbon 热键，这条验证通道是死的**：为了自己验 ⌥X，依次试了 System Events `keystroke "x" using option down`、`key code 7 using option down`、手写 `CGEvent.post(tap: .cghidEventTap)` 带 `.maskAlternate`，三种全部穿透到前台应用变成 `≈`/`å` 字符，热键回调一次没触发。关键是**设了对照**：拿一个确定能用的热键（⌥A）走同样三条路，表现完全一样地穿透——这才证明是方法无效，而不是被测功能坏了。没有对照的话，会顺理成章地把"合成按键没反应"当成"⌥X 没注册"，然后去修一个根本不存在的 bug。结论：涉及真实键盘输入的功能，最后一公里只能由人按，代理能做的是把日志铺到位让那一次按键足够有信息量。

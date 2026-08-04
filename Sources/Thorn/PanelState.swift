@@ -10,10 +10,31 @@ final class PanelState: ObservableObject {
         case error(String)
     }
 
+    /// Which pipeline produced what is on screen. Was a `wordMode` Bool until
+    /// ⌥X added a third; two Bools would have had a fourth, illegal state.
+    enum Mode {
+        /// ⌥A / ⌥S: captured English, parsed and translated into Chinese.
+        case sentence
+        /// ⌥A on a single word: phonics decomposition.
+        case word
+        /// ⌥X: typed Chinese, translated into English, then parsed.
+        case compose
+    }
+
     @Published var sentence: String = ""
-    /// The last capture was a single word (phonics path), not a sentence.
     /// Internal setter for measurement tests only.
-    var wordMode = false
+    var mode: Mode = .sentence
+    /// Word cards are measured and sized differently everywhere; this is the
+    /// distinction those call sites actually care about.
+    var wordMode: Bool { mode == .word }
+    /// The Chinese the user typed (⌥X). Kept so ⌥Z can replay the compose from
+    /// its real source rather than from the English the model produced.
+    private(set) var composeSource = ""
+
+    /// Whether there is anything for ⌥Z to bring back. A compose that failed
+    /// before the model answered has no English sentence yet but still has the
+    /// Chinese that produced it, which is the thing worth retrying.
+    var hasSubject: Bool { !sentence.isEmpty || !composeSource.isEmpty }
     @Published var status: Status = .loading
     @Published var hoveredChunkID: UUID?
     /// Exact character span + color to light up in the header sentence.
@@ -26,29 +47,38 @@ final class PanelState: ObservableObject {
     private var activeRunID: UUID?
 
     func start(sentence: String) {
-        self.sentence = sentence
-        self.wordMode = false
-        self.pinned = false
-        self.expanded = []
-        self.hoveredHighlight = nil
+        reset(mode: .sentence, subject: sentence)
         run()
     }
 
     func start(word: String) {
-        self.sentence = word // recall (⌥Z) replays whatever is stored here
-        self.wordMode = true
+        reset(mode: .word, subject: word)
+        runWord()
+    }
+
+    /// ⌥X: the subject is Chinese, and the English it becomes is not known
+    /// until the model answers.
+    func start(chinese: String) {
+        reset(mode: .compose, subject: "")
+        composeSource = chinese
+        runCompose()
+    }
+
+    private func reset(mode: Mode, subject: String) {
+        self.sentence = subject // recall (⌥Z) replays whatever is stored here
+        self.mode = mode
+        self.composeSource = ""
         self.pinned = false
         self.expanded = []
         self.hoveredHighlight = nil
-        runWord()
     }
 
     /// Re-run the last capture through whichever pipeline produced it.
     func restart() {
-        if wordMode {
-            start(word: sentence)
-        } else {
-            start(sentence: sentence)
+        switch mode {
+        case .sentence: start(sentence: sentence)
+        case .word: start(word: sentence)
+        case .compose: start(chinese: composeSource)
         }
     }
 
@@ -56,8 +86,7 @@ final class PanelState: ObservableObject {
     func presentError(_ message: String) {
         task?.cancel()
         activeRunID = nil
-        sentence = ""
-        pinned = false
+        reset(mode: .sentence, subject: "")
         status = .error(message)
     }
 
@@ -98,6 +127,51 @@ final class PanelState: ObservableObject {
             } catch {
                 guard self.activeRunID == runID else { return }
                 ThornLog.info("parse error type: \(String(describing: type(of: error)))")
+                self.status = .error(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Compose runs two models back to back, so unlike the reading path there
+    /// is nothing useful to show in between: the sidecar cannot start until
+    /// HY-MT2 has produced the sentence it is meant to cut up.
+    private func runCompose() {
+        task?.cancel()
+        let runID = UUID()
+        activeRunID = runID
+        status = .loading
+        hoveredChunkID = nil
+        let chinese = self.composeSource
+        task = Task {
+            do {
+                let english = try await ComposeService.englishSentence(from: chinese)
+                try Task.checkCancellation()
+                guard self.activeRunID == runID else { return }
+                // Publish the English before the parse so the header stops
+                // saying "翻译成英文中…" the moment there is an English sentence.
+                self.sentence = english
+                let result = try await ParseService.parse(
+                    sentence: english,
+                    // The Chinese is the user's own; translating the English
+                    // back would answer with a paraphrase of what they wrote.
+                    knownTranslation: chinese
+                ) { partial in
+                    await MainActor.run {
+                        guard self.activeRunID == runID else { return }
+                        self.status = .result(partial)
+                    }
+                }
+                guard self.activeRunID == runID else { return }
+                ThornLog.info("compose ok, \(result.chunks.count) chunks")
+                self.status = .result(result)
+            } catch is CancellationError {
+                guard self.activeRunID == runID else { return }
+                if case .loading = self.status {
+                    self.status = .error("已取消")
+                }
+            } catch {
+                guard self.activeRunID == runID else { return }
+                ThornLog.info("compose error: \(error.localizedDescription)")
                 self.status = .error(error.localizedDescription)
             }
         }

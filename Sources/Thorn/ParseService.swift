@@ -30,10 +30,16 @@ enum ParseService {
     ///
     /// `onPartial` receives and presents the bare structure before HY-MT2 is
     /// started, so translation can never delay the first useful result.
+    ///
+    /// `knownTranslation` is the ⌥X compose path: the Chinese there is what
+    /// the user typed, so the sentence already has a meaning attached and
+    /// asking the model to translate it back would both cost a second load and
+    /// answer with a paraphrase of the user's own words.
     static func parse(sentence: String,
+                      knownTranslation: String? = nil,
                       onPartial: (@Sendable (ParseResult) async -> Void)? = nil) async throws -> ParseResult {
         let model = await MainActor.run { SettingsStore.shared.translationModel }
-        guard !model.isEmpty else {
+        guard !model.isEmpty || knownTranslation != nil else {
             throw LocalPipelineError.modelNotConfigured
         }
         // Mixed bilingual selections keep only their English sentences; the
@@ -62,7 +68,8 @@ enum ParseService {
             structure: structure,
             onPartial: onPartial
         ) {
-            try await translateOnly(sentence: normalized, model: model)
+            if let knownTranslation { return knownTranslation }
+            return try await translateOnly(sentence: normalized, model: model)
         }
     }
 

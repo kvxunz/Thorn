@@ -1,9 +1,11 @@
+import AppKit
 import SwiftUI
 
 struct ResultView: View {
     @ObservedObject var state: PanelState
     var onResizeDrag: ((CGSize) -> Void)? = nil
     @State private var lastDrag: CGSize = .zero
+    @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -44,7 +46,14 @@ struct ResultView: View {
         )
         .overlay(alignment: .topTrailing) {
             if hasContent {
-                pinButton.padding(ThornSpace.sm + ThornSpace.hair)
+                HStack(spacing: ThornSpace.sm) {
+                    // Compose exists to produce a sentence you are going to use
+                    // somewhere else; a result you cannot get out of the panel
+                    // is half a feature.
+                    if state.mode == .compose { copyButton }
+                    pinButton
+                }
+                .padding(ThornSpace.sm + ThornSpace.hair)
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -109,10 +118,34 @@ struct ResultView: View {
         .help(state.pinned ? "取消固定" : "固定：点击外部不再关闭")
     }
 
+    private var copyButton: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(state.sentence, forType: .string)
+            copied = true
+            // Long enough to be read, short enough that the panel is not left
+            // claiming a copy that happened a minute ago.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                .font(ThornType.ui(ThornType.small))
+                .foregroundStyle(copied
+                    ? ThornPalette.subject.color
+                    : Color.secondary.opacity(0.55))
+                .animation(ThornMotion.hover, value: copied)
+        }
+        .buttonStyle(.plain)
+        .disabled(state.sentence.isEmpty)
+        .help("复制英文")
+    }
+
     private var loadingView: some View {
         HStack(spacing: ThornSpace.sm) {
             ProgressView().controlSize(.small)
-            Text("拆解中…")
+            // Compose spends its first seconds in HY-MT2, not in the parser,
+            // and "拆解中…" during a translation is a lie about what is slow.
+            Text(state.mode == .compose && state.sentence.isEmpty
+                 ? "翻译成英文中…" : "拆解中…")
                 .font(ThornType.ui(ThornType.body))
                 .foregroundStyle(.secondary)
         }
@@ -155,7 +188,11 @@ struct ResultView: View {
                 .textSelection(.enabled)
                 .animation(ThornMotion.hover, value: state.hoveredHighlight?.range)
                 .padding(.leading, ThornSpace.lg)
-                .padding(.trailing, ThornSpace.pinInset + ThornSpace.xs)
+                // Compose puts a copy button beside the pin, so the header has
+                // one more corner control to stay clear of.
+                .padding(.trailing, state.mode == .compose
+                         ? ThornSpace.pinInset + ThornSpace.lg + ThornSpace.xs
+                         : ThornSpace.pinInset + ThornSpace.xs)
                 .padding(.top, ThornSpace.lg)
                 .padding(.bottom, ThornSpace.md)
 

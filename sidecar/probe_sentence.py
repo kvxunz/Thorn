@@ -24,33 +24,10 @@ import traceback
 
 import server
 
-
-def self_test():
-    """Delegate to the golden regression suite.
-
-    The corpus and its assertions used to live here as bare asserts: the first
-    failure hid the other nineteen cases, and one assertion indexed children by
-    position, so an unrelated commit that split out an extra card made it
-    report a correct tree as broken. Both belong to a real test runner.
-    """
-    import unittest
-
-    import golden_parse_checks
-
-    suite = unittest.TestLoader().loadTestsFromModule(golden_parse_checks)
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
-    raise SystemExit(0 if result.wasSuccessful() else 1)
-
-
 sentence = sys.argv[1] if len(sys.argv) > 1 else (
     "My father and mother should have stayed in New York "
     "where they met and married and where I was born."
 )
-
-# Before load(): the suite loads the model itself, and doing it twice costs
-# another ~3 s for nothing.
-if sentence == "--self-test":
-    self_test()
 
 server.load()
 doc = server.nlp(sentence)

@@ -57,6 +57,23 @@ import server
 # original --self-test.
 CASES: dict[str, str] = {
     "relative": "The book that I bought yesterday was surprisingly expensive.",
+    # A second preposition coordinated onto the first ("and then by …"). spaCy
+    # hangs it on the first prep as conj, so it reaches the card layer through
+    # the promotion path rather than the prep branch. Sentence-final period is
+    # deliberate: LEARNINGS #43 -- a fixture without one tests a shape that does
+    # not occur in real input.
+    "coordinated-prep-supplement": (
+        "The decline was driven first by falling demand and then by several "
+        "modifications, including deficits in staffing and morale."
+    ),
+    # P-005: here spaCy hangs the second preposition on the *verb* rather than
+    # on the first preposition, so it reaches the conj fallback instead of the
+    # promotion path. The corpus form of this is a passive agent
+    # ("was cited by X as … and by Y as …"), where 宾语 is doubly wrong.
+    "coordinated-prep-on-verb": (
+        "He was troubled first by the noise and later by one thing above all: "
+        "the fear of being found out."
+    ),
     "stranded-wh": (
         "When juries began holding advertisers responsible for misleading claims, "
         "companies changed their practices."
@@ -1066,6 +1083,66 @@ class GoldenParseTests(unittest.TestCase):
         )
         self.assertIsNotNone(however)
         self.assertEqual(however["role"], "clause-adverbial")
+
+    def test_coordinated_prep_expands_like_a_first_position_one(self):
+        """A promoted conjunct asks the same expand question as the prep it is
+        coordinated onto. It used to ask a shorter one -- no fence checks -- so
+        an identical phrase was a layered card in first position and a flat
+        twelve-token line in second.
+
+        Asserted by content, not by index (LEARNINGS #44), and the assertion is
+        that the *supplement* surfaced: `assertTrue(children)` alone would stay
+        green if the card split somewhere useless.
+        """
+        chunks = self.tree("coordinated-prep-supplement")
+        second = node_starting_with(chunks, "then by")
+        self.assertIsNotNone(second, "the coordinated prep did not become its own card")
+        self.assertEqual(second["role"], "prep-phrase")
+
+        children = second.get("children") or []
+        self.assertTrue(children, "the coordinated prep stayed a flat card")
+        # The fence is what had to become visible: the supplement after the comma.
+        supplement = [c for c in children if c["text"].lstrip().startswith(",")]
+        self.assertTrue(
+            supplement,
+            f"comma supplement never surfaced; got {[c['text'] for c in children]}",
+        )
+        # And it stays one collapsed row rather than flattening onto the top
+        # level, which is the display rule LEARNINGS #31 records. Checked on the
+        # top level only: a parent's text contains its children's by the
+        # coverage invariant, so searching the whole tree proves nothing.
+        self.assertFalse(
+            [c for c in chunks if c["text"].lstrip().startswith(",")],
+            "the supplement flattened onto the top level instead of nesting",
+        )
+
+    def test_p005_coordinated_prep_on_a_verb_is_not_an_object(self):
+        """P-005: a preposition governing an object is a prep phrase whatever
+        it is coordinated onto.
+
+        The old rule read the role off the head's POS, so the same phrase was
+        介词短语 when spaCy attached it to the first preposition and 宾语 when it
+        attached it to the verb. In the corpus this fired on a passive agent
+        ("was cited by X … and by Y …"), where a 宾语 cannot exist at all.
+        """
+        chunks = self.tree("coordinated-prep-on-verb")
+        second = node_starting_with(chunks, "later by")
+        self.assertIsNotNone(second, "the coordinated preposition lost its card")
+        self.assertEqual(second["role"], "prep-phrase")
+
+        # Both conjuncts are the same kind of thing; asserting only the second
+        # would stay green if the first ever regressed to match it.
+        first = node_with_text(chunks, "by the noise")
+        self.assertIsNotNone(first)
+        self.assertEqual(first["role"], second["role"])
+
+        # The colon supplement was swallowed into the same flat card.
+        children = second.get("children") or []
+        self.assertTrue(children, "the colon supplement stayed swallowed")
+        self.assertTrue(
+            [c for c in children if "fear of being found out" in c["text"]],
+            f"supplement never surfaced; got {[c['text'] for c in children]}",
+        )
 
     def test_idiom_stays_one_card(self):
         chunks = self.tree("idiom")

@@ -3431,7 +3431,7 @@
         [verb] not related
         [prep-phrase] to immediate goals
         [conjunction] but
-        [object] of possible consequence in the future
+        [prep-phrase] of possible consequence in the future
 
 == However, the world is so made that elegant systems are in principle unable to deal with some of the world's more fascinating and delightful aspects.
   [adverbial] However,

@@ -46,6 +46,69 @@ python3 devrunner.py tree_snapshot.py --write   # 逐行看过之后再接受
 
 模型太重，CI 里没有这一步——和 `golden_parse_checks.py` 一样，是提交前的本机纪律。
 
+### 把纪律变成闸
+
+「记得跑一下」不是机制。装上钩子之后，动了拆句规则却没过快照，提交直接被拒：
+
+```bash
+git config core.hooksPath scripts/githooks
+```
+
+它不是检查「快照文件有没有跟着改」——**一次正确的重构本来就不该移动任何一棵树**，那样的闸会在最该放行的提交上开火。它是真的去跑一遍比对：worker 在就走 `devrunner`（几十秒），报 unchanged 就放行，有漂移则拒绝并让你逐行读完再 `--write` 接受；worker 不在就拒绝并告诉你怎么起。确实动不了树的改动（改注释、改文档字符串）用 `git commit --no-verify`。
+
+### 请求闸（不需要模型）
+
+`service_checks.py` 测的是句子到达解析器**之前**的那一层：token 鉴权、512 词上限、两个并发槽位的 429、`ValueError → 422` 映射以及失败路径必须归还槽位。
+
+```bash
+uv run --script service_checks.py        # 0.6 秒，只依赖 fastapi
+```
+
+`server` 把 torch/spacy/benepar 的 import 推迟进了 `load()`，所以这个套件不加载任何模型，**CI 每次 push 都会跑**。这是有意的：一道只能在那台装了 3.2 GB 权重的机器上验证的鉴权闸，等于一道想起来才验证的闸。
+
+## 已修复（2026-08-04）
+
+### P-005 动词层并列的介词短语被标成宾语
+
+触发句：
+
+> He was troubled first by the noise and later by one thing above all: the fear of being found out.
+
+spaCy 把第二个 `by` 标成 `conj` 挂在**动词** `troubled` 上（不是挂在第一个 `by` 上），于是 `coordinated_prep_conjuncts` 够不到它，它落进 `chunk_roots` 的 `conj` 兜底分支：
+
+```python
+roots.append((c, "object" if head.pos_ in ("VERB", "AUX") else "adverbial",
+              contains_clause(c)))
+```
+
+结果 `later by one thing above all: the fear of being found out.` 被标成 **`[宾语]`**——一个介词短语挂着错误的语法标签教给学习者——而且 `expand=contains_clause(...)=False`，那个冒号补足语也一起被吞成一张 14 词的平卡。
+
+这是 LEARNINGS #30 的同一个坑第三次出现：conj 兜底「动词的非动词并列项 = 宾语」对介词短语同样不成立。判据（通用，非指纹）：conj 到动词的 `ADP`/介词性成分，其角色应当由它自己的形态决定（prep-phrase），而不是由 head 的词性决定。
+
+处理结果：在 conj 兜底之前加一条判据——`ADP` 且自己带 `pobj` 的并列项判成 `prep-phrase`，并走 `expands_as_prep_phrase()`（即 P-006 那条共享谓词）。判据是**结构性**的（#41）：管辖一个 `pobj` 才算介词短语，所以并列的小品词或副词（"gave in and up"）不会误入这条分支，不需要词表。
+
+回归判据：`golden_parse_checks.py::test_p005_coordinated_prep_on_a_verb_is_not_an_object` —— 该并列项 role 为 `prep-phrase` 而非 `object`，与第一个并列项同角色，且冒号补足语单独成子卡。撤掉修复即失败（#43）：role 退回 `object`，children 退回空列表，两条断言各自都有承重。
+
+快照影响（这是它比 P-006 宽的地方，事先说过要单独审）：constructions 与 random 各漂 **1 行**，逐行看过，两条都是改善——被翻的都是被动句的 agent（`by …`），标成「宾语」在被动句里根本不可能成立，而且两条的并列兄弟项本来就已经标着 `prep-phrase`，翻完才自洽。random 那条是维基百科的真实文本，不是我造的句子。
+
+关于影响面的一处更正：修之前的探针只扫了 `sent.root` 的直接子节点，预测 0 处翻转；实际是 2 处，因为真实的两例都藏在更深的从句 head 下面。探针的作用域比它声称的窄——这类预测要么按整棵树扫，要么就别用它当放行依据。
+
+### P-006 并列的第二个介词短语不展开，第一个展开
+
+触发句：
+
+> The decline was driven first by falling demand and then by several modifications, including deficits in staffing and morale.
+
+`chunk_roots` 里介词短语有两条入口：`prep`/`agent` 走主分支，而并列上来的第二个介词（spaCy 标 `conj`）走 promotion 分支。两处各自写了一份「要不要展开」的判据，promotion 那份**少了四条 fence 判据**，于是同一个短语在第一位是分层卡、在第二位是一行 12 词的平卡。
+
+附带发现：promotion 分支里的 `is_adverbial_complex_prep(conjunct)` 是**死调用**——该谓词第一行就是 `if prep.dep_ not in ("prep", "agent"): return False`，而 conjunct 的 dep 恒为 `conj`。
+
+处理结果：两处合并为 `expands_as_prep_phrase()`，两个调用点变成同一个表达式，不会再各自漂移。死调用保留在共享谓词里（而不是特判掉），以维持两处字面一致；让并列的 `because of` 也判成状语是另一个问题，需要它自己的句子。
+
+回归判据：`golden_parse_checks.py::test_coordinated_prep_expands_like_a_first_position_one` —— 并列项展开、逗号补足语单独成子卡、且不拍平到顶层。按内容寻址（#44），撤掉修复即失败（#43）。
+
+两个语料库（constructions 246 + random 200）**均无漂移**——这不是「验证通过」，是 LEARNINGS #47：这两个语料里一句这种构式都没有，快照对它无话可说。证据来自探针句，不是来自语料。要真正**测量**这个构式，得让 `corpus_report.py --fetch` 抓到带 fence 的并列介词短语。
+
 ## 已修复（2026-07-30）
 
 ### P-001 `as` 省略从句没有收住后续修饰语
@@ -192,7 +255,7 @@ ValueError: parser token has no source text
 ## 新增输入路径
 
 - `⌥A`：Accessibility 读取选中文字，失败后以模拟 `⌘C` 兜底。
-- `⌥S`：调用系统区域截图，以匿名管道把 PNG 直接送入内存，再由 Apple Vision 在本机 OCR；按 Esc 静默取消。
+- `⌥S`：调用系统区域截图，把 PNG 落到 0700 临时目录后读入内存并立即删除，再由 Apple Vision 在本机 OCR；按 Esc 静默取消。（`screencapture` 拒绝管道目标且失败时 exit 0 + 0 字节，见 LEARNINGS #34。）
 - 两条路径共用 `normalizedInput` 与英文抽取、长度和语言比例校验，不上传截图或识别文本。
 - OCR 图像由系统 `screencapture` 写入创建时设为权限 `0700` 的临时目录中的单次 PNG，读入内存后立即删除，不经过全局剪贴板；诊断日志位于用户 Application Support，权限为 `0600`，且不记录捕获文本。
 

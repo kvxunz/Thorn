@@ -1345,7 +1345,7 @@
   [prep-phrase] by The Globe and Mail
   [prep-phrase] as one of 2010's best books
   [conjunction] and
-  [object] by The Georgia Straight as one of the fifteen most outstanding books of the year.
+  [prep-phrase] by The Georgia Straight as one of the fifteen most outstanding books of the year.
 
 == It’s better that the shock should all come at once.
   [subject-verb] It’s

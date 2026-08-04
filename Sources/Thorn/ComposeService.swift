@@ -73,4 +73,35 @@ enum ComposeService {
         let ascii = letters.filter(\.isASCII).count
         return Double(ascii) / Double(letters.count) > 0.5
     }
+
+    /// Whether a *capture* is Chinese, and so belongs on the compose path
+    /// rather than in an error.
+    ///
+    /// Not `!looksEnglish`: that returns true for Japanese, Russian and every
+    /// other script Thorn cannot help with, and those must keep erroring.
+    /// Han characters are the only positive evidence.
+    ///
+    /// The bar is deliberately low rather than a majority. This is only ever
+    /// asked *after* the English extractor failed to find a sentence, so the
+    /// question is "is there Chinese here worth translating", not "is Chinese
+    /// the dominant script" — and a Chinese sentence quoting a long English
+    /// term is outnumbered by its own quotation on a per-letter count.
+    ///
+    /// Kana veto Japanese outright: kanji alone cannot tell the two apart,
+    /// and a Japanese sentence sent to a Chinese-to-English model is a wrong
+    /// answer dressed as a right one.
+    static func looksChinese(_ text: String) -> Bool {
+        let letters = text.unicodeScalars.filter { CharacterSet.letters.contains($0) }
+        guard !letters.isEmpty else { return false }
+        let hasKana = letters.contains { (0x3040...0x30FF).contains($0.value) }
+        guard !hasKana else { return false }
+        let han = letters.filter { scalar in
+            (0x4E00...0x9FFF).contains(scalar.value)        // CJK Unified Ideographs
+                || (0x3400...0x4DBF).contains(scalar.value) // Extension A
+                || (0xF900...0xFAFF).contains(scalar.value) // Compatibility
+        }.count
+        // Two characters is a word; one is a stray glyph in someone else's
+        // script, and hanja in Korean text must not drag it onto this path.
+        return han >= 2 && Double(han) / Double(letters.count) > 0.2
+    }
 }

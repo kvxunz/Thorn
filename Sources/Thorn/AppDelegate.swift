@@ -103,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.handleOCRHotkey()
         }
         composeController.onSubmit = { [weak self] chinese in
-            self?.panelController.show(chinese: chinese)
+            self?.panelController.show(chinese: chinese, anchor: .composeBox)
         }
         let composeRegistered = hotkey.register(
             id: 4, keyCode: UInt32(kVK_ANSI_X), modifiers: UInt32(optionKey)
@@ -207,12 +207,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sentence = ParseService.extractEnglish(ParseService.normalizedInput(trimmed))
         let letters = sentence.unicodeScalars.filter { CharacterSet.letters.contains($0) }
         guard !letters.isEmpty else {
-            panelController.showError("内容主要是中文注释，没有找到可拆解的英文句子。")
+            routeChineseOrError("内容主要是中文注释，没有找到可拆解的英文句子。", from: trimmed)
             return
         }
         let asciiRatio = Double(letters.filter(\.isASCII).count) / Double(letters.count)
         guard asciiRatio > 0.5 else {
-            panelController.showError("Thorn 只拆解英文文本，当前内容主要是非英文字符。")
+            routeChineseOrError("Thorn 只拆解英文文本，当前内容主要是非英文字符。", from: trimmed)
             return
         }
         guard sentence.count <= 1200 else {
@@ -227,6 +227,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         panelController.show(sentence: sentence)
+    }
+
+    /// A Chinese selection is not a mistake — it is exactly what ⌥X asks you
+    /// to type, only already on screen. Send it down the compose path instead
+    /// of an error the user can do nothing with. Every other non-English
+    /// script still errors: Thorn has nothing to offer them.
+    ///
+    /// The raw selection goes to the model, not the normalized text: the
+    /// normalizer rewrites CJK punctuation into ASCII for the English parser's
+    /// benefit, which is the wrong thing to hand a Chinese sentence.
+    private func routeChineseOrError(_ message: String, from raw: String) {
+        guard ComposeService.looksChinese(raw) else {
+            panelController.showError(message)
+            return
+        }
+        guard raw.count <= ComposeService.inputLimit else {
+            panelController.showError(
+                "中文内容过长（超过 \(ComposeService.inputLimit) 字）。请只选取一句。"
+            )
+            return
+        }
+        ThornLog.info("chinese capture, compose path")
+        panelController.show(chinese: raw, anchor: .mouse)
     }
 
     @objc private func openSettings() {

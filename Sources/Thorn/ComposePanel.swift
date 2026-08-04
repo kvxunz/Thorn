@@ -115,6 +115,14 @@ final class ComposePanelController: NSObject, NSWindowDelegate {
     }
 }
 
+/// Where a result panel opens. Set by whoever asked for it, because the
+/// answer is "wherever the user is already looking", and only the entry
+/// point knows where that is.
+enum PanelAnchor {
+    case mouse
+    case composeBox
+}
+
 /// Where the ⌥X box sits — and therefore where its result must appear.
 ///
 /// The reading paths open the result next to the mouse, because that is where

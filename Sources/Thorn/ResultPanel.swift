@@ -35,13 +35,21 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         presentPanel()
     }
 
+    /// ⌥X compose: Chinese in, English sentence and its tree out.
+    func show(chinese: String) {
+        hidePanel()
+        userResized = false
+        state.start(chinese: chinese)
+        presentPanel()
+    }
+
     nonisolated func windowDidEndLiveResize(_ notification: Notification) {
         Task { @MainActor in self.userResized = true }
     }
 
     /// Bring back the last result after the panel was dismissed (⌥Z).
     func recall() {
-        guard !state.sentence.isEmpty else {
+        guard state.hasSubject else {
             NSSound.beep()
             return
         }
@@ -132,7 +140,14 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.panel = panel
 
-        positionNearMouse(panel)
+        // Compose was typed at eye level, not clicked at the pointer: opening
+        // its result near the mouse throws the answer somewhere the user is
+        // not looking.
+        if state.mode == .compose {
+            positionAtComposeAnchor(panel)
+        } else {
+            positionNearMouse(panel)
+        }
         panel.orderFrontRegardless()
         ThornLog.info("panel shown, frame=\(panel.frame), visible=\(panel.isVisible)")
         installMonitors()
@@ -217,6 +232,23 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
             frame.origin.y = max(visible.minY + 8, min(frame.origin.y, visible.maxY - frame.height - 8))
         }
         panel.setFrame(frame, display: true, animate: false)
+    }
+
+    /// Hang the panel from the compose box's top edge, centred on the same
+    /// screen: `fitToContent` keeps the top edge fixed, so the tree grows
+    /// downward out of where the box was.
+    private func positionAtComposeAnchor(_ panel: NSPanel) {
+        panel.layoutIfNeeded()
+        var size = panel.contentView?.fittingSize ?? .zero
+        if size.width < 50 || size.height < 30 {
+            size = CGSize(width: 460, height: 64)
+        }
+        let anchor = ComposeAnchor.topEdge()
+        let visible = anchor.visible
+        var origin = CGPoint(x: visible.midX - size.width / 2, y: anchor.y - size.height)
+        origin.x = max(visible.minX + 8, min(origin.x, visible.maxX - size.width - 8))
+        origin.y = max(visible.minY + 8, min(origin.y, visible.maxY - size.height - 8))
+        panel.setFrame(CGRect(origin: origin, size: size), display: true)
     }
 
     private func positionNearMouse(_ panel: NSPanel) {

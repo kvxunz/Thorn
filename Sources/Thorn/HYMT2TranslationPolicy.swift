@@ -12,6 +12,16 @@ enum HYMT2TranslationPolicy {
         """
     }
 
+    /// The ⌥X compose path, running the same model backwards. Phrased to
+    /// mirror `sentencePrompt` rather than to be clever: the two directions
+    /// wording the same constraint two different ways is how they drift.
+    static func englishPrompt(source: String) -> String {
+        """
+        Translate the following Simplified Chinese sentence faithfully into English. Preserve every clause and produce one natural, grammatical English sentence. Do not omit or paraphrase away information, and do not add commentary. Output only the translation:
+        \(source)
+        """
+    }
+
     /// Single-word capture: a compact dictionary-style gloss, not a sentence
     /// translation. Kept to plain translation phrasing because HY-MT2 is a
     /// pure MT model.

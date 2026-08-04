@@ -59,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var hotkey: HotkeyManager!
     private let panelController = ResultPanelController()
+    private let composeController = ComposePanelController()
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -76,7 +77,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // were sentences ("选中英文后按 ⌥A 拆句（单词则拆拼读）") and NSMenu
         // sizes itself to its widest item, so one of them set the width of
         // the whole menu.
-        for (title, key) in [("拆解选中英文", "a"), ("截图取词拆解", "s"), ("重现上次结果", "z")] {
+        for (title, key) in [("拆解选中英文", "a"), ("截图取词拆解", "s"),
+                             ("写中文换英文", "x"), ("重现上次结果", "z")] {
             let item = NSMenuItem(title: title, action: nil, keyEquivalent: key)
             item.keyEquivalentModifierMask = .option
             menu.addItem(item) // nil action -> auto-disabled, i.e. a hint
@@ -100,6 +102,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey.register(id: 3, keyCode: UInt32(kVK_ANSI_S), modifiers: UInt32(optionKey)) { [weak self] in
             self?.handleOCRHotkey()
         }
+        composeController.onSubmit = { [weak self] chinese in
+            self?.panelController.show(chinese: chinese)
+        }
+        let composeRegistered = hotkey.register(
+            id: 4, keyCode: UInt32(kVK_ANSI_X), modifiers: UInt32(optionKey)
+        ) { [weak self] in
+            // Toggle, not show: ⌥X is also how you dismiss a box you opened by
+            // accident, without reaching for Esc.
+            ThornLog.info("compose hotkey fired")
+            self?.composeController.toggle()
+        }
+        ThornLog.info("compose hotkey registered=\(composeRegistered)")
         let hotkeyFailures = hotkey.failures
         if !hotkeyFailures.isEmpty {
             panelController.showError(

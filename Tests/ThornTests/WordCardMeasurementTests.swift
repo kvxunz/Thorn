@@ -38,7 +38,7 @@ final class WordCardMeasurementTests: XCTestCase {
     /// the whole loading -> partial -> final flow.
     func testInstalledPanelHugsContent() {
         let state = PanelState()
-        state.wordMode = true
+        state.mode = .word
         state.status = .loading
 
         let hosting = NSHostingController(rootView: ResultView(state: state))

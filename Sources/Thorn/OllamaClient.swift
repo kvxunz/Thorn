@@ -43,11 +43,16 @@ enum OllamaRequestFactory {
             "model": model,
             "messages": messages.map { ["role": $0.role, "content": $0.content] },
             "stream": false,
-            // A resident HY-MT2 weighs ~6.5 GB, and translation here is
-            // one-shot: no history, no shared prefix, so a warm model buys
-            // nothing after the panel closes. Note this per-request value
-            // overrides OLLAMA_KEEP_ALIVE — setting the env var has no effect.
-            "keep_alive": "60s",
+            // A resident HY-MT2 weighs ~6.5 GB. Translation is one-shot -- no
+            // history, no shared prefix -- so residency buys no prompt-cache
+            // reuse; what it buys is not re-reading the weights from disk.
+            // Close reading is "read a passage, think, look up the next
+            // sentence", and at 60s that pause outlasted the model: nearly
+            // every sentence paid a full 6.2 GB reload. 30m covers a reading
+            // session and still releases the memory when the session ends.
+            // Note this per-request value overrides OLLAMA_KEEP_ALIVE --
+            // setting the env var has no effect.
+            "keep_alive": "30m",
             "options": [
                 "temperature": temperature,
                 "num_ctx": contextWindow,

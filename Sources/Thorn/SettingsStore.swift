@@ -27,23 +27,12 @@ final class SettingsStore: ObservableObject {
     ]
 
     private init() {
-        // Prefer the dedicated translation key; fall back to the older single
-        // ollamaModel knob from the pre-fusion settings layout.
-        let legacyModel = defaults.string(forKey: "ollamaModel")
-        let saved = defaults.string(forKey: "translationModel") ?? legacyModel
+        let saved = defaults.string(forKey: "translationModel")
         if let saved, !Self.retiredOllamaModels.contains(saved) {
             translationModel = saved
         } else {
             translationModel = Self.defaultTranslationModel
         }
         defaults.set(translationModel, forKey: "translationModel")
-        defaults.removeObject(forKey: "ollamaModel")
-        defaults.removeObject(forKey: "fusionModel")
-
-        // Cloud parsing and teaching-fusion knobs were removed.
-        for staleKey in ["provider", "customBaseURL",
-                         "customModel", "customWireAPI"] {
-            defaults.removeObject(forKey: staleKey)
-        }
     }
 }

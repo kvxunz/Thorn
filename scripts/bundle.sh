@@ -32,9 +32,40 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/phonics-en.tsv "$APP/Contents/Resources/phonics-en.tsv"
 # Runtime-only Python sidecar. Keeping these modules inside the signed app
 # removes the installed binary's dependency on the source checkout path.
-for file in server.py alignment.py chunk_rules.py constituency.py grammar_notes.py teaching_tree.py; do
-  cp "sidecar/$file" "$APP/Contents/Resources/sidecar/$file"
+#
+# The list is derived from server.py's own imports rather than maintained by
+# hand: a new parser module forgotten here ships an app that dies with an
+# ImportError on first parse, and no suite would catch it — every test imports
+# from the checkout, where the file is always present.
+SIDECAR_MODULES=$(/usr/bin/python3 - <<'PY'
+import ast
+import pathlib
+
+root = pathlib.Path("sidecar")
+local = {path.stem for path in root.glob("*.py")}
+seen: set[str] = set()
+stack = ["server"]
+while stack:
+    name = stack.pop()
+    if name in seen:
+        continue
+    seen.add(name)
+    tree = ast.parse((root / f"{name}.py").read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found = [alias.name.split(".")[0] for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            found = [node.module.split(".")[0]]
+        else:
+            continue
+        stack += [module for module in found if module in local]
+print("\n".join(sorted(seen)))
+PY
+)
+for module in $SIDECAR_MODULES; do
+  cp "sidecar/$module.py" "$APP/Contents/Resources/sidecar/$module.py"
 done
+echo "Sidecar modules: $(echo "$SIDECAR_MODULES" | tr '\n' ' ')"
 
 # Stable identity so the TCC accessibility grant survives rebuilds.
 # Hash, not name: two same-named "DocR Dev" certs in keychain make the name ambiguous.

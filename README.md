@@ -115,6 +115,29 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 > defaults write com.xvz.thorn sidecarScript /你的路径/sidecar/server.py
 > ```
 
+## 打包给别人
+
+```bash
+./scripts/dmg.sh   # -> build/Thorn-<版本>.dmg
+```
+
+DMG 里是 Thorn.app、一个指向 `/Applications` 的软链、`先读我.txt` 和 `安装助手.command`。
+
+镜像本身不到 3 MB，但 App 真正跑起来还需要约 7.7 GB：Python 环境和英文句法权重
+（约 1.5 GB）、Benepar/NLTK 数据（323 MB）、Ollama 翻译模型（6.2 GB）。这些既装不进
+bundle 也不该装进去，所以由 `安装助手.command` 在对方机器上补齐——它检查机型和系统、
+按需装 uv 与 Ollama、跑 `--install-models`、拉翻译模型，每一步都可以中断后重跑。
+
+对方会遇到两处需要自己点的地方，脚本里都写清楚了：
+
+- **Gatekeeper。** 签名用的是自签证书，没有 Developer ID、没有走 Apple 公证，
+  所以首次打开会显示「无法验证开发者」。安装助手会询问是否移除隔离标记；
+  拒绝也能装，只是要手动去 系统设置 → 隐私与安全性 → 仍要打开。
+  想要双击即开，只有 $99/年 的 Developer ID + 公证一条路。
+- **辅助功能授权。** 不给权限 `⌥A` 取不到选区，这一步无法脚本化。
+
+限制：二进制是纯 arm64，Intel Mac 跑不了；最低 macOS 14。
+
 ## 隐私
 
 - 解析和翻译请求只访问本机 `127.0.0.1` 的 sidecar 和 Ollama；首次运行 `uv run --script` 可能联网安装脚本声明的 Python 依赖，`--install-models` 也会联网下载句法权重。

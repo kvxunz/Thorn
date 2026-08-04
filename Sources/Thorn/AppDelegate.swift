@@ -205,13 +205,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Bilingual study material and OCR both pass through the same single
         // cleanup boundary before the sidecar sees the sentence.
         let sentence = ParseService.extractEnglish(ParseService.normalizedInput(trimmed))
-        let letters = sentence.unicodeScalars.filter { CharacterSet.letters.contains($0) }
-        guard !letters.isEmpty else {
+        guard sentence.unicodeScalars.contains(where: { CharacterSet.letters.contains($0) }) else {
             routeChineseOrError("内容主要是中文注释，没有找到可拆解的英文句子。", from: trimmed)
             return
         }
-        let asciiRatio = Double(letters.filter(\.isASCII).count) / Double(letters.count)
-        guard asciiRatio > 0.5 else {
+        // Same measure the compose path applies to a model reply: whether an
+        // English parser is about to be handed English.
+        guard ComposeService.looksEnglish(sentence) else {
             routeChineseOrError("Thorn 只拆解英文文本，当前内容主要是非英文字符。", from: trimmed)
             return
         }

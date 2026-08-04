@@ -197,6 +197,8 @@ actor Sidecar {
 
     private static let processRegistry = SidecarProcessRegistry()
     private static let maxStartupDiagnosticBytes = 16 * 1024
+    /// Must match `PARSE_PROTOCOL_VERSION` in sidecar/server.py.
+    private static let parseProtocolVersion = 4
 
     private var baseURL: String { "http://127.0.0.1:\(port)" }
 
@@ -300,6 +302,9 @@ actor Sidecar {
 
     private struct HealthResponse: Decodable {
         let ok: Bool
+        /// Sidecars older than the key rename only advertised this one. The
+        /// bundled sidecar is always this commit's, but `sidecarScript` can
+        /// point the app at another checkout.
         let protocolVersion: Int?
         let parseProtocolVersion: Int?
     }
@@ -319,11 +324,12 @@ actor Sidecar {
               let health = try? JSONDecoder().decode(HealthResponse.self, from: data) else {
             return false
         }
-        // Prefer the endpoint-specific key; historical v3/v4 sidecars only
-        // advertised the legacy protocolVersion key.
+        // Only the current tree protocol. Accepting v3 as well let an old
+        // checkout answer through `sidecarScript` and hand this build a shape
+        // it decodes wrong — a stricter probe fails loudly instead.
         guard health.ok,
               let version = health.parseProtocolVersion ?? health.protocolVersion,
-              version == 3 || version == 4 else { return false }
+              version == Self.parseProtocolVersion else { return false }
         if let expectedGeneration,
            !lifecycle.acceptsHealthResponse(
                generation: expectedGeneration,

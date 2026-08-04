@@ -45,7 +45,7 @@ enum ChunkRole: String, Decodable, CaseIterable, Sendable {
     }
 }
 
-enum ChunkFunction: String, Decodable, Sendable {
+enum ChunkFunction: String, Decodable, CaseIterable, Sendable {
     case subject
     case predicate
     case object
@@ -84,7 +84,7 @@ enum ChunkFunction: String, Decodable, Sendable {
     }
 }
 
-enum ChunkForm: String, Decodable, Sendable {
+enum ChunkForm: String, Decodable, CaseIterable, Sendable {
     case prepositionalPhrase = "prepositional-phrase"
     case relativeClause = "relative-clause"
     case appositiveClause = "appositive-clause"

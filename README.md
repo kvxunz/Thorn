@@ -56,7 +56,7 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 ```
 
 - 解析与翻译**并发**跑，结构树先渲染，翻译落地后再填，谁也不等谁。
-- sidecar 每次启动用**随机端口 + 一次性 token** 鉴权，空闲 2 分钟自动退出，下次请求再拉起。
+- sidecar 每次启动用**随机端口 + 一次性 token** 鉴权，空闲 10 分钟自动退出，下次请求再拉起。
 - 返回的树要过一道**完整性校验**（span 严格递增不重叠、节点文本必须逐字等于对应 source token 拼接），过不了的树宁可报错也不显示。
 
 ## 环境要求
@@ -111,6 +111,7 @@ sidecar/                Python 句法引擎（spaCy + Benepar），FastAPI 服�
 Resources/phonics-en.tsv 单词拼读对齐词典（离线生成，随 App 打包）
 Tests/ThornTests/       Swift 单测
 scripts/bundle.sh       构建 + 签名 + 组装 .app
+scripts/githooks/       提交前的快照闸（git config core.hooksPath scripts/githooks）
 scripts/build_phonics_dict.py 拼读词典离线生成器（CMUdict + EM 对齐）
 docs/parsing-issues.md  句法拆解的已知问题与回归样本
 docs/phonics-dict.md    拼读词典的数据格式与生成说明

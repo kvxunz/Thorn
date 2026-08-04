@@ -154,29 +154,15 @@ def chunk_roots(head):
             # True clausal dependents expand; dash appositives are promoted as
             # insertion siblings so the head noun keeps role=subject. A
             # multi-item appositive list also expands into a revealable block.
-            roots.append((c, "subject",
-                          contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)
-                          or has_comma_supplement(c)))
+            roots.append((c, "subject", expands_as_nominal(c)))
         elif d in ("dobj", "obj", "iobj", "dative", "oprd"):
             # linking verbs never take an object: theirs is a predicative
             linking = head.lemma_ in ("be", "seem", "become", "remain", "appear",
                                       "look", "feel", "sound", "stay", "grow")
             roots.append((c, "complement" if linking else "object",
-                          contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)
-                          or has_comma_supplement(c)))
+                          expands_as_nominal(c)))
         elif d in ("attr", "acomp"):
-            roots.append((c, "complement",
-                          contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)
-                          or has_comma_supplement(c)))
+            roots.append((c, "complement", expands_as_nominal(c)))
         elif d == "xcomp":
             roots.append((c, "complement", True))
         elif d == "pcomp" and is_clausal_pcomp(c):
@@ -271,28 +257,13 @@ def chunk_roots(head):
                 # A parenthesis is the same thing: "by Swedish singer Sven-Olof
                 # Sandberg (1905–1974) and Norwegian soloist Olav Werner
                 # (1913–1992)" is four slots the flat card showed as one.
-                roots.append((
-                    c,
-                    "prep-phrase",
-                    prep_object_enumeration(c)
-                    or contains_clause(c)
-                    or is_adverbial_complex_prep(c)
-                    or has_bracketed_aside(c)
-                    or has_comma_fenced_appositive(c)
-                    or has_supplement_punctuation(c)
-                    or has_comma_supplement(c),
-                ))
+                roots.append((c, "prep-phrase", expands_as_prep_phrase(c)))
         elif d == "pobj":
             # Only reachable when the governing preposition was absorbed into a
             # phrasal-prepositional verb: an ordinary pobj sits under a prep
             # card and never surfaces as a candidate here. "put up with his
             # rudeness" — 宾语, not 介词短语.
-            roots.append((c, "object",
-                          contains_clause(c) or has_appositive_enumeration(c)
-                          or has_bracketed_aside(c)
-                          or has_comma_fenced_appositive(c)
-                          or has_supplement_punctuation(c)
-                          or has_comma_supplement(c)))
+            roots.append((c, "object", expands_as_nominal(c)))
         elif d in ("advmod", "npadvmod"):
             # Mid-complex adverbs already in the verbal complex stay off this list
             # so they cannot steal nested degree modifiers (almost under certainly).
@@ -318,6 +289,23 @@ def chunk_roots(head):
                 # coordinated clause ("…, my sister, Margaret, dead and gone"):
                 # an absolute construction, never the verb's object.
                 roots.append((c, "absolute", True))
+            elif c.pos_ == "ADP" and any(k.dep_ == "pobj" for k in c.children):
+                # A preposition that governs an object is a prepositional
+                # phrase, whatever it happens to be coordinated onto. spaCy
+                # attaches the second prep of "first by the noise and later by
+                # one thing above all: …" to the *verb*, not to the first
+                # preposition, so `coordinated_prep_conjuncts` never sees it and
+                # it fell to the rule below -- which reads the role off the
+                # head's POS and labelled a prep phrase 宾语, then swallowed the
+                # colon supplement in the same flat card.
+                #
+                # The role belongs to the conjunct's own shape, not to what it
+                # hangs on: the identical phrase reaches the learner as a
+                # prep-phrase when spaCy happens to attach it to the first
+                # preposition instead. Governing a pobj is the structural test
+                # for that, which keeps a stray coordinated particle or adverb
+                # ("gave in and up") out of this branch without a word list.
+                roots.append((c, "prep-phrase", expands_as_prep_phrase(c)))
             else:
                 roots.append((c, "object" if head.pos_ in ("VERB", "AUX") else "adverbial",
                               contains_clause(c)))
@@ -385,13 +373,9 @@ def chunk_roots(head):
                 if conjunct.i in seen or not parent_contains_if_any(head, conjunct):
                     continue
                 seen.add(conjunct.i)
-                promoted.append((
-                    conjunct,
-                    "prep-phrase",
-                    prep_object_enumeration(conjunct)
-                    or contains_clause(conjunct)
-                    or is_adverbial_complex_prep(conjunct),
-                ))
+                promoted.append(
+                    (conjunct, "prep-phrase", expands_as_prep_phrase(conjunct))
+                )
                 for cc in coordinating_ccs_before(token, conjunct):
                     if cc.i in seen:
                         continue
@@ -595,6 +579,57 @@ def has_comma_supplement(token):
         token.i < t.i < max(indices) and t.text in {",", *DASH_TOKENS}
         for t in token.subtree
     )
+
+
+def has_fenced_supplement(token):
+    """Whether a phrase fences off supplementary material inside itself.
+
+    The four fences a slot can raise around a supplement -- bracket, comma
+    before an appositive, colon/semicolon, comma with the phrase already
+    complete. They are asked together everywhere, so they are named together
+    here: a fifth kind of fence is one clause in one place, not an edit to
+    every slot that can hold one.
+    """
+    return (has_bracketed_aside(token)
+            or has_comma_fenced_appositive(token)
+            or has_supplement_punctuation(token)
+            or has_comma_supplement(token))
+
+
+def expands_as_nominal(token):
+    """Whether a nominal slot has a layer inside it worth opening.
+
+    Subject, object, predicative and the object of a swallowed phrasal-verb
+    preposition are the same question: is this one slot, or a slot with
+    structure folded into it? Keep them answering it in one place -- the
+    versions that drifted apart were the shape LEARNINGS #40 describes, where
+    a missed site does not fail, it just quietly stops expanding.
+    """
+    return (contains_clause(token)
+            or has_appositive_enumeration(token)
+            or has_fenced_supplement(token))
+
+
+def expands_as_prep_phrase(prep):
+    """Whether a prepositional card has a layer inside it worth opening.
+
+    Asked of a prep/agent and of a second preposition coordinated onto it
+    ("driven first by falling demand and then by several modifications,
+    including …"). Both are the same card to a reader, so both ask the same
+    question here -- the versions that drifted apart left the promoted conjunct
+    without any of the fence checks, and it reached the learner as one flat
+    twelve-token line while its sibling in first position expanded.
+
+    ``is_adverbial_complex_prep`` is dead weight for a conjunct: it gates on
+    ``dep_ in (prep, agent)`` and a conjunct is ``conj``. It stays in the shared
+    predicate rather than being special-cased out, so the two call sites remain
+    literally the same expression. Teaching a coordinated "because of" as an
+    adverbial is a separate question, and it needs its own sentences.
+    """
+    return (prep_object_enumeration(prep)
+            or contains_clause(prep)
+            or is_adverbial_complex_prep(prep)
+            or has_fenced_supplement(prep))
 
 
 def prep_object_enumeration(prep):

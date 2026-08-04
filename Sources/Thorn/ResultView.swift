@@ -47,10 +47,11 @@ struct ResultView: View {
         .overlay(alignment: .topTrailing) {
             if hasContent {
                 HStack(spacing: ThornSpace.sm) {
-                    // Compose exists to produce a sentence you are going to use
-                    // somewhere else; a result you cannot get out of the panel
-                    // is half a feature.
-                    if state.mode == .compose { copyButton }
+                    // Every result is something you might want elsewhere — a
+                    // word to look up again, a sentence to keep, the English
+                    // compose just produced. The panel closes on the next
+                    // click, so the way out has to be in the panel.
+                    copyButton
                     pinButton
                 }
                 .padding(ThornSpace.sm + ThornSpace.hair)
@@ -136,7 +137,7 @@ struct ResultView: View {
         }
         .buttonStyle(.plain)
         .disabled(state.sentence.isEmpty)
-        .help("复制英文")
+        .help(state.wordMode ? "复制单词" : "复制英文")
     }
 
     private var loadingView: some View {
@@ -188,11 +189,9 @@ struct ResultView: View {
                 .textSelection(.enabled)
                 .animation(ThornMotion.hover, value: state.hoveredHighlight?.range)
                 .padding(.leading, ThornSpace.lg)
-                // Compose puts a copy button beside the pin, so the header has
-                // one more corner control to stay clear of.
-                .padding(.trailing, state.mode == .compose
-                         ? ThornSpace.pinInset + ThornSpace.lg + ThornSpace.xs
-                         : ThornSpace.pinInset + ThornSpace.xs)
+                // Copy sits beside the pin in every mode, so the header always
+                // keeps clear of two corner controls.
+                .padding(.trailing, ThornSpace.pinInset + ThornSpace.lg + ThornSpace.xs)
                 .padding(.top, ThornSpace.lg)
                 .padding(.bottom, ThornSpace.md)
 
@@ -536,7 +535,8 @@ struct ResultView: View {
                 }
             }
             .padding(.leading, ThornSpace.lg)
-            .padding(.trailing, ThornSpace.pinInset) // room for the pin in the corner
+            // Room for both corner controls: copy sits beside the pin here too.
+            .padding(.trailing, ThornSpace.pinInset + ThornSpace.lg)
             .padding(.top, ThornSpace.md)
             .padding(.bottom, ThornSpace.sm)
 

@@ -52,6 +52,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 import server
+from corpus import load_constructions
 from teaching_tree import TeachingEvidence
 from undersplit import find_undersplit
 
@@ -225,32 +226,6 @@ def contract_violation(chunks, source_tokens):
 
 
 CORPUS_PATH = "/tmp/thorn_corpus.json"
-CONSTRUCTIONS_PATH = "../english_sentence_training.md"
-
-_NUMBERED = re.compile(r"^\d+\.\s+(.*\S)\s*$")
-
-
-def load_constructions(path):
-    """Sentences grouped by the `###` heading naming their construction.
-
-    Random sampling measures the *average* sentence, so a construction the
-    language uses rarely contributes nothing however many sentences you draw:
-    200 sampled ones held no VP ellipsis at all. This file is stratified by
-    hand — ellipsis, inversion, comparatives, parentheticals — so each stratum
-    gets a rate of its own, and a construction the rules never learned shows up
-    as its own bad column instead of vanishing into the average.
-    """
-    stratum = "unlabelled"
-    items = []
-    with open(path) as fh:
-        for line in fh:
-            if line.startswith("### "):
-                stratum = line[4:].strip()
-                continue
-            found = _NUMBERED.match(line)
-            if found:
-                items.append({"register": stratum, "text": found.group(1)})
-    return items
 
 
 if "--fetch" in sys.argv:
@@ -258,7 +233,7 @@ if "--fetch" in sys.argv:
     raise SystemExit(0)
 
 if "--constructions" in sys.argv:
-    corpus = load_constructions(CONSTRUCTIONS_PATH)
+    corpus = load_constructions()
     stratum_label = "构式"
 else:
     with open(CORPUS_PATH) as fh:

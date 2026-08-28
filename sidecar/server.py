@@ -2313,9 +2313,6 @@ class ParseRequest(BaseModel):
 def health():
     return {
         "ok": nlp is not None,
-        # Keep the legacy key for older app builds while advertising the parse
-        # endpoint version explicitly.
-        "protocolVersion": PARSE_PROTOCOL_VERSION,
         "parseProtocolVersion": PARSE_PROTOCOL_VERSION,
     }
 

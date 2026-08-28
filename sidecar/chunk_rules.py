@@ -572,11 +572,6 @@ def prepare_parse_text(text: str) -> PreparedParseText:
     )
 
 
-def normalize_parse_text(text: str) -> str:
-    """Compatibility wrapper for callers that only need the parser view."""
-    return prepare_parse_text(text).parser
-
-
 # A single one of these between two alphanumerics joins one written word.
 _WORD_JOINERS = ("-", "’", "'", ".")
 

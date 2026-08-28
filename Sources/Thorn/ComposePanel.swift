@@ -54,15 +54,7 @@ final class ComposePanelController: NSObject, NSWindowDelegate {
         )
         panel.delegate = self
         panel.contentViewController = hosting
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.isMovableByWindowBackground = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.applyThornPanelChrome()
         self.panel = panel
 
         // A hosting controller installed as `contentViewController` re-sizes
@@ -154,6 +146,26 @@ enum ComposeAnchor {
         if let lastBox { return (lastBox.frame.maxY, lastBox.visible) }
         let visible = visibleFrame()
         return (origin(for: designedSize, in: visible).y + designedSize.height, visible)
+    }
+}
+
+extension NSPanel {
+    /// The chrome every Thorn panel wears: a shadowed, transparent window that
+    /// floats over whatever the user is reading, on every Space, and survives
+    /// the app losing focus — because losing focus is the normal case here.
+    ///
+    /// What each panel decides for itself stays at the call site: how content
+    /// is installed, whether the window takes the keyboard, and where it opens.
+    func applyThornPanelChrome() {
+        isFloatingPanel = true
+        level = .floating
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = true
+        hidesOnDeactivate = false
+        isReleasedWhenClosed = false
+        isMovableByWindowBackground = true
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     }
 }
 

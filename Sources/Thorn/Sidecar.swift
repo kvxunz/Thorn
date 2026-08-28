@@ -302,10 +302,6 @@ actor Sidecar {
 
     private struct HealthResponse: Decodable {
         let ok: Bool
-        /// Sidecars older than the key rename only advertised this one. The
-        /// bundled sidecar is always this commit's, but `sidecarScript` can
-        /// point the app at another checkout.
-        let protocolVersion: Int?
         let parseProtocolVersion: Int?
     }
 
@@ -328,8 +324,7 @@ actor Sidecar {
         // checkout answer through `sidecarScript` and hand this build a shape
         // it decodes wrong — a stricter probe fails loudly instead.
         guard health.ok,
-              let version = health.parseProtocolVersion ?? health.protocolVersion,
-              version == Self.parseProtocolVersion else { return false }
+              health.parseProtocolVersion == Self.parseProtocolVersion else { return false }
         if let expectedGeneration,
            !lifecycle.acceptsHealthResponse(
                generation: expectedGeneration,

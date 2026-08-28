@@ -32,7 +32,7 @@ worker **每个 job 都把 sidecar 目录下的模块从 `sys.modules` 里清掉
 
 `undersplit.py` 只报**粗卡**——切得不够。没有任何指标报切得太碎，而拆分规则的改动是在这两种失败之间做交易：列表被打散成一串「插入语」、卡片停在孤立介词上、日期在逗号处被切开——这六个缺陷当初**全部**是以「粗卡率下降」的形式出现的。指标说赢了，树其实坏了。
 
-`tree_snapshot.py` 把两个语料库每一句的整棵树冻在 `sidecar/snapshots/` 下：
+`tree_snapshot.py` 把 `constructions` 语料库每一句的整棵树冻在 `sidecar/snapshots/` 下：
 
 ```bash
 cd sidecar
@@ -42,7 +42,9 @@ python3 devrunner.py tree_snapshot.py --write   # 逐行看过之后再接受
 
 它**不断言树该长什么样**，只断言树没有在没人过目的情况下变过。这里出现 diff 不是失败，是一次待审。改 `chunk_roots` 或 `np_expand` 拆分链之后，先跑它，把每一行读一遍——确认每处改动都是改进，再 `--write` 接受，并把快照和代码放进同一个 commit。
 
-两个语料库地位不同。`constructions` 随代码一起进仓库，所以快照缺失或过期一律算失败（`STALE`，退出 1）；`random` 是 `corpus_report.py --fetch` 从 Wikipedia/arXiv 现抓的，本机没有就跳过。快照头部记了语料的 `corpus-digest`：重抓后语料本身变了，比对会拒绝执行而不是把「语料变了」误报成「引擎变了」。
+语料随代码一起进仓库，所以快照缺失或过期一律算失败（`STALE`，退出 1）。快照头部记了语料的 `corpus-digest`：往 `english_sentence_training.md` 里加句子之后语料本身变了，比对会拒绝执行而不是把「语料变了」误报成「引擎变了」。
+
+曾经还冻过一份 `random` 快照，2026-08-27 删掉了：它的语料只存在于 `/tmp/thorn_corpus.json`，而 `corpus_report.py --fetch` 每次都从 Wikipedia 的 `generator=random` 现抓一批新句子，digest 必然对不上，比对**永远**走「跳过」。它只能被写，不能被读。随机语料的覆盖率测量仍然有效，但那是 `corpus_report.py` 当场抓、当场测的事，不需要冻在仓库里。
 
 模型太重，CI 里没有这一步——和 `golden_parse_checks.py` 一样，是提交前的本机纪律。
 

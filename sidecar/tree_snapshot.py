@@ -34,18 +34,15 @@ Both must run from `sidecar/`, and both need the models, so they go through
 """
 import difflib
 import hashlib
-import json
 import os
 import re
 import sys
 
 import server
+from corpus import load_sentences
 
 SNAPSHOT_DIR = "snapshots"
-CONSTRUCTIONS_PATH = "../english_sentence_training.md"
-RANDOM_PATH = "/tmp/thorn_corpus.json"
-
-_NUMBERED = re.compile(r"^\d+\.\s+(.*\S)\s*$")
+CORPUS_NAME = "constructions"
 
 HEADER = """\
 # Thorn teaching-tree snapshot -- {corpus}, {count} sentences.
@@ -59,41 +56,13 @@ HEADER = """\
 """
 
 
-def load_constructions():
-    """The hand-stratified corpus, which lives in the repo."""
-    out = []
-    with open(CONSTRUCTIONS_PATH) as fh:
-        for line in fh:
-            found = _NUMBERED.match(line)
-            if found:
-                out.append(found.group(1))
-    return out
-
-
-def load_random():
-    """The sampled corpus, which does not — see `corpus_report.py --fetch`."""
-    if not os.path.exists(RANDOM_PATH):
-        return None
-    with open(RANDOM_PATH) as fh:
-        return [item["text"] for item in json.load(fh)]
-
-
-# `in_repo` says whether a missing or stale snapshot is a failure. The
-# stratified corpus ships with the code, so its snapshot must always be
-# current; the sampled one is refetched live and simply may not be here.
-CORPORA = {
-    "constructions": (load_constructions, True),
-    "random": (load_random, False),
-}
-
-
 def digest(sentences):
     """Identifies the corpus a snapshot was taken of.
 
-    The sampled corpus is refetched from live Wikipedia and arXiv, so it is a
-    different 200 sentences every time. Comparing today's trees against a
-    snapshot of yesterday's sentences would report drift that is only the
-    corpus moving, so the comparison refuses to run instead.
+    Sentences get added to the corpus, and trees taken of today's sentences
+    would then differ from a snapshot of yesterday's for a reason that is not
+    a splitter change at all. The comparison refuses to run in that case
+    rather than report drift it cannot attribute.
     """
     joined = "\n".join(sentences).encode()
     return "sha256:" + hashlib.sha256(joined).hexdigest()[:32]
@@ -132,67 +101,54 @@ def main():
     os.makedirs(SNAPSHOT_DIR, exist_ok=True)
     server.load()
 
-    drifted, stale, skipped = [], [], []
-    for name, (loader, in_repo) in CORPORA.items():
-        sentences = loader()
-        if sentences is None:
-            skipped.append(f"{name}: no corpus on disk, nothing to compare")
-            continue
-        path = path_for(name)
-        current = snapshot(sentences, name)
-        if writing:
-            with open(path, "w") as fh:
-                fh.write(current)
-            print(f"wrote {path} ({len(sentences)} sentences)")
-            continue
-        # A snapshot that cannot be compared must not read as a pass. For a
-        # corpus that ships with the code there is no innocent reason for one
-        # to be missing or stale, and letting it through quietly would leave
-        # the whole check green for as long as nobody looked.
-        note = None
-        if not os.path.exists(path):
-            note = f"{name}: no snapshot yet, take one with --write"
-        else:
-            with open(path) as fh:
-                stored = fh.read()
-            want = digest(sentences)
-            found = re.search(r"^# corpus-digest: (\S+)$", stored, re.MULTILINE)
-            if found and found.group(1) != want:
-                note = (
-                    f"{name}: the corpus itself changed "
-                    f"({found.group(1)} -> {want}), so drift here would be "
-                    "meaningless. Re-take with --write and review the "
-                    "sentences that moved."
-                )
-        if note is not None:
-            (stale if in_repo else skipped).append(note)
-            continue
-        if stored == current:
-            print(f"{name}: unchanged ({len(sentences)} sentences)")
-            continue
-        drifted.append(name)
-        print(f"\n{'=' * 72}\n{name}: the trees changed\n{'=' * 72}")
-        # `print`, not `sys.stdout.writelines`: under `devrunner.py` stdout is
-        # a socket shim that only implements `write`.
-        print("".join(difflib.unified_diff(
-            stored.splitlines(keepends=True),
-            current.splitlines(keepends=True),
-            fromfile=f"{path} (committed)",
-            tofile=f"{name} (now)",
-            n=2,
-        )), end="")
+    sentences = load_sentences()
+    path = path_for(CORPUS_NAME)
+    current = snapshot(sentences, CORPUS_NAME)
+    if writing:
+        with open(path, "w") as fh:
+            fh.write(current)
+        print(f"wrote {path} ({len(sentences)} sentences)")
+        return 0
 
-    for note in skipped:
-        print(f"skipped {note}")
-    for note in stale:
-        print(f"STALE {note}")
-    if drifted:
+    # A snapshot that cannot be compared must not read as a pass. The corpus
+    # ships with the code, so there is no innocent reason for one to be
+    # missing or stale, and letting it through quietly would leave the whole
+    # check green for as long as nobody looked.
+    if not os.path.exists(path):
+        print(f"STALE {CORPUS_NAME}: no snapshot yet, take one with --write")
+        return 1
+    with open(path) as fh:
+        stored = fh.read()
+    want = digest(sentences)
+    found = re.search(r"^# corpus-digest: (\S+)$", stored, re.MULTILINE)
+    if found and found.group(1) != want:
         print(
-            f"\n{len(drifted)} corpus/corpora drifted. Every line above is a "
-            "card a learner will see differently. Once each one is an "
-            "improvement, accept them with --write."
+            f"STALE {CORPUS_NAME}: the corpus itself changed "
+            f"({found.group(1)} -> {want}), so drift here would be "
+            "meaningless. Re-take with --write and review the sentences "
+            "that moved."
         )
-    return 1 if drifted or stale else 0
+        return 1
+
+    if stored == current:
+        print(f"{CORPUS_NAME}: unchanged ({len(sentences)} sentences)")
+        return 0
+
+    print(f"\n{'=' * 72}\n{CORPUS_NAME}: the trees changed\n{'=' * 72}")
+    # `print`, not `sys.stdout.writelines`: under `devrunner.py` stdout is
+    # a socket shim that only implements `write`.
+    print("".join(difflib.unified_diff(
+        stored.splitlines(keepends=True),
+        current.splitlines(keepends=True),
+        fromfile=f"{path} (committed)",
+        tofile=f"{CORPUS_NAME} (now)",
+        n=2,
+    )), end="")
+    print(
+        "\nEvery line above is a card a learner will see differently. Once "
+        "each one is an improvement, accept them with --write."
+    )
+    return 1
 
 
 if __name__ == "__main__":

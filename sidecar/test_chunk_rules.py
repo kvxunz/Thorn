@@ -20,7 +20,6 @@ from chunk_rules import (
     merge_or_so,
     merge_split_words,
     merge_tiny,
-    normalize_parse_text,
     phrasal_prep_verb_preposition,
     prep_object_start,
     prepare_parse_text,
@@ -444,7 +443,7 @@ class DashParentheticalRepairTests(unittest.TestCase):
     def test_normalize_spaces_double_dashes_and_strips_pdf_brackets(self):
         raw = "workplace--all that[tObj] reengineering--are only"
         self.assertEqual(
-            normalize_parse_text(raw),
+            prepare_parse_text(raw).parser,
             "workplace -- all that reengineering -- are only",
         )
 

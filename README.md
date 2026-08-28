@@ -180,6 +180,7 @@ scripts/dmg.sh                  打包成可分发的 DMG
 scripts/setup.command           收件人那侧的一键环境安装
 scripts/githooks/               提交前的快照闸（git config core.hooksPath scripts/githooks）
 scripts/build_phonics_dict.py   拼读词典离线生成器（CMUdict + EM 对齐）
+scripts/makeicon.swift          Resources/AppIcon.icns 的唯一生成源（见文件首行的两条命令）
 docs/parsing-issues.md          句法拆解的已知问题与回归样本
 docs/phonics-dict.md            拼读词典的数据格式与生成说明
 .learnings/LEARNINGS.md         踩坑档案：症状 → 根因 → 解法 → 诊断手法

@@ -139,11 +139,10 @@ class ParseGateTests(unittest.TestCase):
 
 
 class HealthTests(unittest.TestCase):
-    def test_health_reports_both_protocol_keys(self):
-        """The legacy key stays for app builds older than the rename; an
-        installed app that only reads one of them must not see None."""
+    def test_health_advertises_the_parse_protocol_version(self):
+        """`probeHealth` refuses a sidecar whose version it does not read, so a
+        renamed or missing key takes the engine down rather than mis-decode."""
         payload = server.health()
-        self.assertEqual(payload["protocolVersion"], server.PARSE_PROTOCOL_VERSION)
         self.assertEqual(payload["parseProtocolVersion"], server.PARSE_PROTOCOL_VERSION)
 
     def test_health_reports_not_ok_until_the_model_is_loaded(self):

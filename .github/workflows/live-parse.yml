@@ -2,6 +2,8 @@ name: Live parse regression
 
 on:
   workflow_dispatch:
+  push:
+    branches: [simplify-and-drag-fix]
 
 permissions:
   contents: read

@@ -569,6 +569,7 @@ actor Sidecar {
         ]
         var environment = inheritedEnvironment
         environment["THORN_SIDECAR_TOKEN"] = authToken
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
         process.environment = environment
     }
 

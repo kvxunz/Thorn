@@ -38,6 +38,7 @@ final class SidecarLifecycleTests: XCTestCase {
             "/Applications/Thorn.app/Contents/Resources/sidecar"
         )
         XCTAssertEqual(process.environment?["THORN_SIDECAR_TOKEN"], "test-token")
+        XCTAssertEqual(process.environment?["PYTHONDONTWRITEBYTECODE"], "1")
         XCTAssertEqual(process.environment?["PATH"], "/usr/bin:/bin")
     }
 

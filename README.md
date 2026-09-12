@@ -107,8 +107,8 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
        ← 整句中文翻译                       (默认 Hy-MT2-7B-GGUF:Q6_K)
 ```
 
-- 解析与翻译**并发**跑，结构树先渲染，翻译落地后再填，谁也不等谁。
-- `⌥X` 是唯一串行的一条：句法引擎要等模型先造出那句英文，才有东西可拆。
+- 解析与翻译**串行**执行：先呈现结构树，再启动整句翻译；翻译失败仍保留结构。不缓存翻译结果是有意的设计选择。
+- `⌥X` 先将中文译为英文，再解析英文；直接使用输入的中文作为释义，不做回译。
 - sidecar 每次启动用**随机端口 + 一次性 token** 鉴权，空闲 10 分钟自动退出，下次请求再拉起。
 - 返回的树要过一道**完整性校验**：span 严格递增不重叠、节点文本必须逐字等于对应 source token 的拼接。过不了的树宁可报错也不显示。
 
@@ -185,6 +185,27 @@ docs/parsing-issues.md          句法拆解的已知问题与回归样本
 docs/phonics-dict.md            拼读词典的数据格式与生成说明
 .learnings/LEARNINGS.md         踩坑档案：症状 → 根因 → 解法 → 诊断手法
 ```
+
+## 验证
+
+快速测试不需要加载本地模型：
+
+```bash
+swift test --skip LiveHYMT2
+python3 -m unittest discover -s sidecar -p 'test_*.py'
+```
+
+修改句法规则或升级 Python 依赖后，发布前还应运行真实模型回归：
+
+```bash
+uv run --script sidecar/server.py --install-models
+uv run --script sidecar/server.py --check-regressions
+```
+
+回归入口使用 `server.py` 的依赖声明，避免生产与测试分别解析不同的依赖声明。
+首次运行需要联网下载依赖和模型，并占用数 GB 空间；已安装模型时可跳过安装步骤。
+GitHub Actions 的 **Live parse regression** 工作流可手动触发，不拖慢普通 PR 测试。
+当前依赖仍使用部分版本范围，并非完整锁定环境；升级前后须重新执行真实模型回归。
 
 ## 一点设计立场
 

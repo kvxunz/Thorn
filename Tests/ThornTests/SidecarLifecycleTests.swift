@@ -2,6 +2,25 @@ import XCTest
 @testable import Thorn
 
 final class SidecarLifecycleTests: XCTestCase {
+    func testStartupBudgetIncludesProbeTime() {
+        let start = ContinuousClock.now
+        let budget = SidecarStartupBudget(start: start)
+
+        XCTAssertEqual(budget.remaining(at: start), 60, accuracy: 0.001)
+        XCTAssertEqual(budget.probeTimeout(at: start), 2, accuracy: 0.001)
+        XCTAssertEqual(budget.probeTimeout(at: start.advanced(by: .seconds(59))), 1, accuracy: 0.001)
+        XCTAssertEqual(budget.remaining(at: start.advanced(by: .seconds(60))), 0)
+        XCTAssertEqual(budget.probeTimeout(at: start.advanced(by: .seconds(61))), 0)
+    }
+
+    func testStartupSleepCannotExtendPastDeadline() {
+        let start = ContinuousClock.now
+        let budget = SidecarStartupBudget(start: start)
+
+        XCTAssertEqual(budget.nextPoll(at: start), start.advanced(by: .milliseconds(500)))
+        XCTAssertEqual(budget.nextPoll(at: start.advanced(by: .milliseconds(59_900))), budget.deadline)
+    }
+
     func testProcessLaunchUsesScriptDirectoryInsteadOfFinderRoot() {
         let process = Process()
 

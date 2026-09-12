@@ -2361,7 +2361,18 @@ if __name__ == "__main__":
         action="store_true",
         help="explicitly install Benepar data, then exit",
     )
+    ap.add_argument(
+        "--check-regressions",
+        action="store_true",
+        help="run real-model regression tests in the server dependency environment",
+    )
     args = ap.parse_args()
+    if args.check_regressions:
+        import unittest
+
+        suite = unittest.defaultTestLoader.loadTestsFromName("golden_parse_checks")
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        raise SystemExit(0 if result.wasSuccessful() and result.testsRun > 0 else 1)
     if args.install_models:
         import benepar
         benepar.download(BENEPAR_MODEL)

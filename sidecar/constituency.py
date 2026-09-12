@@ -13,6 +13,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 
+from syntax_relations import SyntaxRelations
+
 CLAUSE_LABELS = frozenset({"S", "SBAR", "SBARQ", "SINV", "SQ"})
 WH_LABELS = frozenset({"WHNP", "WHADVP", "WHPP", "WHADJP"})
 
@@ -60,6 +62,8 @@ class ConstituencyIndex:
         self,
         spans: Sequence[TokenSpan],
         sentence_spans: Sequence[TokenSpan] = (),
+        trace: bool = False,
+        relations: SyntaxRelations | None = None,
     ):
         merged: dict[tuple[int, int], set[str]] = {}
         for span in spans:
@@ -69,9 +73,13 @@ class ConstituencyIndex:
             for (start, end), labels in sorted(merged.items())
         )
         self.sentence_spans = tuple(sentence_spans)
+        self.trace = trace
+        self.decisions: list[dict] = []
+        self.relations = relations
+        self.structure = None
 
     @classmethod
-    def from_doc(cls, doc) -> ConstituencyIndex:
+    def from_doc(cls, doc, *, trace=False, relations=None) -> ConstituencyIndex:
         spans: list[TokenSpan] = []
         sentences: list[TokenSpan] = []
         for sentence in doc.sents:
@@ -88,7 +96,7 @@ class ConstituencyIndex:
                 ))
         if not spans:
             raise ValueError("benepar produced no constituency spans")
-        return cls(spans, sentences)
+        return cls(spans, sentences, trace=trace, relations=relations)
 
     def sentence_span(self, start: int, end: int) -> TokenSpan:
         for span in self.sentence_spans:
@@ -118,17 +126,27 @@ class ConstituencyIndex:
             and span.labels.intersection(priorities)
         ]
         if candidates:
-            return min(candidates, key=lambda span: (
+            selected = min(candidates, key=lambda span: (
                 self._label_rank(span, priorities),
                 span.width,
                 span.start,
             ))
-        return self._dependency_component(
-            root=root,
-            parent=parent,
-            blocked=barriers,
-            dependency_indices=dependency_indices,
-        )
+            provenance = "benepar-compatible-span"
+        else:
+            selected = self._dependency_component(
+                root=root,
+                parent=parent,
+                blocked=barriers,
+                dependency_indices=dependency_indices,
+            )
+            provenance = "dependency-contiguous-fallback"
+        if self.trace:
+            self.decisions.append({
+                "head": root, "role": role, "start": selected.start,
+                "end": selected.end, "provenance": provenance,
+                "candidate_count": len(candidates),
+            })
+        return selected
 
     def leading_wh_span(self, token_index: int, parent: TokenSpan) -> TokenSpan | None:
         """Return a Benepar WH introducer beginning at ``token_index``."""

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "provenance": "Assistant-authored structural expectations frozen before first evaluation; not independently human-annotated and not a representative accuracy benchmark.",
+  "cases": [
+    {"id": "h01", "text": "The letters that arrived yesterday surprised the editor.", "root": "surprised", "checks": [["backbone", "subject", "surprised", "letters"], ["attachment", "relative-modifier", "letters", "arrived"]]},
+    {"id": "h02", "text": "Before the guests arrived, Maria had prepared dinner.", "root": "prepared", "checks": [["backbone", "subject", "prepared", "Maria"], ["backbone", "object", "prepared", "dinner"], ["attachment", "clausal-modifier", "prepared", "arrived"]]},
+    {"id": "h03", "text": "The old bridge was repaired by local workers.", "root": "repaired", "checks": [["backbone", "subject", "repaired", "bridge"], ["attachment", "preposition-modifier", "repaired", "by"]]},
+    {"id": "h04", "text": "Which proposal did the committee reject?", "root": "reject", "checks": [["backbone", "subject", "reject", "committee"], ["backbone", "object", "reject", "proposal"]]},
+    {"id": "h05", "text": "Please leave the documents on my desk.", "root": "leave", "checks": [["backbone", "object", "leave", "documents"]]},
+    {"id": "h06", "text": "The painting above the fireplace belonged to her grandmother.", "root": "belonged", "checks": [["backbone", "subject", "belonged", "painting"], ["attachment", "preposition-modifier", "painting", "above"]]},
+    {"id": "h07", "text": "The engineer admitted that the device needed repairs.", "root": "admitted", "checks": [["backbone", "subject", "admitted", "engineer"], ["attachment", "content-clause", "admitted", "needed"], ["backbone", "subject", "needed", "device"]]},
+    {"id": "h08", "text": "The trucks carrying medical supplies crossed the border.", "root": "crossed", "checks": [["backbone", "subject", "crossed", "trucks"], ["attachment", "nominal-modifier", "trucks", "carrying"]]},
+    {"id": "h09", "text": "The windows broken by the storm were replaced.", "root": "replaced", "checks": [["backbone", "subject", "replaced", "windows"], ["attachment", "nominal-modifier", "windows", "broken"]]},
+    {"id": "h10", "text": "The children laughed and shouted.", "root": "laughed", "checks": [["backbone", "subject", "laughed", "children"], ["coordination", "coordinate", "laughed", "shouted"]], "groups": [["laughed", "shouted"]]},
+    {"id": "h11", "text": "The manager spoke and the assistants listened.", "root": "spoke", "checks": [["backbone", "subject", "spoke", "manager"], ["backbone", "subject", "listened", "assistants"]], "groups": [["spoke", "listened"]]},
+    {"id": "h12", "text": "Tea and coffee were served after lunch.", "root": "served", "checks": [["backbone", "subject", "served", "Tea"], ["coordination", "coordinate", "Tea", "coffee"]], "groups": [["Tea", "coffee"]]},
+    {"id": "h13", "text": "The village where her parents lived disappeared beneath the reservoir.", "root": "disappeared", "checks": [["backbone", "subject", "disappeared", "village"], ["attachment", "relative-modifier", "village", "lived"]]},
+    {"id": "h14", "text": "Although exhausted, the climbers continued their ascent.", "root": "continued", "checks": [["backbone", "subject", "continued", "climbers"], ["backbone", "object", "continued", "ascent"]]},
+    {"id": "h15", "text": "The librarian placed the books that students had requested on a shelf.", "root": "placed", "checks": [["backbone", "subject", "placed", "librarian"], ["backbone", "object", "placed", "books"], ["attachment", "relative-modifier", "books", "requested"], ["backbone", "subject", "requested", "students"]]},
+    {"id": "h16", "text": "The equipment covered with mud and damaged by stones was abandoned.", "root": "abandoned", "checks": [["backbone", "subject", "abandoned", "equipment"], ["attachment", "nominal-modifier", "equipment", "covered"]], "groups": [["covered", "damaged"]], "siblings": [["covered with mud", "damaged by stones"]]}
+  ]
+}

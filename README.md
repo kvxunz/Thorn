@@ -205,6 +205,8 @@ uv run --script sidecar/server.py --check-regressions
 回归入口使用 `server.py` 的依赖声明，避免生产与测试分别解析不同的依赖声明。
 首次运行需要联网下载依赖和模型，并占用数 GB 空间；已安装模型时可跳过安装步骤。
 GitHub Actions 的 **Live parse regression** 工作流可手动触发，不拖慢普通 PR 测试。
+该工作流同时检查主要句法关系的固定正反例。关系中间层、诊断入口和评测边界见
+[解析架构说明](docs/parser-architecture.md)。
 当前依赖仍使用部分版本范围，并非完整锁定环境；升级前后须重新执行真实模型回归。
 
 ## 一点设计立场

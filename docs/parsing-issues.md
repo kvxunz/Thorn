@@ -5,7 +5,7 @@
 下面每条的「回归判据」都有一条对应的可执行测试，跑真 spaCy + Benepar：
 
 ```bash
-uv run --script sidecar/golden_parse_checks.py    # 直接跑：每次约 95 秒，全花在加载模型上
+uv run --script sidecar/server.py --check-regressions
 ```
 
 该套件不叫 `test_*.py`，因此不会被 `python -m unittest discover -s sidecar` 收走——快测保持零依赖、毫秒级。改动拆句规则后必须跑一次：判据只有能执行才拦得住回归（见 LEARNINGS #42）。
@@ -46,7 +46,8 @@ python3 devrunner.py tree_snapshot.py --write   # 逐行看过之后再接受
 
 曾经还冻过一份 `random` 快照，2026-08-27 删掉了：它的语料只存在于 `/tmp/thorn_corpus.json`，而 `corpus_report.py --fetch` 每次都从 Wikipedia 的 `generator=random` 现抓一批新句子，digest 必然对不上，比对**永远**走「跳过」。它只能被写，不能被读。随机语料的覆盖率测量仍然有效，但那是 `corpus_report.py` 当场抓、当场测的事，不需要冻在仓库里。
 
-模型太重，CI 里没有这一步——和 `golden_parse_checks.py` 一样，是提交前的本机纪律。
+真实回归已接入手动触发的 `Live parse regression` 工作流。完整树快照仍在本机比较，
+不能用真实回归通过替代快照审阅。当前模块边界见 [解析架构说明](parser-architecture.md)。
 
 ### 把纪律变成闸
 

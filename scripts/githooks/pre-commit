@@ -25,6 +25,14 @@ SPLITTER_SOURCES=(
   sidecar/chunk_rules.py
   sidecar/teaching_tree.py
   sidecar/constituency.py
+  sidecar/syntax_features.py
+  sidecar/syntax_assembly.py
+  sidecar/syntax_decomposition.py
+  sidecar/syntax_structure.py
+  sidecar/syntax_policy.py
+  sidecar/syntax_relations.py
+  sidecar/teaching_policy.py
+  sidecar/teaching_projection.py
 )
 SNAPSHOT=sidecar/snapshots/constructions.txt
 SOCKET=/tmp/thorn-devrunner.sock

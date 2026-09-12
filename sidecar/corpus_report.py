@@ -53,7 +53,6 @@ import xml.etree.ElementTree as ET
 
 import server
 from corpus import load_constructions
-from teaching_tree import TeachingEvidence
 from undersplit import find_undersplit
 
 UA = {"User-Agent": "thorn-corpus-probe/1.0 (parser coverage measurement)"}
@@ -251,7 +250,8 @@ for item in corpus:
     stats["total"] += 1
     by_register[register]["total"] += 1
     try:
-        chunks, source_tokens = server.parse_text(text)
+        analysis = server.analyze_text(text)
+        chunks, source_tokens = analysis.chunks, analysis.source_tokens
     except Exception as exc:  # noqa: BLE001 - any failure is a data point
         stats["raised"] += 1
         by_register[register]["raised"] += 1
@@ -266,10 +266,7 @@ for item in corpus:
     stats["contract_ok"] += 1
     by_register[register]["contract_ok"] += 1
 
-    # Same document parse_text used: _prepare_document normalizes dashes and
-    # exotic spaces, and evidence from the raw string tokenizes differently.
-    _, doc, _ = server._prepare_document(text)
-    found = find_undersplit(chunks, TeachingEvidence.from_doc(doc), source_tokens)
+    found = find_undersplit(chunks, analysis.evidence, source_tokens)
     if found:
         worst = min(found, key=lambda f: ["clause-in-one-card", "wh-word-in-leaf", "wide-leaf"].index(f.signal))
         stats["undersplit"] += 1

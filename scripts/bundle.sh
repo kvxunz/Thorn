@@ -65,6 +65,7 @@ PY
 for module in $SIDECAR_MODULES; do
   cp "sidecar/$module.py" "$APP/Contents/Resources/sidecar/$module.py"
 done
+cp sidecar/relation_holdout.json "$APP/Contents/Resources/sidecar/relation_holdout.json"
 echo "Sidecar modules: $(echo "$SIDECAR_MODULES" | tr '\n' ' ')"
 
 # Stable identity so the TCC accessibility grant survives rebuilds.

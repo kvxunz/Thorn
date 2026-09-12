@@ -1,5 +1,26 @@
 import Foundation
 
+struct SidecarStartupBudget {
+    let deadline: ContinuousClock.Instant
+
+    init(start: ContinuousClock.Instant = .now) {
+        deadline = start.advanced(by: .seconds(60))
+    }
+
+    func remaining(at now: ContinuousClock.Instant = .now) -> TimeInterval {
+        let components = now.duration(to: deadline).components
+        return max(0, Double(components.seconds) + Double(components.attoseconds) / 1e18)
+    }
+
+    func probeTimeout(at now: ContinuousClock.Instant = .now) -> TimeInterval {
+        min(2, remaining(at: now))
+    }
+
+    func nextPoll(at now: ContinuousClock.Instant = .now) -> ContinuousClock.Instant {
+        min(deadline, now.advanced(by: .milliseconds(500)))
+    }
+}
+
 struct SidecarStructure: Sendable {
     let chunks: [Chunk]
     let sourceTokens: [String]
@@ -309,12 +330,17 @@ actor Sidecar {
     /// speak. Recording that fact is `markReady()`'s job — a predicate that
     /// also flipped `sidecarReady` meant a bare health check silently decided
     /// whether a later crash counted as a startup failure.
-    private func probeHealth(expectedGeneration: UInt64? = nil) async -> Bool {
+    private func probeHealth(expectedGeneration: UInt64? = nil, timeout: TimeInterval) async -> Bool {
+        guard timeout > 0, !Task.isCancelled else { return false }
         guard let url = URL(string: baseURL + "/health") else { return false }
         var req = URLRequest(url: url)
-        req.timeoutInterval = 2
+        req.timeoutInterval = timeout
         authorize(&req)
-        guard let (data, response) = try? await URLSession.shared.data(for: req),
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForResource = timeout
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        guard let (data, response) = try? await session.data(for: req),
               data.count <= 16_384,
               (response as? HTTPURLResponse)?.statusCode == 200,
               let health = try? JSONDecoder().decode(HealthResponse.self, from: data) else {
@@ -343,11 +369,14 @@ actor Sidecar {
     }
 
     private func ensureHealthy() async -> Bool {
+        let budget = SidecarStartupBudget()
         let currentGeneration = process?.isRunning == true ? lifecycle.generation : nil
-        if await probeHealth(expectedGeneration: currentGeneration) {
+        if await probeHealth(expectedGeneration: currentGeneration, timeout: budget.probeTimeout()),
+           !Task.isCancelled, budget.remaining() > 0 {
             markReady()
             return true
         }
+        guard !Task.isCancelled, budget.remaining() > 0 else { return false }
         launchIfNeeded()
         guard process?.isRunning == true, lifecycle.phase == .running else { return false }
         let launchedGeneration = lifecycle.generation
@@ -357,13 +386,18 @@ actor Sidecar {
         // pressure, i.e. when everything else is slow too, so a 30s budget had
         // barely 1.5x headroom and would have reported "engine unavailable" for
         // a sidecar that was merely still loading. 60s costs nothing when fast.
-        for _ in 0..<120 {
+        while !Task.isCancelled, budget.remaining() > 0 {
             do {
-                try await Task.sleep(nanoseconds: 500_000_000)
+                try await ContinuousClock().sleep(until: budget.nextPoll())
             } catch {
                 return false
             }
-            if await probeHealth(expectedGeneration: launchedGeneration) {
+            guard lifecycle.acceptsHealthResponse(
+                generation: launchedGeneration,
+                processIsRunning: process?.isRunning == true
+            ) else { return false }
+            if await probeHealth(expectedGeneration: launchedGeneration, timeout: budget.probeTimeout()),
+               !Task.isCancelled, budget.remaining() > 0 {
                 markReady()
                 return true
             }

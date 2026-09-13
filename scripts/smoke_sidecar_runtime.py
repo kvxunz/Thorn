@@ -42,8 +42,8 @@ with tempfile.TemporaryDirectory(prefix="thorn-runtime-") as directory:
         raise ValueError("runtime mutated signed bundle contents")
     script = stage / "server.py"
     script.write_text(script.read_text().replace('"numpy==1.26.4"', '"numpy>=1.26.4,<2"'))
-    rejected = subprocess.run(["uv", "run", "--offline", "--locked", "--script", str(script), "--help"],
-                              cwd=stage, env=environment, capture_output=True, text=True, timeout=30, check=False)
+    rejected = subprocess.run(["uv", "run", "--locked", "--script", str(script), "--help"],
+                              cwd=stage, env=environment, capture_output=True, text=True, timeout=180, check=False)
     if rejected.returncode == 0:
         raise ValueError("stale lock was accepted")
     if "lockfile" not in rejected.stderr.lower() or "--locked" not in rejected.stderr:

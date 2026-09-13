@@ -85,7 +85,7 @@ class TeachingTreeContractTests(unittest.TestCase):
         )
         self.assertTrue(all("_lo" not in node and "_hi" not in node for node in result))
 
-    def test_subject_aux_inversion_is_one_expandable_predicate(self):
+    def test_subject_aux_inversion_keeps_subject_outside_predicate(self):
         result = self.compile_result(
             "Why does he think?",
             [
@@ -124,14 +124,12 @@ class TeachingTreeContractTests(unittest.TestCase):
             ],
         )
 
-        self.assertEqual([node["role"] for node in result], ["adverbial", "verb"])
-        predicate = result[1]
-        self.assertEqual(predicate["text"], "does he think?")
+        self.assertEqual([node["role"] for node in result], ["adverbial", "verb", "subject", "verb"])
         self.assertEqual(
-            [child["text"] for child in predicate["children"]],
-            ["does", "he", "think?"],
+            [node["text"] for node in result],
+            ["Why", "does", "he", "think?"],
         )
-        self.assertEqual((predicate["s"], predicate["e"]), (1, 5))
+        self.assertEqual((result[2]["s"], result[2]["e"]), (2, 3))
 
     def test_inversion_grouping_never_crosses_a_sentence_boundary(self):
         # Two selected sentences: "... he will." + "The boy can go ... up".

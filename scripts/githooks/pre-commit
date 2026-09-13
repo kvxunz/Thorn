@@ -35,6 +35,8 @@ SPLITTER_SOURCES=(
   sidecar/syntax_structure.py
   sidecar/syntax_policy.py
   sidecar/syntax_relations.py
+  sidecar/syntax_reconciliation.py
+  sidecar/syntax_ellipsis.py
   sidecar/teaching_policy.py
   sidecar/teaching_projection.py
 )

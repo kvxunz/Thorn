@@ -117,7 +117,8 @@ class ParserArchitectureTests(unittest.TestCase):
         gate = (root / "scripts/githooks/pre-commit").read_text()
         for module in ("syntax_features", "syntax_structure", "syntax_assembly", "syntax_decomposition",
                        "syntax_boundaries", "syntax_clause", "syntax_nominal", "syntax_grouping",
-                       "syntax_policy", "syntax_relations", "teaching_projection", "teaching_policy"):
+                       "syntax_policy", "syntax_relations", "syntax_reconciliation", "syntax_ellipsis",
+                       "teaching_projection", "teaching_policy"):
             with self.subTest(module=module):
                 self.assertIn(f"sidecar/{module}.py", gate)
 

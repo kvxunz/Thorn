@@ -451,7 +451,9 @@ def analyze_clause(
             if tok.dep_ == "mark":
                 chunks.append({"text": text, "role": "conjunction", "gloss": "", "children": None})
                 return
-        if len(run_local) == 1 and (toks[0].tag_ in WH_TAGS or is_wh_relative_pronoun(toks[0])):
+        if (clause_role_of_head is not None or not any(token.text == "?" for token in subtree)) and len(run_local) == 1 and (
+            toks[0].tag_ in WH_TAGS or is_wh_relative_pronoun(toks[0])
+        ):
             tok = toks[0]
             if clause_role_of_head == "clause-relative":
                 gloss = relative_pronoun_gloss(referent, tok.dep_)
@@ -567,7 +569,10 @@ def analyze_clause(
                 else:
                     chunks.append({"text": text, "role": role, "gloss": "",
                                    "children": None})
-            elif role == "subject":
+            elif role == "subject" or (
+                role in ("complement", "object", "adverbial") and c.pos_ in ("NOUN", "PROPN", "PRON")
+                and any(child.dep_ in ("relcl", "acl") for child in c.children)
+            ):
                 # Keep a single subject card; nested clauses/appos become children
                 # via analyze_nominal but re-wrapped so the subject label is not lost.
                 sub = _analyze_nominal(
@@ -585,7 +590,7 @@ def analyze_clause(
                     chunks.append(only)
                 else:
                     chunks.append({
-                        "text": text, "role": "subject", "gloss": "",
+                        "text": text, "role": role, "gloss": "",
                         "children": sub if len(sub) >= 2 else None,
                     })
             elif role == "insertion":

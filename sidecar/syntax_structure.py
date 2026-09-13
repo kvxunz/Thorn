@@ -72,7 +72,9 @@ def relative_role(token, *, nominal_context=False) -> str:
         return "clause-noun"
     if infinitive and not own_subject:
         return "adverbial"
-    if token.tag_ == "VBG" and own_subject and not has_relative_introducer(token):
+    finite_auxiliary = any(child.dep_ in ("aux", "auxpass") and child.tag_ in ("VBD", "VBP", "VBZ", "MD")
+                           for child in token.children)
+    if token.tag_ == "VBG" and own_subject and not finite_auxiliary and not has_relative_introducer(token):
         return "insertion"
     if is_comitative_participle(token):
         return "insertion"
@@ -123,6 +125,8 @@ def collect_roots(head, relations=None) -> tuple[SyntaxRoot, ...]:
                 spec = SyntaxRoot(token.i, "insertion", StructureKind.CLAUSAL)
             elif is_complex_connective(token):
                 spec = SyntaxRoot(token.i, "clause-adverbial", StructureKind.CLAUSAL)
+            elif dependency == "npadvmod" and token.pos_ in ("NOUN", "PROPN", "PRON"):
+                spec = SyntaxRoot(token.i, "adverbial", StructureKind.NOMINAL)
             else:
                 spec = SyntaxRoot(token.i, "adverbial", StructureKind.ATOMIC)
         elif dependency in ("cc", "mark"):
@@ -162,6 +166,8 @@ def collect_roots(head, relations=None) -> tuple[SyntaxRoot, ...]:
         elif spec.role == "prep-phrase":
             conjuncts = coordinated_prep_conjuncts(token)
         for conjunct in conjuncts:
+            if spec.role == "clause-noun" and content_scope_contains(token, conjunct, head):
+                continue
             if conjunct.i in seen or not parent_contains_if_any(head, conjunct):
                 continue
             seen.add(conjunct.i)
@@ -182,6 +188,18 @@ def collect_roots(head, relations=None) -> tuple[SyntaxRoot, ...]:
         roots.extend(promoted)
         roots.sort(key=lambda spec: spec.index)
     return tuple(roots)
+
+
+def content_scope_contains(token, conjunct, governor):
+    if token.dep_ != "ccomp":
+        return False
+    return any(
+        "SBAR" in span._.labels
+        and span.start <= token.i < span.end
+        and span.start <= conjunct.i < span.end
+        and not span.start <= governor.i < span.end
+        for span in token.sent._.constituents
+    )
 
 
 def collect_embedded_clauses(head, doc, parent_span) -> tuple[SyntaxRoot, ...]:

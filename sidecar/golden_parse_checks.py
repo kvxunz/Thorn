@@ -1,22 +1,6 @@
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#     "spacy==3.7.5",
-#     "benepar==0.2.0",
-#     "torch>=2.2,<3",
-#     "transformers==4.30.2",
-#     "protobuf==3.20.3",
-#     "sentencepiece>=0.1.99",
-#     "fastapi>=0.110",
-#     "uvicorn>=0.29",
-#     "spacy-transformers>=1.3,<1.4",
-#     "numpy<2",
-#     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
-# ]
-# ///
 """Live regression suite: real spaCy + Benepar, one case per documented issue.
 
-Run: uv run --script golden_parse_checks.py
+Run from repository root: uv run --locked --script sidecar/server.py --check-regressions
 
 Deliberately *not* named ``test_*.py``.  ``python -m unittest discover -s
 sidecar`` must stay hermetic and instant; this suite loads ~3.2 GB of model

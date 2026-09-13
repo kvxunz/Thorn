@@ -43,6 +43,9 @@ chunks、source tokens 和同一次推理的证据；`parse_text` 保留原来�
 - `syntax_assembly.py` 负责边界、归属、特殊构式和完整结构树组装，返回冻结的
   `StructuralAnalysis` / `StructuralNode`。既有倒装、省略、标点补充等规则保留行为，
   但不再与 HTTP 服务或显示策略交织。
+- 后续模块拆分将具体实现交给 `syntax_boundaries`、`syntax_nominal`、`syntax_clause`、
+  `syntax_grouping`；`syntax_assembly` 只保留冻结结果与句子级编排。
+  名词模块通过显式回调递归分析从句，不反向导入从句模块。
 - `teaching_projection.py` 通过 `project_structure` 读取结构树的独立副本。
   `TeachingPolicy` 只操作已经生成的卡片，不导入语法模块，不参与边界选择或推理。
 
@@ -62,7 +65,7 @@ chunks、source tokens 和同一次推理的证据；`parse_text` 保留原来�
 ## 本地诊断
 
 ```bash
-uv run --script sidecar/server.py --analyze 'The people waiting outside looked tired.'
+uv run --locked --script sidecar/server.py --analyze 'The people waiting outside looked tired.'
 ```
 
 JSON 输出包含 token、关系、原教学树以及范围选择记录 `boundaryDecisions`。
@@ -75,9 +78,9 @@ JSON 输出包含 token、关系、原教学树以及范围选择记录 `boundar
 
 ```bash
 python3 -m unittest discover -s sidecar -p 'test_*.py'
-uv run --script sidecar/server.py --check-regressions
-uv run --script sidecar/server.py --evaluate-relations
-cd sidecar && uv run --script tree_snapshot.py
+uv run --locked --script sidecar/server.py --check-regressions
+uv run --locked --script sidecar/server.py --evaluate-relations
+bash scripts/run-sidecar.sh tree_snapshot.py
 ```
 
 真实回归现在同时加载原有 56 项结构回归，以及 `relation_parse_checks.py` 的
@@ -108,6 +111,8 @@ cd sidecar && uv run --script tree_snapshot.py
 246 句旧构式快照未变，说明本次改造没有改变这些已冻结的教学树。
 
 本次不切换模型：当前检查没有提供足以支持迁移成本的对照证据。这不是判定现有模型最优。
+外部人工校正的 EWT 100 句评测、未命中目标与性能基准另见
+[依赖与评测说明](reproducibility-and-evaluation.md)。
 后续新增构式仍必须通过关系反例、旧 golden 回归与人工审阅的树快照。对明显歧义的句子，
 标注多个可接受关系或明确排除该项评分，不把一个解析器的输出直接当作金标准。
 只有发现当前模型在留出集上有系统性错误，才进行替代模型对比；当前不添加新模型。

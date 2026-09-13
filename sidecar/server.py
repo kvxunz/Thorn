@@ -3,14 +3,14 @@
 # dependencies = [
 #     "spacy==3.7.5",
 #     "benepar==0.2.0",
-#     "torch>=2.2,<3",
+#     "torch==2.13.0",
 #     "transformers==4.30.2",
 #     "protobuf==3.20.3",
-#     "sentencepiece>=0.1.99",
-#     "fastapi>=0.110",
-#     "uvicorn>=0.29",
-#     "spacy-transformers>=1.3,<1.4",
-#     "numpy<2",
+#     "sentencepiece==0.2.2",
+#     "fastapi==0.140.13",
+#     "uvicorn==0.52.0",
+#     "spacy-transformers==1.3.9",
+#     "numpy==1.26.4",
 #     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 # ]
 # ///
@@ -70,9 +70,11 @@ def load():
     # `add_pipe("benepar")`: importing it is what registers the spaCy factory.
     import benepar  # noqa: F401  (registers the spaCy pipeline component)
     import spacy
+    from model_integrity import verify_benepar
 
     # Model installation is an explicit setup action.  Starting the app must
     # never trigger a network download or mutate the user's model cache.
+    verify_benepar()
     nlp = spacy.load(SPACY_MODEL)
     if "benepar" not in nlp.pipe_names:
         nlp.add_pipe("benepar", config={"model": BENEPAR_MODEL})
@@ -182,8 +184,37 @@ if __name__ == "__main__":
         help="run real-model regression tests in the server dependency environment",
     )
     ap.add_argument("--evaluate-relations", action="store_true", help="evaluate frozen relation checks without changing their expectations")
+    ap.add_argument("--evaluate-external", metavar="CONLLU", help="evaluate the frozen external EWT sample")
+    ap.add_argument("--benchmark", action="store_true", help="measure parser startup, stages and peak memory in fresh subprocesses")
+    ap.add_argument("--tool", choices=["tree_snapshot.py", "corpus_report.py", "probe_sentence.py", "devrunner.py", "golden_parse_checks.py", "service_checks.py"])
+    ap.add_argument("tool_args", nargs=argparse.REMAINDER)
     ap.add_argument("--analyze", metavar="TEXT", help="print local syntax relations and teaching tree as JSON")
     args = ap.parse_args()
+    if args.tool:
+        import runpy
+        import sys
+        from pathlib import Path
+
+        tool = Path(__file__).resolve().with_name(args.tool)
+        sys.argv = [str(tool), *(args.tool_args[1:] if args.tool_args[:1] == ["--"] else args.tool_args)]
+        runpy.run_path(str(tool), run_name="__main__")
+        raise SystemExit(0)
+    if args.benchmark:
+        import json
+        from pathlib import Path
+
+        from benchmark import run
+
+        root = Path(__file__).resolve().parent
+        print(json.dumps(run(root, root / "benchmark_cases.json", 5, 3), indent=2))
+        raise SystemExit(0)
+    if args.evaluate_external:
+        from pathlib import Path
+
+        from external_evaluation import evaluate_corpus
+
+        load()
+        raise SystemExit(evaluate_corpus(Path(args.evaluate_external), analyze_text))
     if args.evaluate_relations:
         from relation_evaluation import run
 
@@ -212,7 +243,10 @@ if __name__ == "__main__":
         raise SystemExit(0 if result.wasSuccessful() and result.testsRun > 0 else 1)
     if args.install_models:
         import benepar
+        from model_integrity import verify_benepar
+
         benepar.download(BENEPAR_MODEL)
+        verify_benepar()
         raise SystemExit(0)
     if not auth_token:
         raise SystemExit("THORN_SIDECAR_TOKEN is required")

@@ -1,19 +1,3 @@
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#     "spacy==3.7.5",
-#     "benepar==0.2.0",
-#     "torch>=2.2,<3",
-#     "transformers==4.30.2",
-#     "protobuf==3.20.3",
-#     "sentencepiece>=0.1.99",
-#     "fastapi>=0.110",
-#     "uvicorn>=0.29",
-#     "spacy-transformers>=1.3,<1.4",
-#     "numpy<2",
-#     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
-# ]
-# ///
 """Measure the teaching tree against English nobody here wrote.
 
 Two numbers, and they answer different questions:
@@ -38,9 +22,9 @@ find different things:
   (ellipsis, inversion, comparatives, parentheticals). Says which
   *constructions* the rules never learned, which is the actual question.
 
-  uv run --script corpus_report.py --fetch          # rebuild the random corpus
-  uv run --script corpus_report.py                  # measure it
-  uv run --script corpus_report.py --constructions  # measure by construction
+  bash scripts/run-sidecar.sh corpus_report.py --fetch
+  bash scripts/run-sidecar.sh corpus_report.py
+  bash scripts/run-sidecar.sh corpus_report.py --constructions
 """
 import collections
 import itertools

@@ -16,7 +16,7 @@ uv run --script sidecar/server.py --check-regressions
 
 ```bash
 # 起一次，之后一直用
-tmux new-session -d -s thorn-dev -c sidecar 'uv run --script devrunner.py --serve'
+tmux new-session -d -s thorn-dev -c sidecar 'uv run --locked --script server.py --tool devrunner.py -- --serve'
 
 cd sidecar
 python3 devrunner.py golden_parse_checks.py            # 95s -> 1.5s
@@ -64,7 +64,7 @@ git config core.hooksPath scripts/githooks
 `service_checks.py` 测的是句子到达解析器**之前**的那一层：token 鉴权、512 词上限、两个并发槽位的 429、`ValueError → 422` 映射以及失败路径必须归还槽位。
 
 ```bash
-uv run --script service_checks.py        # 0.6 秒，只依赖 fastapi
+uv run --locked --script ../scripts/check_sidecar.py
 ```
 
 `server` 把 torch/spacy/benepar 的 import 推迟进了 `load()`，所以这个套件不加载任何模型，**CI 每次 push 都会跑**。这是有意的：一道只能在那台装了 3.2 GB 权重的机器上验证的鉴权闸，等于一道想起来才验证的闸。

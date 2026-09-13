@@ -1,12 +1,6 @@
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#     "fastapi>=0.110",
-# ]
-# ///
 """The request gate: auth, size limits, concurrency, error mapping.
 
-Run: uv run --script service_checks.py     (or: python3 devrunner.py service_checks.py)
+Run from repository root: uv run --locked --script scripts/check_sidecar.py
 
 Everything the app relies on *before* a sentence reaches the parser lived
 untested: the Swift side asserts its half of the protocol (SidecarProtocolTests,

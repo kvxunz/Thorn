@@ -27,6 +27,10 @@ SPLITTER_SOURCES=(
   sidecar/constituency.py
   sidecar/syntax_features.py
   sidecar/syntax_assembly.py
+  sidecar/syntax_boundaries.py
+  sidecar/syntax_clause.py
+  sidecar/syntax_nominal.py
+  sidecar/syntax_grouping.py
   sidecar/syntax_decomposition.py
   sidecar/syntax_structure.py
   sidecar/syntax_policy.py
@@ -84,11 +88,11 @@ pre-commit: splitter changed and the snapshot could not be checked.
 
 Start the worker, then commit again:
 
-  tmux new-session -d -s thorn-dev -c sidecar 'uv run --script devrunner.py --serve'
+  tmux new-session -d -s thorn-dev -c sidecar 'uv run --locked --script server.py --tool devrunner.py -- --serve'
 
 Or compare directly (~95 s, loads the model):
 
-  cd sidecar && uv run --script tree_snapshot.py
+  bash scripts/run-sidecar.sh tree_snapshot.py
 
 If this edit truly cannot move a tree: git commit --no-verify
 EOF

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "provenance": "Fixed synthetic workloads plus the user's original long-sentence example; not a production latency distribution.",
+  "cases": [
+    {"id": "short", "text": "The children laughed and shouted."},
+    {"id": "modifiers", "text": "The equipment covered with mud and damaged by stones was abandoned."},
+    {"id": "nested", "text": "The librarian placed the books that students who had missed the lecture requested on a shelf near the window."},
+    {"id": "long", "text": "In pubs, steam rose from damp bodies and garments to be inhaled with cigarette and pipe smoke laced with the stale fumes of spilled stout and whiskey and tinged with the odor of piss wafting in from the outdoor jakes where many a man puked up his week's wages."}
+  ]
+}

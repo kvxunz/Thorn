@@ -1,0 +1,448 @@
+{
+  "cases": 100,
+  "checks": {
+    "parse": {
+      "passed": 100,
+      "total": 100
+    },
+    "main_root": {
+      "passed": 96,
+      "total": 100
+    },
+    "attachment": {
+      "passed": 158,
+      "total": 198
+    },
+    "backbone": {
+      "passed": 207,
+      "total": 234
+    },
+    "coordination": {
+      "passed": 52,
+      "total": 62
+    },
+    "alignment": {
+      "passed": 0,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "case": "answers-20111108105137AA9BNtk_ans-0006",
+      "category": "backbone",
+      "detail": "object: pay -> 200"
+    },
+    {
+      "case": "answers-20111103205154AAOod9K_ans-0002",
+      "category": "backbone",
+      "detail": "subject: 's -> place"
+    },
+    {
+      "case": "answers-20111107082312AAPNaxb_ans-0002",
+      "category": "attachment",
+      "detail": "clausal-modifier: visited -> there"
+    },
+    {
+      "case": "answers-20111108064636AAvIKDE_ans-0004",
+      "category": "backbone",
+      "detail": "object: find -> food"
+    },
+    {
+      "case": "answers-20111108064636AAvIKDE_ans-0004",
+      "category": "attachment",
+      "detail": "open-complement: find -> better"
+    },
+    {
+      "case": "answers-20111108104957AAsMzvU_ans-0006",
+      "category": "alignment",
+      "detail": "unmatched gold anchor: 80's"
+    },
+    {
+      "case": "answers-20111108104957AAsMzvU_ans-0006",
+      "category": "attachment",
+      "detail": "nominal-modifier: 80's -> upper"
+    },
+    {
+      "case": "answers-20111108081519AAdHz5c_ans-0003",
+      "category": "attachment",
+      "detail": "open-complement: like -> loud"
+    },
+    {
+      "case": "answers-20111108081519AAdHz5c_ans-0003",
+      "category": "coordination",
+      "detail": "coordinate: loud -> lot"
+    },
+    {
+      "case": "answers-20111107155815AA6LXXJ_ans-0003",
+      "category": "backbone",
+      "detail": "subject: is -> much"
+    },
+    {
+      "case": "answers-20111107155815AA6LXXJ_ans-0003",
+      "category": "attachment",
+      "detail": "nominal-modifier: much -> do"
+    },
+    {
+      "case": "answers-20111108071652AA8GAZw_ans-0007",
+      "category": "backbone",
+      "detail": "subject: s -> charges"
+    },
+    {
+      "case": "answers-20111106015552AAj6rCu_ans-0002",
+      "category": "attachment",
+      "detail": "nominal-modifier: Zealand -> New"
+    },
+    {
+      "case": "answers-20111106015552AAj6rCu_ans-0002",
+      "category": "backbone",
+      "detail": "subject: are -> places"
+    },
+    {
+      "case": "answers-20111106015552AAj6rCu_ans-0002",
+      "category": "attachment",
+      "detail": "nominal-modifier: places -> buy"
+    },
+    {
+      "case": "answers-20111024111513AAAQhAO_ans-0003",
+      "category": "attachment",
+      "detail": "nominal-modifier: looking -> good"
+    },
+    {
+      "case": "email-enronsent21_02-0048",
+      "category": "backbone",
+      "detail": "object: have -> us"
+    },
+    {
+      "case": "email-enronsent21_02-0048",
+      "category": "attachment",
+      "detail": "open-complement: have -> reporting"
+    },
+    {
+      "case": "email-enronsent23_04-0018",
+      "category": "backbone",
+      "detail": "object: want -> you"
+    },
+    {
+      "case": "email-enronsent23_04-0018",
+      "category": "attachment",
+      "detail": "open-complement: want -> go"
+    },
+    {
+      "case": "email-enronsent36_01-0020",
+      "category": "coordination",
+      "detail": "coordinate: Corporate -> Funds"
+    },
+    {
+      "case": "email-enronsent36_01-0020",
+      "category": "coordination",
+      "detail": "coordinate: Corporate -> Municipal"
+    },
+    {
+      "case": "email-enronsent04_01-0029",
+      "category": "backbone",
+      "detail": "subject: be -> talent"
+    },
+    {
+      "case": "email-enronsent04_01-0029",
+      "category": "attachment",
+      "detail": "nominal-modifier: talent -> a"
+    },
+    {
+      "case": "email-enronsent04_01-0034",
+      "category": "backbone",
+      "detail": "subject: have -> you"
+    },
+    {
+      "case": "email-enronsent04_01-0034",
+      "category": "backbone",
+      "detail": "object: have -> opening"
+    },
+    {
+      "case": "email-enronsent04_01-0034",
+      "category": "attachment",
+      "detail": "nominal-modifier: traders -> ex"
+    },
+    {
+      "case": "email-enronsent04_01-0034",
+      "category": "attachment",
+      "detail": "nominal-modifier: ompany -> defunctc"
+    },
+    {
+      "case": "email-enronsent04_01-0034",
+      "category": "backbone",
+      "detail": "indirect-object: made -> ompany"
+    },
+    {
+      "case": "email-enronsent04_01-0034",
+      "category": "backbone",
+      "detail": "object: made -> million"
+    },
+    {
+      "case": "email-enronsent23_04-0007",
+      "category": "backbone",
+      "detail": "subject: shows -> Rohan"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals_0b4766087b0d36b7_ENG_20031231_183500-0001",
+      "category": "attachment",
+      "detail": "open-complement: named -> Olly"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals_0b4766087b0d36b7_ENG_20031231_183500-0001",
+      "category": "attachment",
+      "detail": "nominal-modifier: Fund -> International"
+    },
+    {
+      "case": "newsgroup-groups.google.com_jokecity_0566f0ba3b5f748f_ENG_20051125_240500-0009",
+      "category": "main_root",
+      "detail": "asks"
+    },
+    {
+      "case": "newsgroup-groups.google.com_jokecity_0566f0ba3b5f748f_ENG_20051125_240500-0009",
+      "category": "attachment",
+      "detail": "content-clause: asks -> What"
+    },
+    {
+      "case": "newsgroup-groups.google.com_jokecity_0566f0ba3b5f748f_ENG_20051125_240500-0009",
+      "category": "backbone",
+      "detail": "subject: is -> any"
+    },
+    {
+      "case": "newsgroup-groups.google.com_jokecity_0566f0ba3b5f748f_ENG_20051125_240500-0009",
+      "category": "attachment",
+      "detail": "relative-modifier: any -> give"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals.cat_0e976a5d400ddce1_ENG_20040103_090500-0004",
+      "category": "attachment",
+      "detail": "nominal-modifier: Surfs -> Extreme"
+    },
+    {
+      "case": "newsgroup-groups.google.com_JyotishRemedies_cc96334336b9368b_ENG_20050623_013400-0003",
+      "category": "attachment",
+      "detail": "nominal-modifier: participation -> make"
+    },
+    {
+      "case": "newsgroup-groups.google.com_JyotishRemedies_cc96334336b9368b_ENG_20050623_013400-0003",
+      "category": "backbone",
+      "detail": "object: make -> forum"
+    },
+    {
+      "case": "newsgroup-groups.google.com_JyotishRemedies_cc96334336b9368b_ENG_20050623_013400-0003",
+      "category": "attachment",
+      "detail": "open-complement: make -> place"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals.bears_07e0e03c803ffdbd_ENG_20040217_113500-0011",
+      "category": "backbone",
+      "detail": "object: have -> Catalog"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals.bears_07e0e03c803ffdbd_ENG_20040217_113500-0011",
+      "category": "attachment",
+      "detail": "nominal-modifier: Price -> Wholesale"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals.bears_07e0e03c803ffdbd_ENG_20040217_113500-0011",
+      "category": "attachment",
+      "detail": "nominal-modifier: Catalog -> ready"
+    },
+    {
+      "case": "newsgroup-groups.google.com_JokeEruption_df151b356f94881c_ENG_20050819_155700-0050",
+      "category": "main_root",
+      "detail": "worry"
+    },
+    {
+      "case": "newsgroup-groups.google.com_JokeEruption_df151b356f94881c_ENG_20050819_155700-0050",
+      "category": "attachment",
+      "detail": "clausal-modifier: worry -> avoiding"
+    },
+    {
+      "case": "newsgroup-groups.google.com_JokeEruption_df151b356f94881c_ENG_20050819_155700-0050",
+      "category": "attachment",
+      "detail": "open-complement: grow -> older"
+    },
+    {
+      "case": "newsgroup-groups.google.com_hiddennook_f50294175d32a8ac_ENG_20041120_152800-0002",
+      "category": "attachment",
+      "detail": "clausal-modifier: visited -> going"
+    },
+    {
+      "case": "newsgroup-groups.google.com_hiddennook_f50294175d32a8ac_ENG_20041120_152800-0002",
+      "category": "backbone",
+      "detail": "object: visited -> Hu"
+    },
+    {
+      "case": "newsgroup-groups.google.com_hiddennook_f50294175d32a8ac_ENG_20041120_152800-0002",
+      "category": "coordination",
+      "detail": "coordinate: Hu -> allies"
+    },
+    {
+      "case": "newsgroup-groups.google.com_hiddennook_1fd8f731ae7ffaa0_ENG_20050214_192900-0007",
+      "category": "backbone",
+      "detail": "subject: using -> Search"
+    },
+    {
+      "case": "newsgroup-groups.google.com_hiddennook_1fd8f731ae7ffaa0_ENG_20050214_192900-0007",
+      "category": "attachment",
+      "detail": "content-clause: counter -> using"
+    },
+    {
+      "case": "newsgroup-groups.google.com_fineart_0339fc0ed4e53c5a_ENG_20050930_025500-0002",
+      "category": "backbone",
+      "detail": "subject: had -> Wei"
+    },
+    {
+      "case": "newsgroup-groups.google.com_hiddennook_e21e429b3ad58235_ENG_20050830_214700-0007",
+      "category": "coordination",
+      "detail": "coordinate: Mike -> official"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals.bears_07e0e03c803ffdbd_ENG_20040217_113500-0003",
+      "category": "attachment",
+      "detail": "nominal-modifier: figurines -> like"
+    },
+    {
+      "case": "newsgroup-groups.google.com_alt.animals.bears_07e0e03c803ffdbd_ENG_20040217_113500-0003",
+      "category": "backbone",
+      "detail": "object: has -> figurines"
+    },
+    {
+      "case": "reviews-034858-0001",
+      "category": "attachment",
+      "detail": "clausal-modifier: Thank -> fixing"
+    },
+    {
+      "case": "reviews-336285-0002",
+      "category": "attachment",
+      "detail": "clausal-modifier: hesitate -> visiting"
+    },
+    {
+      "case": "reviews-353891-0003",
+      "category": "attachment",
+      "detail": "open-complement: looked -> great"
+    },
+    {
+      "case": "reviews-210875-0002",
+      "category": "backbone",
+      "detail": "object: wanted -> you"
+    },
+    {
+      "case": "reviews-210875-0002",
+      "category": "attachment",
+      "detail": "open-complement: wanted -> know"
+    },
+    {
+      "case": "reviews-392826-0003",
+      "category": "main_root",
+      "detail": "cooked"
+    },
+    {
+      "case": "reviews-392826-0003",
+      "category": "backbone",
+      "detail": "subject: cooked -> fries"
+    },
+    {
+      "case": "reviews-186235-0002",
+      "category": "attachment",
+      "detail": "nominal-modifier: people -> work"
+    },
+    {
+      "case": "reviews-299524-0001",
+      "category": "coordination",
+      "detail": "coordinate: fallen -> place"
+    },
+    {
+      "case": "reviews-080814-0002",
+      "category": "main_root",
+      "detail": "know"
+    },
+    {
+      "case": "reviews-354474-0003",
+      "category": "backbone",
+      "detail": "subject: were -> surprises"
+    },
+    {
+      "case": "weblog-blogspot.com_floppingaces_20041126180010_ENG_20041126_180010-0002",
+      "category": "backbone",
+      "detail": "subject: put -> John"
+    },
+    {
+      "case": "weblog-blogspot.com_floppingaces_20041126180010_ENG_20041126_180010-0002",
+      "category": "attachment",
+      "detail": "nominal-modifier: show -> found"
+    },
+    {
+      "case": "weblog-blogspot.com_grandpasgripes_20060413051000_ENG_20060413_051000-0014",
+      "category": "backbone",
+      "detail": "indirect-object: believe -> him"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20030914114200_ENG_20030914_114200-0002",
+      "category": "attachment",
+      "detail": "nominal-modifier: clerics -> Sunni"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20030914114200_ENG_20030914_114200-0002",
+      "category": "coordination",
+      "detail": "coordinate: condemning -> announcing"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20030914114200_ENG_20030914_114200-0002",
+      "category": "coordination",
+      "detail": "coordinate: condemning -> calling"
+    },
+    {
+      "case": "weblog-blogspot.com_marketview_20050224181500_ENG_20050224_181500-0005",
+      "category": "attachment",
+      "detail": "open-complement: looks -> cool"
+    },
+    {
+      "case": "weblog-blogspot.com_aggressivevoicedaily_20060811122000_ENG_20060811_122000-0040",
+      "category": "attachment",
+      "detail": "clausal-modifier: crash -> followed"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20040722101300_ENG_20040722_101300-0027",
+      "category": "backbone",
+      "detail": "object: let -> me"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20040722101300_ENG_20040722_101300-0027",
+      "category": "attachment",
+      "detail": "open-complement: let -> say"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20041109060653_ENG_20041109_060653-0012",
+      "category": "attachment",
+      "detail": "nominal-modifier: clerics -> Sunni"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20041109060653_ENG_20041109_060653-0012",
+      "category": "attachment",
+      "detail": "nominal-modifier: clerics -> Muslim"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20041109060653_ENG_20041109_060653-0012",
+      "category": "coordination",
+      "detail": "coordinate: assault -> attack"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20040722101300_ENG_20040722_101300-0019",
+      "category": "attachment",
+      "detail": "nominal-modifier: plan -> dealing"
+    },
+    {
+      "case": "weblog-juancole.com_juancole_20040722101300_ENG_20040722_101300-0019",
+      "category": "coordination",
+      "detail": "coordinate: Afghanistan -> al"
+    }
+  ],
+  "provenance": "Externally human-corrected UD basic dependencies, deterministically mapped to Thorn relation checks; not fresh blind human annotation and model-training overlap is not excluded.",
+  "source_sha256": "fa024f43dc5da3c5ac02563bc9bd0e974f46cbb1560823976a8f342a37dc494a",
+  "source": "https://github.com/UniversalDependencies/UD_English-EWT",
+  "revision": "b7711cce01cdd4f5fcc0a8199b8a50d951b16c0c",
+  "license": "CC-BY-SA-4.0 (annotations/database); original text rights retained",
+  "manifest_sha256": "120f74b6b41397cf15796605e6e41b77dd8a1119b52ca110d4b6d245349545d3",
+  "metric": "recall of selected gold relation targets, not full dependency accuracy"
+}

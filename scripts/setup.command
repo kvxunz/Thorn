@@ -66,7 +66,7 @@ command -v uv >/dev/null 2>&1 || die "uv 装好了但不在 PATH 里，重开一
 step "下载句法引擎（约 1.5 GB，慢，只需一次）"
 echo "    包含 spaCy、Benepar、PyTorch 和英文句法权重。"
 echo "    这一步会持续几分钟到十几分钟，中途没有输出是正常的。"
-if uv run --script "$APP/Contents/Resources/sidecar/server.py" --install-models; then
+if uv run --locked --script "$APP/Contents/Resources/sidecar/server.py" --install-models; then
   echo "    完成。"
 else
   die "句法引擎安装失败。检查网络后重新运行本脚本。"
@@ -99,6 +99,10 @@ elif ollama pull "$OLLAMA_MODEL"; then
 else
   die "模型下载失败。网络恢复后重新运行本脚本，已下载的部分会续上。"
 fi
+
+step "验证翻译模型版本"
+python3 "$APP/Contents/Resources/sidecar/model_integrity.py" \
+  || die "翻译模型与此版本锁定的摘要不一致。请勿直接更新锁文件；先核对发布版本。"
 
 step "启动 Thorn"
 open -a "$APP"

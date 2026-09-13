@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-def evaluate(cases, analyze):
+def evaluate(cases, analyze, *, strict_anchors=True, normalize_coordination=False):
     if not cases:
         raise ValueError("relation evaluation requires nonempty cases")
     counts = defaultdict(lambda: {"passed": 0, "total": 0})
@@ -27,10 +27,16 @@ def evaluate(cases, analyze):
         try:
             analysis = analyze(case["text"])
             tokens = analysis.source_tokens
+            unmatched = set()
 
-            def anchor(word, tokens=tokens):
+            def anchor(word, tokens=tokens, unmatched=unmatched, case_id=case["id"]):
                 indices = [index for index, token in enumerate(tokens) if token == word]
                 if len(indices) != 1:
+                    if not strict_anchors:
+                        if word not in unmatched:
+                            record(case_id, "alignment", False, f"unmatched gold anchor: {word}")
+                            unmatched.add(word)
+                        return -1
                     raise ValueError(f"gold anchor must be unique: {word}")
                 return indices[0]
 
@@ -39,6 +45,10 @@ def evaluate(cases, analyze):
             roots = {frame.predicate for frame in graph.clauses if frame.parent is None}
             record(case["id"], "main_root", anchor(case["root"]) in roots, case["root"])
             edges = {(edge.kind, edge.head, edge.dependent) for edge in graph.edges}
+            if normalize_coordination:
+                edges.update(("coordinate", group.head, member)
+                             for group in graph.coordinations for member in group.members
+                             if member != group.head)
             for category, kind, head, dependent in case["checks"]:
                 record(case["id"], category, (kind, anchor(head), anchor(dependent)) in edges,
                        f"{kind}: {head} -> {dependent}")

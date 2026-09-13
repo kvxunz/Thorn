@@ -72,7 +72,7 @@
       "words": 50,
       "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 6,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -242,7 +242,7 @@
       "words": 27,
       "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 2,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -352,7 +352,7 @@
       "words": 21,
       "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -832,7 +832,7 @@
       "words": 28,
       "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -952,7 +952,7 @@
       "words": 15,
       "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 6,
+      "semantic_checks": 8,
       "semantic_errors": []
     },
     {

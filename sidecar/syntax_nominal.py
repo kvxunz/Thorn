@@ -294,6 +294,13 @@ def analyze_nominal(head, doc, role, constituency, parent_span, *, analyze_claus
         ]
         starts = set(opened)
         supplement_starts.update(starts)
+        for index in opened:
+            tail = next(doc[position] for position in run if position > index and doc[position].pos_ != "PUNCT")
+            root = phrase_root(index, tail)
+            end = max(piece.i for piece in root.subtree) + 1
+            if (end in run_set and end + 1 in run_set and doc[end].text == ","
+                    and doc[end + 1].pos_ == "CCONJ"):
+                starts.add(end + 1)
 
         parts, current = [], []
         for index in run:
@@ -344,6 +351,9 @@ def analyze_nominal(head, doc, role, constituency, parent_span, *, analyze_claus
             ]
             for part in parts:
                 part_role = role
+                content = next((doc[index] for index in part if doc[index].pos_ not in ("PUNCT", "CCONJ")), None)
+                if content is not None and content.pos_ == "ADP" and content.dep_ == "conj":
+                    part_role = "prep-phrase"
                 if (
                     any(doc[index].dep_ == "cc" for index in part)
                     and all(
@@ -411,6 +421,20 @@ def analyze_nominal(head, doc, role, constituency, parent_span, *, analyze_claus
         run.append(t.i)
     flush()
     result = merge_tiny(chunks)
+    grouped = []
+    for chunk in result:
+        previous = grouped[-1] if grouped else None
+        governing_clause = next((clause for clause in clause_heads
+                                 if chunk["_lo"] <= clause.i <= chunk["_hi"]), None)
+        if (previous is not None and previous["role"] == "appositive"
+                and chunk["role"] == "clause-relative" and governing_clause is not None
+                and previous["_lo"] <= governing_clause.head.i <= previous["_hi"]):
+            children = previous.get("children") or [dict(previous)]
+            grouped[-1] = dict(previous, text=doc[previous["_lo"]:chunk["_hi"] + 1].text,
+                               _hi=chunk["_hi"], children=[*children, chunk])
+        else:
+            grouped.append(chunk)
+    result = grouped
     if len(enum_members) >= 2 and len(result) >= 2:
         # The whole enumeration collapses into ONE block under its parent
         # role; items and their clauses are children revealed on decompose.

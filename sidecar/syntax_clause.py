@@ -571,7 +571,6 @@ def analyze_clause(
                                    "children": None})
             elif role == "subject" or (
                 role in ("complement", "object", "adverbial") and c.pos_ in ("NOUN", "PROPN", "PRON")
-                and contains_clause(c)
             ):
                 # Keep a single subject card; nested clauses/appos become children
                 # via analyze_nominal but re-wrapped so the subject label is not lost.

@@ -1,0 +1,41 @@
+name: Live parse regression
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [simplify-and-drag-fix]
+
+permissions:
+  contents: read
+
+jobs:
+  live-parse:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        run: python -m pip install uv==0.11.22
+      - name: Install parsing models
+        run: uv run --locked --script sidecar/server.py --install-models
+      - name: Run real-model regression in the server environment
+        run: uv run --locked --script sidecar/server.py --check-regressions
+      - name: Verify isolated locked runtime
+        run: python scripts/smoke_sidecar_runtime.py
+      - name: Evaluate frozen relation checks
+        run: uv run --locked --script sidecar/server.py --evaluate-relations
+      - name: Download pinned external gold corpus
+        run: curl --fail --location --retry 3 https://raw.githubusercontent.com/UniversalDependencies/UD_English-EWT/b7711cce01cdd4f5fcc0a8199b8a50d951b16c0c/en_ewt-ud-test.conllu -o "$RUNNER_TEMP/ewt.conllu"
+      - name: Evaluate external targets without hiding existing errors
+        run: |
+          uv run --locked --script sidecar/server.py --evaluate-external "$RUNNER_TEMP/ewt.conllu" > "$RUNNER_TEMP/external-ewt.json"
+          python scripts/check_external_report.py docs/reports/external-ewt-normalized.json "$RUNNER_TEMP/external-ewt.json"
+      - name: Upload external evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-evaluation
+          path: ${{ runner.temp }}/external-ewt.json

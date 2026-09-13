@@ -1,19 +1,3 @@
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#     "spacy==3.7.5",
-#     "benepar==0.2.0",
-#     "torch>=2.2,<3",
-#     "transformers==4.30.2",
-#     "protobuf==3.20.3",
-#     "sentencepiece>=0.1.99",
-#     "fastapi>=0.110",
-#     "uvicorn>=0.29",
-#     "spacy-transformers>=1.3,<1.4",
-#     "numpy<2",
-#     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
-# ]
-# ///
 """Measure the teaching tree against English nobody here wrote.
 
 Two numbers, and they answer different questions:
@@ -38,9 +22,9 @@ find different things:
   (ellipsis, inversion, comparatives, parentheticals). Says which
   *constructions* the rules never learned, which is the actual question.
 
-  uv run --script corpus_report.py --fetch          # rebuild the random corpus
-  uv run --script corpus_report.py                  # measure it
-  uv run --script corpus_report.py --constructions  # measure by construction
+  bash scripts/run-sidecar.sh corpus_report.py --fetch
+  bash scripts/run-sidecar.sh corpus_report.py
+  bash scripts/run-sidecar.sh corpus_report.py --constructions
 """
 import collections
 import itertools
@@ -52,7 +36,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 import server
-from teaching_tree import TeachingEvidence
+from corpus import load_constructions
 from undersplit import find_undersplit
 
 UA = {"User-Agent": "thorn-corpus-probe/1.0 (parser coverage measurement)"}
@@ -225,32 +209,6 @@ def contract_violation(chunks, source_tokens):
 
 
 CORPUS_PATH = "/tmp/thorn_corpus.json"
-CONSTRUCTIONS_PATH = "../english_sentence_training.md"
-
-_NUMBERED = re.compile(r"^\d+\.\s+(.*\S)\s*$")
-
-
-def load_constructions(path):
-    """Sentences grouped by the `###` heading naming their construction.
-
-    Random sampling measures the *average* sentence, so a construction the
-    language uses rarely contributes nothing however many sentences you draw:
-    200 sampled ones held no VP ellipsis at all. This file is stratified by
-    hand — ellipsis, inversion, comparatives, parentheticals — so each stratum
-    gets a rate of its own, and a construction the rules never learned shows up
-    as its own bad column instead of vanishing into the average.
-    """
-    stratum = "unlabelled"
-    items = []
-    with open(path) as fh:
-        for line in fh:
-            if line.startswith("### "):
-                stratum = line[4:].strip()
-                continue
-            found = _NUMBERED.match(line)
-            if found:
-                items.append({"register": stratum, "text": found.group(1)})
-    return items
 
 
 if "--fetch" in sys.argv:
@@ -258,7 +216,7 @@ if "--fetch" in sys.argv:
     raise SystemExit(0)
 
 if "--constructions" in sys.argv:
-    corpus = load_constructions(CONSTRUCTIONS_PATH)
+    corpus = load_constructions()
     stratum_label = "构式"
 else:
     with open(CORPUS_PATH) as fh:
@@ -276,7 +234,8 @@ for item in corpus:
     stats["total"] += 1
     by_register[register]["total"] += 1
     try:
-        chunks, source_tokens = server.parse_text(text)
+        analysis = server.analyze_text(text)
+        chunks, source_tokens = analysis.chunks, analysis.source_tokens
     except Exception as exc:  # noqa: BLE001 - any failure is a data point
         stats["raised"] += 1
         by_register[register]["raised"] += 1
@@ -291,10 +250,7 @@ for item in corpus:
     stats["contract_ok"] += 1
     by_register[register]["contract_ok"] += 1
 
-    # Same document parse_text used: _prepare_document normalizes dashes and
-    # exotic spaces, and evidence from the raw string tokenizes differently.
-    _, doc, _ = server._prepare_document(text)
-    found = find_undersplit(chunks, TeachingEvidence.from_doc(doc), source_tokens)
+    found = find_undersplit(chunks, analysis.evidence, source_tokens)
     if found:
         worst = min(found, key=lambda f: ["clause-in-one-card", "wh-word-in-leaf", "wide-leaf"].index(f.signal))
         stats["undersplit"] += 1

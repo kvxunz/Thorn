@@ -10,13 +10,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from functools import cached_property
 from typing import Any
 
-_AUXILIARY_WORDS = frozenset({
-    "do", "does", "did", "is", "am", "are", "was", "were", "be", "been",
-    "being", "have", "has", "had", "will", "would", "shall", "should",
-    "can", "could", "may", "might", "must", "need", "dare", "not",
-})
+from syntax_relations import SyntaxRelations
+
 _DASH_TOKENS = frozenset({"--", "—", "–", "―"})
 _QUESTION_WORDS = frozenset({"why", "how", "when", "where", "what"})
 
@@ -79,6 +77,11 @@ class TeachingEvidence:
 
     tokens: tuple[SyntaxToken, ...]
     constituents: tuple[ConstituentEvidence, ...]
+    repairs: tuple = ()
+
+    @cached_property
+    def relations(self) -> SyntaxRelations:
+        return SyntaxRelations.from_evidence(self)
 
     def __post_init__(self):
         for expected, token in enumerate(self.tokens):
@@ -117,14 +120,17 @@ class TeachingEvidence:
             ConstituentEvidence(start, end, frozenset(labels))
             for (start, end), labels in sorted(labels_by_span.items())
         )
-        return cls(tokens=tokens, constituents=constituents)
+        return cls(tokens=tokens, constituents=constituents, repairs=doc.user_data.get("thorn.syntax_repairs", ()))
+
+    @cached_property
+    def _labels_by_span(self) -> dict[tuple[int, int], frozenset[str]]:
+        labels: dict[tuple[int, int], set[str]] = {}
+        for constituent in self.constituents:
+            labels.setdefault((constituent.start, constituent.end), set()).update(constituent.labels)
+        return {span: frozenset(values) for span, values in labels.items()}
 
     def labels_for(self, start: int, end: int) -> frozenset[str]:
-        labels: set[str] = set()
-        for constituent in self.constituents:
-            if constituent.start == start and constituent.end == end:
-                labels.update(constituent.labels)
-        return frozenset(labels)
+        return self._labels_by_span.get((start, end), frozenset())
 
 
 @dataclass(frozen=True)
@@ -221,44 +227,6 @@ def _ends_sentence(source: TokenSource, node: TeachingNode) -> bool:
     return text.endswith((".", "!", "?", ";", ":"))
 
 
-def _group_subject_aux_inversion(
-    source: TokenSource,
-    nodes: Sequence[TeachingNode],
-) -> tuple[TeachingNode, ...]:
-    output: list[TeachingNode] = []
-    index = 0
-    while index < len(nodes):
-        if index + 2 < len(nodes):
-            auxiliary, subject, predicate = nodes[index:index + 3]
-            auxiliary_text = source.span_text(
-                auxiliary.start,
-                auxiliary.end,
-            ).strip().lower().strip(".,;:?!")
-            if (
-                auxiliary.role == "verb"
-                and subject.role == "subject"
-                and predicate.role == "verb"
-                and not auxiliary.children
-                and not predicate.children
-                and (
-                    auxiliary_text in _AUXILIARY_WORDS
-                    or auxiliary_text.startswith("'")
-                )
-                and not _ends_sentence(source, auxiliary)
-                and not _ends_sentence(source, subject)
-            ):
-                output.append(TeachingNode(
-                    start=auxiliary.start,
-                    end=predicate.end,
-                    role="verb",
-                    children=(auxiliary, subject, predicate),
-                    kind="inverted-predicate",
-                ))
-                index += 3
-                continue
-        output.append(nodes[index])
-        index += 1
-    return tuple(output)
 
 
 def _group_coordinated_predicates(
@@ -334,7 +302,6 @@ def _coarsen_predicates(
         else node
         for node in nested
     )
-    nested = _group_subject_aux_inversion(source, nested)
     return _group_coordinated_predicates(source, nested)
 
 
@@ -751,10 +718,11 @@ def _annotate_reduced_relative(
     candidates = [
         token
         for token in inside
-        if token.dep == "acl"
+        if (attachment := evidence.relations.attachment(token.index)) is not None
+        and attachment.dependency == "acl"
         and token.tag in {"VBG", "VBN"}
-        and not (node.start <= token.head < node.end)
-        and evidence.tokens[token.head].pos in {"NOUN", "PROPN", "PRON"}
+        and not (node.start <= attachment.head < node.end)
+        and evidence.tokens[attachment.head].pos in {"NOUN", "PROPN", "PRON"}
         # "The news that he had won …" is also VBN under acl, and calling its
         # finite predicate a participle is exactly backwards. A reduced
         # relative is reduced because it has no complementizer.
@@ -914,6 +882,73 @@ def _validate_full_coverage(
         )
 
 
+def _project_coordinated_modifiers(
+    nodes: Sequence[TeachingNode],
+    evidence: TeachingEvidence,
+) -> tuple[TeachingNode, ...]:
+    output = []
+    graph = evidence.relations
+    for node in nodes:
+        node = node.with_children(_project_coordinated_modifiers(node.children, evidence))
+        if node.role != "clause-relative" or len(node.children) < 3:
+            output.append(node)
+            continue
+        for group in graph.coordinations:
+            attachment = graph.attachment(group.head)
+            if (
+                attachment is None or attachment.dependency != "acl"
+                or node.start <= attachment.head < node.end
+                or not all(node.start <= member < node.end for member in group.members)
+                or not all(evidence.tokens[member].tag in {"VBG", "VBN"} for member in group.members)
+                or any(
+                    owner in group.members and not node.start <= index < node.end
+                    for index, owner in enumerate(graph.clause_by_token)
+                )
+            ):
+                continue
+            runs: list[tuple[int | None, list[TeachingNode]]] = []
+            for child in node.children:
+                owners = {
+                    graph.clause_by_token[index]
+                    for index in range(child.start, child.end)
+                    if evidence.tokens[index].pos != "PUNCT"
+                }
+                owner = next(iter(owners)) if len(owners) == 1 else None
+                if child.role == "conjunction":
+                    owner = None
+                if owner not in group.members:
+                    owner = None
+                if runs and owner is not None and runs[-1][0] == owner:
+                    runs[-1][1].append(child)
+                else:
+                    runs.append((owner, [child]))
+            owners = [owner for owner, _ in runs if owner is not None]
+            if owners != list(group.members) or any(
+                owner is None and any(child.role != "conjunction" for child in children)
+                for owner, children in runs
+            ):
+                continue
+            if any(
+                not children[0].start <= owner < children[-1].end
+                for owner, children in runs if owner is not None
+            ):
+                continue
+            projected = []
+            for owner, children in runs:
+                if owner is None:
+                    projected.extend(children)
+                    continue
+                projected.append(TeachingNode(
+                    start=children[0].start, end=children[-1].end,
+                    role="clause-relative", children=tuple(children),
+                    kind="coordinate-modifier", function="modifier", form="reduced-relative",
+                ))
+            node = node.with_children(projected)
+            break
+        output.append(node)
+    return tuple(output)
+
+
 def compile_teaching_tree(
     source: TokenSource,
     builder_chunks: Sequence[dict[str, Any]],
@@ -929,6 +964,7 @@ def compile_teaching_tree(
         if len(evidence.tokens) != source.token_count:
             raise ValueError("teaching evidence does not match source tokens")
         nodes = _split_object_infinitive_complements(nodes, evidence)
+        nodes = _project_coordinated_modifiers(nodes, evidence)
         nodes = _annotate_teaching_metadata(source, nodes, evidence)
     _validate_full_coverage(nodes, source.token_count)
     return [_alignment_payload(source, node) for node in nodes]

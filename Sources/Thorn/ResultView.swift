@@ -22,7 +22,16 @@ struct ResultView: View {
         }
         .frame(minWidth: minPanelWidth, idealWidth: idealPanelWidth,
                maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: ThornRadius.panel))
+        .background {
+            // The drag layer sits *over* the material: whichever view the
+            // mouse lands on is the one AppKit asks about the window, and the
+            // material's answer is SwiftUI's private business.
+            ZStack {
+                Rectangle().fill(.regularMaterial)
+                WindowDragLayer()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: ThornRadius.panel))
+        }
         // Whatever squeezing happens, the panel silhouette stays rounded.
         .clipShape(RoundedRectangle(cornerRadius: ThornRadius.panel))
         .overlay(
@@ -616,6 +625,27 @@ struct ResultView: View {
         }
         .fixedSize()
     }
+}
+
+/// Drags the window when the mouse goes down on empty panel.
+///
+/// This layer sits above the material and below every card, so background
+/// drags move the window and drags on content (expand a clause, select the
+/// translation, pull the resize grip) still mean what they meant.
+private struct WindowDragLayer: NSViewRepresentable {
+    final class DragView: NSView {
+        /// `performDrag`, not `mouseDownCanMoveWindow`. The property route
+        /// asks AppKit to start the drag itself, which it declines to do for a
+        /// borderless non-activating panel owned by a background app — the
+        /// exact shape of this window. `performDrag` runs the drag loop from
+        /// the mouse-down we were given and has no such conditions.
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+    }
+
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ view: NSView, context: Context) {}
 }
 
 /// Minimal left-to-right wrapping layout: rows break when the next item

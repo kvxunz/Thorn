@@ -1,22 +1,6 @@
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#     "spacy==3.7.5",
-#     "benepar==0.2.0",
-#     "torch>=2.2,<3",
-#     "transformers==4.30.2",
-#     "protobuf==3.20.3",
-#     "sentencepiece>=0.1.99",
-#     "fastapi>=0.110",
-#     "uvicorn>=0.29",
-#     "spacy-transformers>=1.3,<1.4",
-#     "numpy<2",
-#     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
-# ]
-# ///
 """One-off probe: run parse_text on a sentence and dump the chunk tree.
 
-Usage: uv run --script probe_sentence.py "Sentence here."
+Usage from repository root: bash scripts/run-sidecar.sh probe_sentence.py "Sentence here."
 """
 import json
 import sys

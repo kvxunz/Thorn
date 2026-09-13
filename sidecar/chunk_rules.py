@@ -167,6 +167,18 @@ def verb_group_indices(head):
             lemma, getattr(c, "text", ""), dep
         ):
             toks.add(c.i)
+    pending = [child for child in head.children if child.dep_ in ("aux", "auxpass")]
+    visited = {head.i}
+    while pending:
+        auxiliary = pending.pop()
+        if auxiliary.i in visited:
+            continue
+        visited.add(auxiliary.i)
+        for child in auxiliary.children:
+            if child.dep_ in VERB_GROUP_CORE_DEPS:
+                toks.add(child.i)
+            if child.dep_ in ("aux", "auxpass"):
+                pending.append(child)
     # "live up to" is one verb; its particle and preposition are adjacent by
     # construction, so the two indices after the head are exactly them.
     preposition = phrasal_prep_verb_preposition(head)
@@ -570,11 +582,6 @@ def prepare_parse_text(text: str) -> PreparedParseText:
         parser="".join(parser_chars),
         parser_char_spans=tuple(source_spans),
     )
-
-
-def normalize_parse_text(text: str) -> str:
-    """Compatibility wrapper for callers that only need the parser view."""
-    return prepare_parse_text(text).parser
 
 
 # A single one of these between two alphanumerics joins one written word.

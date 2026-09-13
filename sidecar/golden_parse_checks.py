@@ -1,22 +1,6 @@
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#     "spacy==3.7.5",
-#     "benepar==0.2.0",
-#     "torch>=2.2,<3",
-#     "transformers==4.30.2",
-#     "protobuf==3.20.3",
-#     "sentencepiece>=0.1.99",
-#     "fastapi>=0.110",
-#     "uvicorn>=0.29",
-#     "spacy-transformers>=1.3,<1.4",
-#     "numpy<2",
-#     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
-# ]
-# ///
 """Live regression suite: real spaCy + Benepar, one case per documented issue.
 
-Run: uv run --script golden_parse_checks.py
+Run from repository root: uv run --locked --script sidecar/server.py --check-regressions
 
 Deliberately *not* named ``test_*.py``.  ``python -m unittest discover -s
 sidecar`` must stay hermetic and instant; this suite loads ~3.2 GB of model
@@ -762,13 +746,16 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNotNone(phrase, "the agent phrase never expanded")
         kids = phrase["children"] or []
         self.assertEqual(
-            [(n["role"], n["text"]) for n in kids][:3],
+            [(n["role"], n["text"]) for n in kids][:2],
             [
                 ("prep-phrase", "by The Chick at the Back of the Church"),
                 ("insertion", "(2001)"),
-                ("appositive", ", a poetry book"),
             ],
         )
+        appositive = kids[2]
+        self.assertEqual(appositive["role"], "appositive")
+        self.assertEqual(appositive["children"][0]["text"], ", a poetry book")
+        self.assertEqual(appositive["children"][1]["role"], "clause-relative")
 
     def test_a_lone_appositive_gets_its_own_card_when_a_comma_fences_it(self):
         """", a refinement of the Big Bang" renames the idea; it is not more of it.
@@ -1158,8 +1145,9 @@ class GoldenParseTests(unittest.TestCase):
         inner = node_starting_with(self.tree("nested-relative"), "that chased")
         self.assertIsNotNone(inner)
         self.assertEqual(inner["children"][0]["text"], "that")
-        self.assertIn("the mouse", texts(inner["children"]))
-        self.assertIn("that stole the cheese", texts(inner["children"]))
+        nominal = next(child for child in inner["children"] if child["role"] == "object")
+        self.assertIn("the mouse", texts(nominal["children"]))
+        self.assertIn("that stole the cheese", texts(nominal["children"]))
 
     def test_correlative_comparatives_open_their_clause(self):
         self.assertEqual(self.tree("correlative")[0]["children"][0]["text"], "The harder")

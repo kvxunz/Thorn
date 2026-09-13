@@ -65,6 +65,12 @@ PY
 for module in $SIDECAR_MODULES; do
   cp "sidecar/$module.py" "$APP/Contents/Resources/sidecar/$module.py"
 done
+cp sidecar/relation_holdout.json "$APP/Contents/Resources/sidecar/relation_holdout.json"
+cp sidecar/server.py.lock "$APP/Contents/Resources/sidecar/server.py.lock"
+cp sidecar/.python-version "$APP/Contents/Resources/sidecar/.python-version"
+cp sidecar/model-lock.json "$APP/Contents/Resources/sidecar/model-lock.json"
+cp sidecar/benchmark_cases.json "$APP/Contents/Resources/sidecar/benchmark_cases.json"
+cp sidecar/external_eval_manifest.json "$APP/Contents/Resources/sidecar/external_eval_manifest.json"
 echo "Sidecar modules: $(echo "$SIDECAR_MODULES" | tr '\n' ' ')"
 
 # Stable identity so the TCC accessibility grant survives rebuilds.

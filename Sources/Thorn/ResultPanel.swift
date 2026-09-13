@@ -137,15 +137,7 @@ final class ResultPanelController: NSObject, NSWindowDelegate {
         )
         panel.delegate = self
         panel.contentView = controller.view
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.isMovableByWindowBackground = true
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.applyThornPanelChrome()
         self.panel = panel
 
         // Typed at eye level, not clicked at the pointer: opening that result

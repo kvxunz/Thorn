@@ -17,6 +17,12 @@
 ---
 
 ## 它给你什么
+ 
+首次使用请先阅读 **[安装、配置与使用指南](docs/getting-started.md)**：包含下载安装、源码构建、首次配置、权限、升级、卸载和故障排查。
+
+预构建包如有发布，可在 [Releases](https://github.com/kvxunz/Thorn/releases) 下载；没有适用包时按指南从源码安装。安装现成 App 不需要完整 Xcode，从源码构建才需要。
+
+准确性边界见 [外部差异审阅](docs/external-review.md) 和 [雅思语料评测](docs/ielts-corpus-evaluation.md)。本地统计解析模型加规则不等于永远正确的语法答案。
 
 选中一句真正难读的话，按 `⌥A`：
 
@@ -107,8 +113,8 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
        ← 整句中文翻译                       (默认 Hy-MT2-7B-GGUF:Q6_K)
 ```
 
-- 解析与翻译**并发**跑，结构树先渲染，翻译落地后再填，谁也不等谁。
-- `⌥X` 是唯一串行的一条：句法引擎要等模型先造出那句英文，才有东西可拆。
+- 解析与翻译**串行**执行：先呈现结构树，再启动整句翻译；翻译失败仍保留结构。不缓存翻译结果是有意的设计选择。
+- `⌥X` 先将中文译为英文，再解析英文；直接使用输入的中文作为释义，不做回译。
 - sidecar 每次启动用**随机端口 + 一次性 token** 鉴权，空闲 10 分钟自动退出，下次请求再拉起。
 - 返回的树要过一道**完整性校验**：span 严格递增不重叠、节点文本必须逐字等于对应 source token 的拼接。过不了的树宁可报错也不显示。
 
@@ -120,19 +126,18 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 
 ```bash
 # 1. 句法模型（一次性，联网下载 spaCy transformer 权重和 Benepar）
-uv run --script sidecar/server.py --install-models
+uv run --locked --script sidecar/server.py --install-models
 
 # 2. 翻译模型
 ollama pull hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K
 
-# 3. 构建并安装（先退出正在运行的 Thorn）
+# 3. 构建；安装/升级时先按详细指南备份并移除旧 App
 ./scripts/bundle.sh
-rm -rf /Applications/Thorn.app
 ditto --rsrc --extattr --acl build/Thorn.app /Applications/Thorn.app
 open /Applications/Thorn.app
 ```
 
-`ditto` 的目标固定为 `/Applications/Thorn.app`，重复执行得到同一个干净 bundle。`bundle.sh` 默认使用仓库开发证书哈希；要保留自己的 TCC 授权，用 `THORN_CODESIGN_IDENTITY` 传入钥匙串里的签名身份。
+`ditto` 的目标固定为 `/Applications/Thorn.app`，但不会自动清除旧包的遗留文件。已有安装请先遵循[升级与回滚](docs/getting-started.md#升级与回滚)。`bundle.sh` 默认使用仓库开发证书哈希；要保留自己的 TCC 授权，用 `THORN_CODESIGN_IDENTITY` 传入钥匙串里的签名身份。
 
 **授权**：`⌥A` 需要「辅助功能」，`⌥S` 需要「屏幕录制」（首次弹窗）。`⌥X` 不需要任何权限——它不读取任何东西，只接受你在自己输入框里打的字。
 
@@ -180,10 +185,38 @@ scripts/dmg.sh                  打包成可分发的 DMG
 scripts/setup.command           收件人那侧的一键环境安装
 scripts/githooks/               提交前的快照闸（git config core.hooksPath scripts/githooks）
 scripts/build_phonics_dict.py   拼读词典离线生成器（CMUdict + EM 对齐）
+scripts/makeicon.swift          Resources/AppIcon.icns 的唯一生成源（见文件首行的两条命令）
 docs/parsing-issues.md          句法拆解的已知问题与回归样本
 docs/phonics-dict.md            拼读词典的数据格式与生成说明
 .learnings/LEARNINGS.md         踩坑档案：症状 → 根因 → 解法 → 诊断手法
 ```
+
+## 验证
+
+快速测试不需要加载本地模型：
+
+```bash
+swift test --skip LiveHYMT2
+uv run --locked --script scripts/check_sidecar.py
+```
+
+修改句法规则或升级 Python 依赖后，发布前还应运行真实模型回归：
+
+```bash
+uv run --locked --script sidecar/server.py --install-models
+uv run --locked --script sidecar/server.py --check-regressions
+bash scripts/run-sidecar.sh tree_snapshot.py
+```
+
+回归入口使用 `server.py` 的依赖声明，避免生产与测试分别解析不同的依赖声明。
+首次运行需要联网下载依赖和模型，并占用数 GB 空间；已安装模型时可跳过安装步骤。
+GitHub Actions 的 **Live parse regression** 工作流可手动触发，不拖慢普通 PR 测试。
+该工作流同时检查主要句法关系的固定正反例。关系中间层、诊断入口和评测边界见
+[解析架构说明](docs/parser-architecture.md)。
+运行包与 CI 工具有完整的传递依赖锁，模型另有哈希校验。开发诊断统一使用
+`bash scripts/run-sidecar.sh TOOL.py`，不再各自维护依赖声明。
+模块拆分、100 句外部人工校正语料评测、性能实测及可复现范围见
+[依赖与评测说明](docs/reproducibility-and-evaluation.md)。升级前后须重新执行真实模型回归。
 
 ## 一点设计立场
 

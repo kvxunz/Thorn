@@ -1,0 +1,566 @@
+{
+  "0f8188dfffbff2d064abe0f1d35f16dc059e9c4b3cd0e38932a24f238988c62c": {
+    "family": "question",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 1,
+        "role": "adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 3,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 4,
+        "role": "verb",
+        "top_level": true
+      }
+    ]
+  },
+  "b134b454658b3691b527ff736300d6248624bcb1e311460a498b46f0a529766c": {
+    "family": "question",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 1,
+        "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 5,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 6,
+        "role": "verb",
+        "top_level": true
+      }
+    ]
+  },
+  "1ea68eecddf5cd25d57b2759b1fe497843507848e96b7865c9e7f1de2cb1ceab": {
+    "family": "adverbial",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 4,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 16,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 18,
+        "role": "verb",
+        "top_level": true
+      }
+    ]
+  },
+  "21e584c16fb1afe1901cd785261c34a4bb3d7d1005c48ccf52b1ad6a5f41893f": {
+    "family": "conditional-inversion",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 5,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 8,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 10,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 12,
+        "role": "object",
+        "top_level": true
+      }
+    ]
+  },
+  "27e478b46c89b4dd6aa33ec3bcb5dbe6dd71e6ed75c8612f6951e5e15c72487c": {
+    "family": "relative",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 2,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 15,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 17,
+        "role": "complement",
+        "top_level": true
+      },
+      {
+        "anchor": 11,
+        "start": 8,
+        "role": "clause-relative",
+        "parent_anchor": 2,
+        "parent_role": "subject"
+      }
+    ]
+  },
+  "33e73f6c52e9a3c4915ed17d2d96f77e90817f38d8cc43d50ec05b018a980b92": {
+    "family": "reduced-relative",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 3,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 14,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 15,
+        "role": "complement",
+        "top_level": true
+      }
+    ]
+  },
+  "3861b93cea515670a4e08bcad22e2ac798827e1f8fdf9fa5337f05c7fb34f44b": {
+    "family": "nested-content",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 2,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 6,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 7,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 12,
+        "role": "clause-noun",
+        "top_level": true
+      }
+    ]
+  },
+  "389916da3a15007f1082a1494f20cf3701e5c5afb84b511139e4ce5cbf817fd5": {
+    "family": "inversion",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 8,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 5,
+        "role": "verb",
+        "top_level": true,
+        "start": 5
+      }
+    ]
+  },
+  "3e97d09c265e6859a5be203585dcdaddb1ea8e335883758f4b97a6fe2a99748c": {
+    "family": "passive",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 2,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 6,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 11,
+        "role": "prep-phrase",
+        "top_level": true
+      }
+    ]
+  },
+  "62f2c7a889aa49e6d012531ab56cb899bc29cc8e1f7fd4307fd0949f599cbb9e": {
+    "family": "parenthetical",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 1,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 9,
+        "role": "insertion",
+        "top_level": true
+      },
+      {
+        "anchor": 11,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 12,
+        "role": "complement",
+        "top_level": true
+      }
+    ]
+  },
+  "66d06325f7404580786622886f563a61597fa3c89a2e9af14f278d603e13a706": {
+    "family": "temporal",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 5,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 15,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 17,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 19,
+        "role": "object",
+        "top_level": true
+      }
+    ]
+  },
+  "887ce2e30c01c1e6f182a99b6cfd999bad536e47f7aba9cfa7b678753e10f1ae": {
+    "family": "reduced-relative",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 3,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 12,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 14,
+        "role": "adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 4,
+        "start": 4,
+        "role": "clause-relative",
+        "parent_anchor": 3,
+        "parent_role": "subject"
+      }
+    ]
+  },
+  "980b8da23d1053ca8efadced11c60a294f03c6e76409fb2c4ee46981607a4675": {
+    "family": "passive-inversion",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 3,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 4,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 6,
+        "role": "complement",
+        "top_level": true
+      },
+      {
+        "anchor": 18,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 27,
+        "role": "subject",
+        "top_level": true,
+        "start": 19
+      }
+    ]
+  },
+  "a034c1ac2bdf00749be3904d391eb909b0634bc4be80da210dfd8197627dc370": {
+    "family": "nonrestrictive-relative",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 3,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 11,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 6,
+        "start": 5,
+        "role": "clause-relative",
+        "parent_anchor": 3,
+        "parent_role": "subject"
+      }
+    ]
+  },
+  "beab19265fcc1436960ba382b1d0467a908ceb5d220b3815784a5bbf321d2265": {
+    "family": "nested-content",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 0,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 1,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 16,
+        "role": "clause-noun",
+        "top_level": true
+      },
+      {
+        "anchor": 8,
+        "role": "clause-adverbial",
+        "parent_anchor": 16,
+        "parent_role": "clause-noun"
+      }
+    ]
+  },
+  "c14ba8c830dece36776966b863a948c06ba3265995ab5ae8fb33f86766eaef21": {
+    "family": "nonrestrictive-relative",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 0,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 1,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 7,
+        "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 13,
+        "start": 9,
+        "role": "clause-relative",
+        "parent_anchor": 7,
+        "parent_role": "object"
+      }
+    ]
+  },
+  "d81b21990a12807ef323c58aea9a55abacb35b2178e2702812e34cd02af5916f": {
+    "family": "coordination",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 0,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 1,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 5,
+        "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 8,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 9,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 14,
+        "role": "object",
+        "top_level": true
+      }
+    ]
+  },
+  "f1647024926a20107fc58ca3825df3ec22e665df25c45fa5ed32fcbedd94d8de": {
+    "family": "relative-nonfinite",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 0,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 1,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 8,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 10,
+        "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 14,
+        "start": 13,
+        "role": "clause-relative",
+        "parent_anchor": 10,
+        "parent_role": "object"
+      }
+    ]
+  },
+  "f25e89e4826394d8bbaad2f91c1ccd73997983f1677a4348350cd5b1f2e56f26": {
+    "family": "reduced-adverbial",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 3,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 10,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 13,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 14,
+        "role": "complement",
+        "top_level": true
+      }
+    ]
+  },
+  "fe6aa7e6f56da2704989df2ac245623a8586d2c1eeb53d74e7ec4b7cd0ea9f22": {
+    "family": "zero-content",
+    "review": "assistant-reviewed main roles; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 4,
+        "role": "subject",
+        "top_level": true
+      },
+      {
+        "anchor": 5,
+        "role": "verb",
+        "top_level": true
+      },
+      {
+        "anchor": 9,
+        "role": "clause-noun",
+        "top_level": true
+      }
+    ]
+  },
+  "975517dc176cb2bbdacd674895127892e48ad425dd4eab474b1a2116c18181de": {
+    "family": "remaining-structure",
+    "review": "assistant-reviewed targeted regression; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 7,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 10,
+        "role": "complement",
+        "top_level": true
+      },
+      {
+        "anchor": 12,
+        "role": "subject",
+        "top_level": true
+      }
+    ]
+  },
+  "7cbf613cb7a7b9cebce3b28330d699f3e248574d6182cabbd99e2b7c222952f6": {
+    "family": "remaining-structure",
+    "review": "assistant-reviewed targeted regression; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 50,
+        "role": "clause-noun",
+        "top_level": true,
+        "start": 9
+      },
+      {
+        "anchor": 50,
+        "role": "clause-noun",
+        "parent_anchor": 25,
+        "parent_role": "clause-noun"
+      }
+    ]
+  },
+  "f3a8e822bee8c75d56a39ad642840584cf0a479ddbbd64290f5c56d6ff919808": {
+    "family": "remaining-structure",
+    "review": "assistant-reviewed targeted regression; not exhaustive or independent",
+    "expectations": [
+      {
+        "anchor": 11,
+        "role": "clause-relative",
+        "parent_anchor": 7,
+        "parent_role": "adverbial"
+      },
+      {
+        "anchor": 7,
+        "role": "adverbial",
+        "top_level": true
+      }
+    ]
+  }
+}

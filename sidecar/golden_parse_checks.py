@@ -1142,8 +1142,9 @@ class GoldenParseTests(unittest.TestCase):
         inner = node_starting_with(self.tree("nested-relative"), "that chased")
         self.assertIsNotNone(inner)
         self.assertEqual(inner["children"][0]["text"], "that")
-        self.assertIn("the mouse", texts(inner["children"]))
-        self.assertIn("that stole the cheese", texts(inner["children"]))
+        nominal = next(child for child in inner["children"] if child["role"] == "object")
+        self.assertIn("the mouse", texts(nominal["children"]))
+        self.assertIn("that stole the cheese", texts(nominal["children"]))
 
     def test_correlative_comparatives_open_their_clause(self):
         self.assertEqual(self.tree("correlative")[0]["children"][0]["text"], "The harder")

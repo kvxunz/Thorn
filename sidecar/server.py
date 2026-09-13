@@ -81,11 +81,14 @@ def load():
 
 
 def _prepare_document(text):
+    from syntax_reconciliation import reconcile_document
+
     prepared = prepare_parse_text(text)
     if not prepared.parser:
         raise ValueError("source contains no parseable text")
     with nlp_inference_lock:
         doc = nlp(prepared.parser)
+        reconcile_document(doc)
     parser_offsets = [
         (token.idx, token.idx + len(token.text))
         for token in doc

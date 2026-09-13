@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from constituency import ConstituencyIndex
 from syntax_clause import analyze_clause
+from syntax_ellipsis import comparative_ellipsis
 from syntax_structure import SyntaxStructure
 
 
@@ -44,7 +45,7 @@ def analyze_structure(doc, relations, *, trace=False):
     all_chunks = []
     last_end = None
     for sent in doc.sents:
-        sent_chunks = analyze_clause(
+        sent_chunks = comparative_ellipsis(sent, doc, constituency, analyze_clause) or analyze_clause(
             sent.root,
             doc,
             constituency=constituency,

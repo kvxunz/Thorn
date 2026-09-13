@@ -15,11 +15,6 @@ from typing import Any
 
 from syntax_relations import SyntaxRelations
 
-_AUXILIARY_WORDS = frozenset({
-    "do", "does", "did", "is", "am", "are", "was", "were", "be", "been",
-    "being", "have", "has", "had", "will", "would", "shall", "should",
-    "can", "could", "may", "might", "must", "need", "dare", "not",
-})
 _DASH_TOKENS = frozenset({"--", "—", "–", "―"})
 _QUESTION_WORDS = frozenset({"why", "how", "when", "where", "what"})
 
@@ -82,6 +77,7 @@ class TeachingEvidence:
 
     tokens: tuple[SyntaxToken, ...]
     constituents: tuple[ConstituentEvidence, ...]
+    repairs: tuple = ()
 
     @cached_property
     def relations(self) -> SyntaxRelations:
@@ -124,7 +120,7 @@ class TeachingEvidence:
             ConstituentEvidence(start, end, frozenset(labels))
             for (start, end), labels in sorted(labels_by_span.items())
         )
-        return cls(tokens=tokens, constituents=constituents)
+        return cls(tokens=tokens, constituents=constituents, repairs=doc.user_data.get("thorn.syntax_repairs", ()))
 
     @cached_property
     def _labels_by_span(self) -> dict[tuple[int, int], frozenset[str]]:
@@ -231,44 +227,6 @@ def _ends_sentence(source: TokenSource, node: TeachingNode) -> bool:
     return text.endswith((".", "!", "?", ";", ":"))
 
 
-def _group_subject_aux_inversion(
-    source: TokenSource,
-    nodes: Sequence[TeachingNode],
-) -> tuple[TeachingNode, ...]:
-    output: list[TeachingNode] = []
-    index = 0
-    while index < len(nodes):
-        if index + 2 < len(nodes):
-            auxiliary, subject, predicate = nodes[index:index + 3]
-            auxiliary_text = source.span_text(
-                auxiliary.start,
-                auxiliary.end,
-            ).strip().lower().strip(".,;:?!")
-            if (
-                auxiliary.role == "verb"
-                and subject.role == "subject"
-                and predicate.role == "verb"
-                and not auxiliary.children
-                and not predicate.children
-                and (
-                    auxiliary_text in _AUXILIARY_WORDS
-                    or auxiliary_text.startswith("'")
-                )
-                and not _ends_sentence(source, auxiliary)
-                and not _ends_sentence(source, subject)
-            ):
-                output.append(TeachingNode(
-                    start=auxiliary.start,
-                    end=predicate.end,
-                    role="verb",
-                    children=(auxiliary, subject, predicate),
-                    kind="inverted-predicate",
-                ))
-                index += 3
-                continue
-        output.append(nodes[index])
-        index += 1
-    return tuple(output)
 
 
 def _group_coordinated_predicates(
@@ -344,7 +302,6 @@ def _coarsen_predicates(
         else node
         for node in nested
     )
-    nested = _group_subject_aux_inversion(source, nested)
     return _group_coordinated_predicates(source, nested)
 
 

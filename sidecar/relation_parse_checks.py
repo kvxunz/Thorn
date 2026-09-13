@@ -101,6 +101,122 @@ CASES = (
 
 
 class RelationParseTests(unittest.TestCase):
+    def test_reconciliation_preserves_evidence_and_rejects_counterexamples(self):
+        result = server.analyze_text("What did the new policy change?")
+        self.assertTrue(result.evidence.repairs)
+        predicate = result.source_tokens.index("change")
+        subject = result.source_tokens.index("policy")
+        self.assertEqual(result.evidence.relations.attachment(subject).head, predicate)
+        self.assertEqual(result.evidence.relations.attachment(subject).kind, "subject")
+        self.assertEqual(result.evidence.relations.attachment(subject).provenance, "benepar-do-question")
+        self.assertFalse(result.evidence.relations.diagnostics)
+        for text in (
+            "What did the new policy do?",
+            "In the office she was given a document.",
+            "In the office they stored several documents.",
+            "The richer family bought a house.",
+        ):
+            with self.subTest(text=text):
+                result = server.analyze_text(text)
+                self.assertFalse(result.evidence.repairs)
+                self.assertFalse(result.evidence.relations.diagnostics)
+
+    def test_remaining_structure_families(self):
+        def walk(nodes):
+            for node in nodes:
+                yield node
+                yield from walk(node.get("children") or [])
+
+        for text, word, role in (
+            ("Attached to this letter will be a schedule.", "will", "verb"),
+            ("In the box were stored several documents.", "documents", "subject"),
+            ("What did the new policy change?", "change", "verb"),
+            ("The harder she worked, the greater her success.", "success", "subject"),
+        ):
+            with self.subTest(text=text):
+                result = server.analyze_text(text)
+                index = result.source_tokens.index(word)
+                self.assertTrue(any(node["role"] == role and node["s"] <= index < node["e"]
+                                    for node in result.chunks))
+        for text, child_word, parent_word, child_role, parent_role in (
+            ("We bought a device which records sound.", "records", "device", "clause-relative", "object"),
+            ("The alarm rings each time the door opens.", "opens", "time", "clause-relative", "adverbial"),
+            ("She knew that if he called, Alice would answer but Bob would remain silent.",
+             "remain", "answer", "clause-noun", "clause-noun"),
+        ):
+            with self.subTest(text=text):
+                result = server.analyze_text(text)
+                child_index = result.source_tokens.index(child_word)
+                parent_index = result.source_tokens.index(parent_word)
+                self.assertTrue(any(
+                    parent["role"] == parent_role and parent["s"] <= parent_index < parent["e"]
+                    and any(child["role"] == child_role and child["s"] <= child_index < child["e"]
+                            for child in parent.get("children") or [])
+                    for parent in walk(result.chunks)
+                ))
+
+    def test_questions_preserve_subject_and_wh_argument_roles(self):
+        for text, subject, opener, role in (
+            ("What did the researcher discover?", "the researcher", "What", "object"),
+            ("How was it happening?", "it", "How", "adverbial"),
+            ("Who did the researcher interview?", "the researcher", "Who", "object"),
+            ("Who discovered the answer?", "Who", "Who", "subject"),
+        ):
+            with self.subTest(text=text):
+                chunks = server.analyze_text(text).chunks
+                self.assertIn((subject, "subject"), {(node["text"], node["role"]) for node in chunks})
+                self.assertIn((opener, role), {(node["text"], node["role"]) for node in chunks})
+
+    def test_finite_progressive_zero_relatives_remain_nominal_modifiers(self):
+        def walk(nodes):
+            for node in nodes:
+                yield node
+                yield from walk(node.get("children") or [])
+
+        for text, phrase in (
+            ("This was the one they were looking for.", "they were looking for"),
+            ("This is the document she is searching for.", "she is searching for"),
+            ("That was the person we had been waiting for.", "we had been waiting for"),
+            ("This was the one that they were looking for.", "that they were looking for"),
+            ("This was the person for whom they were waiting.", "for whom they were waiting"),
+        ):
+            with self.subTest(text=text):
+                analysis = server.analyze_text(text)
+                clauses = [node for node in walk(analysis.chunks)
+                           if node["text"].rstrip(".") == phrase and node["role"] == "clause-relative"]
+                self.assertTrue(clauses)
+                self.assertTrue(any(node["role"] == "complement" and clauses[0] in (node.get("children") or [])
+                                    for node in walk(analysis.chunks)))
+
+    def test_scent_content_clause_and_relative_keep_their_nominal_owners(self):
+        text = ("The scent she carried in her samples and on her body was a message to the other bees "
+                "that this was the one they were looking for.")
+        chunks = server.analyze_text(text).chunks
+        self.assertEqual([node["role"] for node in chunks], ["subject", "verb", "complement"])
+        message = chunks[2]
+        content = next(node for node in message["children"] if node["text"].startswith("that this"))
+        self.assertEqual(content["form"], "appositive-clause")
+        nominal = next(node for node in content["children"] if node["role"] == "complement")
+        relative = next(node for node in nominal["children"] if node["text"].startswith("they"))
+        self.assertEqual(relative["role"], "clause-relative")
+
+    def test_finite_progressive_does_not_turn_real_asides_into_relatives(self):
+        def walk(nodes):
+            for node in nodes:
+                yield node
+                yield from walk(node.get("children") or [])
+
+        for text, expected in (
+            ("The meeting, everyone being exhausted, ended early.", "clause-adverbial"),
+            ("The proposal, I believe, will succeed.", "insertion"),
+        ):
+            with self.subTest(text=text):
+                chunks = server.analyze_text(text).chunks
+                self.assertTrue(any(node["role"] == expected for node in walk(chunks)))
+                self.assertFalse(any(node["role"] == "clause-relative" for node in walk(chunks)))
+        chunks = server.analyze_text("She said that they were looking for the document.").chunks
+        self.assertFalse(any(node["role"] == "clause-relative" for node in walk(chunks)))
+
     def test_display_depth_cannot_change_syntax_or_boundary_decisions(self):
         prepared, doc, offsets = server._prepare_document(
             "The smoke laced with dust and tinged with oil rose."

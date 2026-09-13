@@ -89,7 +89,9 @@ class SyntaxRelations:
             return None
 
         edges = tuple(
-            SyntaxRelation(token.head, token.index, _RELATIONS[token.dep], token.dep)
+            SyntaxRelation(token.head, token.index, _RELATIONS[token.dep], token.dep,
+                           next((rule for index, rule, _before in evidence.repairs if index == token.index),
+                                "spacy-dependency"))
             for token in tokens
             if token.dep in _RELATIONS and token.head != token.index
         )

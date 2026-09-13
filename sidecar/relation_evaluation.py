@@ -2,8 +2,29 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
+
+
+def split_numeric_anchor(word, text, tokens, evidence):
+    if not re.fullmatch(r"[0-9]+['’]s", word):
+        return None
+    if len(re.findall(r"(?<!\w)" + re.escape(word) + r"(?!\w)", text)) != 1:
+        return None
+    matches = [index for index in range(len(tokens) - 1)
+               if tokens[index] + tokens[index + 1] == word]
+    if len(matches) != 1:
+        return None
+    index = matches[0]
+    source = getattr(evidence, "tokens", ())
+    if len(source) != len(tokens):
+        return None
+    number, suffix = source[index:index + 2]
+    if (number.pos in ("NUM", "NOUN") and number.head != index + 1
+            and suffix.head == index and suffix.dep in ("case", "poss", "quantmod")):
+        return index
+    return None
 
 
 def evaluate(cases, analyze, *, strict_anchors=True, normalize_coordination=False):
@@ -29,10 +50,14 @@ def evaluate(cases, analyze, *, strict_anchors=True, normalize_coordination=Fals
             tokens = analysis.source_tokens
             unmatched = set()
 
-            def anchor(word, tokens=tokens, unmatched=unmatched, case_id=case["id"]):
+            def anchor(word, tokens=tokens, unmatched=unmatched, case_id=case["id"],
+                       text=case["text"], evidence=analysis.evidence):
                 indices = [index for index, token in enumerate(tokens) if token == word]
                 if len(indices) != 1:
                     if not strict_anchors:
+                        aligned = split_numeric_anchor(word, text, tokens, evidence)
+                        if aligned is not None:
+                            return aligned
                         if word not in unmatched:
                             record(case_id, "alignment", False, f"unmatched gold anchor: {word}")
                             unmatched.add(word)

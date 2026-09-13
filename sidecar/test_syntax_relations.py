@@ -22,6 +22,26 @@ def evidence(rows):
 
 
 class SyntaxRelationsTests(unittest.TestCase):
+    def test_external_split_numeric_suffix_alignment(self):
+        source = evidence([("reached", "VERB", "VBD", "ROOT", 0),
+                           ("upper", "ADJ", "JJ", "amod", 2),
+                           ("80", "NOUN", "CD", "dobj", 0),
+                           ("'s", "NOUN", "NN", "quantmod", 2)])
+        analysis = SimpleNamespace(source_tokens=[token.text for token in source.tokens], evidence=source,
+                                   chunks=[{"text": "reached upper 80's"}])
+        case = {"id": "numeric-suffix", "text": "reached upper 80's", "root": "reached",
+                "checks": [["attachment", "nominal-modifier", "80's", "upper"]]}
+        report = evaluate([case], lambda text: analysis, strict_anchors=False)
+        self.assertFalse(report["failures"])
+        self.assertEqual(report["checks"]["attachment"], {"passed": 1, "total": 1})
+        self.assertTrue(evaluate([case], lambda text: analysis)["failures"])
+        case["checks"][0][1] = "object"
+        self.assertTrue(evaluate([case], lambda text: analysis, strict_anchors=False)["failures"])
+        case["text"] = "reached upper 80 's"
+        self.assertIn("alignment", evaluate([case], lambda text: analysis, strict_anchors=False)["checks"])
+        case["text"] = "reached upper 80's and lower 80's"
+        self.assertIn("alignment", evaluate([case], lambda text: analysis, strict_anchors=False)["checks"])
+
     def test_backbone_policy_keeps_arguments_and_clauses_distinct(self):
         for dependency in ("nsubj", "nsubjpass", "expl"):
             self.assertEqual(backbone_role(dependency, "read"), ("subject", False))

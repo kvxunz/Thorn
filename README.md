@@ -120,7 +120,7 @@ Swift 菜单栏 App                       Python sidecar (uv run --script)
 
 ```bash
 # 1. 句法模型（一次性，联网下载 spaCy transformer 权重和 Benepar）
-uv run --script sidecar/server.py --install-models
+uv run --locked --script sidecar/server.py --install-models
 
 # 2. 翻译模型
 ollama pull hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K
@@ -192,14 +192,15 @@ docs/phonics-dict.md            拼读词典的数据格式与生成说明
 
 ```bash
 swift test --skip LiveHYMT2
-python3 -m unittest discover -s sidecar -p 'test_*.py'
+uv run --locked --script scripts/check_sidecar.py
 ```
 
 修改句法规则或升级 Python 依赖后，发布前还应运行真实模型回归：
 
 ```bash
-uv run --script sidecar/server.py --install-models
-uv run --script sidecar/server.py --check-regressions
+uv run --locked --script sidecar/server.py --install-models
+uv run --locked --script sidecar/server.py --check-regressions
+bash scripts/run-sidecar.sh tree_snapshot.py
 ```
 
 回归入口使用 `server.py` 的依赖声明，避免生产与测试分别解析不同的依赖声明。
@@ -207,7 +208,10 @@ uv run --script sidecar/server.py --check-regressions
 GitHub Actions 的 **Live parse regression** 工作流可手动触发，不拖慢普通 PR 测试。
 该工作流同时检查主要句法关系的固定正反例。关系中间层、诊断入口和评测边界见
 [解析架构说明](docs/parser-architecture.md)。
-当前依赖仍使用部分版本范围，并非完整锁定环境；升级前后须重新执行真实模型回归。
+运行包与 CI 工具有完整的传递依赖锁，模型另有哈希校验。开发诊断统一使用
+`bash scripts/run-sidecar.sh TOOL.py`，不再各自维护依赖声明。
+模块拆分、100 句外部人工校正语料评测、性能实测及可复现范围见
+[依赖与评测说明](docs/reproducibility-and-evaluation.md)。升级前后须重新执行真实模型回归。
 
 ## 一点设计立场
 

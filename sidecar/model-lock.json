@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "model": "benepar_en3",
+  "ollama": {
+    "name": "hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K",
+    "digest": "71b398ab7c7a8a95c7545fb240113c6c9d6dee3dde7e5f771f7339be0af02dea"
+  },
+  "provenance": "SHA-256 of the existing regression-tested Benepar model files; spaCy model wheel is separately hashed in server.py.lock.",
+  "files": {
+    "benepar_model.bin": "fc465e820f8a62ffc6c23cb7d2ceed61f41d29d1930d471df301f17d3dbb4822",
+    "config.json": "b9d776b9dceee0acfe0106e06064fd8e31bc92c13687e6b34f91b15039625f54",
+    "special_tokens_map.json": "4720c0fddbe4c5991334f85ad7073d9bd0a294a8ba4641a2f8dab614ca825949",
+    "spiece.model": "d60acb128cf7b7f2536e8f38a5b18a05535c9e14c7a355904270e15b0945ea86",
+    "tokenizer_config.json": "276d4c78c1c4169cfeddedd1730dd2e6c01c52de027df02aeb1765efcd47c7b2"
+  }
+}

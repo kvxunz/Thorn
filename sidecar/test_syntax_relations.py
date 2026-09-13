@@ -50,6 +50,19 @@ class SyntaxRelationsTests(unittest.TestCase):
         self.assertEqual(report["checks"]["execution"], {"passed": 0, "total": 1})
         self.assertTrue(report["failures"])
 
+    def test_external_coordination_normalizes_only_group_head(self):
+        source = evidence([("tea", "NOUN", "NN", "ROOT", 0),
+                           ("coffee", "NOUN", "NN", "conj", 0),
+                           ("water", "NOUN", "NN", "conj", 1)])
+        analysis = SimpleNamespace(source_tokens=["tea", "coffee", "water"], evidence=source,
+                                   chunks=[{"text": "tea coffee water"}])
+        case = {"id": "chain", "text": "tea coffee water", "root": "tea",
+                "checks": [["coordination", "coordinate", "tea", "water"]]}
+        self.assertTrue(evaluate([case], lambda text: analysis)["failures"])
+        self.assertFalse(evaluate([case], lambda text: analysis, normalize_coordination=True)["failures"])
+        case["checks"] = [["coordination", "coordinate", "water", "tea"]]
+        self.assertTrue(evaluate([case], lambda text: analysis, normalize_coordination=True)["failures"])
+
     def test_evaluator_fails_wrong_relation_instead_of_scoring_empty_green(self):
         source = evidence([("Birds", "NOUN", "NNS", "nsubj", 1),
                            ("fly", "VERB", "VBP", "ROOT", 1)])

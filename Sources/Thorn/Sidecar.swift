@@ -259,7 +259,7 @@ actor Sidecar {
 
     func modelInstallCommand() -> String {
         let quoted = "'" + sidecarScriptPath().replacingOccurrences(of: "'", with: "'\\''") + "'"
-        return "uv run --script \(quoted) --install-models"
+        return "uv run --locked --script \(quoted) --install-models"
     }
 
     /// Fetch the deterministic teaching tree while preserving the distinction
@@ -561,7 +561,7 @@ actor Sidecar {
         // parameters so a custom path cannot be interpreted as shell syntax.
         process.arguments = [
             "-lc",
-            "exec uv run --script \"$1\" --port \"$2\" --idle-exit \"$3\"",
+            "exec uv run --locked --script \"$1\" --port \"$2\" --idle-exit \"$3\"",
             "thorn-sidecar",
             script,
             String(port),

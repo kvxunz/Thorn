@@ -32,10 +32,16 @@ class ParserArchitectureTests(unittest.TestCase):
 
     def test_structure_layers_cannot_import_projection_or_service(self):
         root = Path(__file__).parent
-        for name in ("syntax_features", "syntax_policy", "syntax_structure", "syntax_decomposition", "syntax_assembly"):
+        for path in root.glob("syntax_*.py"):
+            name = path.stem
             tree = ast.parse((root / f"{name}.py").read_text())
+            type_only = {id(child) for node in ast.walk(tree)
+                         if isinstance(node, ast.If) and isinstance(node.test, ast.Name)
+                         and node.test.id == "TYPE_CHECKING" for child in ast.walk(node)}
             modules = set()
             for node in ast.walk(tree):
+                if id(node) in type_only:
+                    continue
                 if isinstance(node, ast.ImportFrom) and node.module:
                     modules.add(node.module.split(".")[0])
                 elif isinstance(node, ast.Import):
@@ -97,7 +103,7 @@ class ParserArchitectureTests(unittest.TestCase):
                 self.assertEqual(plan_roots((spec,), token.doc), [(token, "subject", result)])
 
     def test_structure_roots_never_depend_on_display_depth(self):
-        tree = ast.parse(Path(__file__).with_name("syntax_assembly.py").read_text())
+        tree = ast.parse(Path(__file__).with_name("syntax_clause.py").read_text())
         calls = 0
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "roots":
@@ -110,9 +116,20 @@ class ParserArchitectureTests(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent
         gate = (root / "scripts/githooks/pre-commit").read_text()
         for module in ("syntax_features", "syntax_structure", "syntax_assembly", "syntax_decomposition",
+                       "syntax_boundaries", "syntax_clause", "syntax_nominal", "syntax_grouping",
                        "syntax_policy", "syntax_relations", "teaching_projection", "teaching_policy"):
             with self.subTest(module=module):
                 self.assertIn(f"sidecar/{module}.py", gate)
+
+    def test_recursive_nominal_analysis_has_no_back_import(self):
+        root = Path(__file__).parent
+        nominal = ast.parse((root / "syntax_nominal.py").read_text())
+        imports = {node.module for node in ast.walk(nominal) if isinstance(node, ast.ImportFrom)}
+        self.assertFalse(imports & {"syntax_clause", "syntax_assembly"})
+        entry = next(node for node in nominal.body if isinstance(node, ast.FunctionDef) and node.name == "analyze_nominal")
+        self.assertIn("analyze_clause", [arg.arg for arg in entry.args.kwonlyargs])
+        for name in ("syntax_assembly", "syntax_boundaries", "syntax_nominal", "syntax_grouping", "syntax_clause"):
+            self.assertLess(len((root / f"{name}.py").read_text().splitlines()), 750)
 
 
 if __name__ == "__main__":

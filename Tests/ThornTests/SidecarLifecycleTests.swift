@@ -40,6 +40,7 @@ final class SidecarLifecycleTests: XCTestCase {
         XCTAssertEqual(process.environment?["THORN_SIDECAR_TOKEN"], "test-token")
         XCTAssertEqual(process.environment?["PYTHONDONTWRITEBYTECODE"], "1")
         XCTAssertEqual(process.environment?["PATH"], "/usr/bin:/bin")
+        XCTAssertTrue(process.arguments?[1].contains("uv run --locked --script") == true)
     }
 
     func testFailedLaunchReturnsToIdleForRetry() {

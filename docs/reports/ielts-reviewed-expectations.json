@@ -1245,6 +1245,15 @@
         "start": 19,
         "end": 22,
         "role": "object",
+        "top_level": false,
+        "parent_anchor": 19,
+        "parent_role": "object"
+      },
+      {
+        "anchor": 19,
+        "start": 19,
+        "end": 41,
+        "role": "object",
         "top_level": true
       }
     ],
@@ -1629,6 +1638,29 @@
         "end": 7,
         "role": "verb",
         "top_level": true
+      },
+      {
+        "anchor": 8,
+        "start": 7,
+        "end": 31,
+        "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 14,
+        "start": 13,
+        "end": 25,
+        "role": "prep-phrase",
+        "parent_anchor": 8,
+        "parent_role": "object"
+      },
+      {
+        "anchor": 27,
+        "start": 25,
+        "end": 30,
+        "role": "prep-phrase",
+        "parent_anchor": 8,
+        "parent_role": "object"
       }
     ],
     "review": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed"
@@ -1919,6 +1951,13 @@
         "start": 10,
         "end": 11,
         "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 11,
+        "start": 11,
+        "end": 22,
+        "role": "complement",
         "top_level": true
       }
     ],
@@ -2809,9 +2848,25 @@
       {
         "anchor": 18,
         "start": 18,
-        "end": 19,
+        "end": 33,
         "role": "object",
         "top_level": true
+      },
+      {
+        "anchor": 27,
+        "start": 26,
+        "end": 32,
+        "role": "appositive",
+        "parent_anchor": 18,
+        "parent_role": "object"
+      },
+      {
+        "anchor": 29,
+        "start": 28,
+        "end": 32,
+        "role": "clause-relative",
+        "parent_anchor": 27,
+        "parent_role": "appositive"
       }
     ],
     "review": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed"
@@ -3081,6 +3136,20 @@
         "start": 16,
         "end": 17,
         "role": "object",
+        "top_level": true
+      },
+      {
+        "anchor": 0,
+        "start": 0,
+        "end": 5,
+        "role": "clause-adverbial",
+        "top_level": true
+      },
+      {
+        "anchor": 13,
+        "start": 13,
+        "end": 14,
+        "role": "conjunction",
         "top_level": true
       }
     ],

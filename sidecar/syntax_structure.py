@@ -46,6 +46,11 @@ class SyntaxRoot:
 
 
 def adverbial_root(token) -> SyntaxRoot:
+    if (token.pos_ == "ADP" and any(child.tag_ == "WRB" for child in token.children)
+            and any("SBAR" in span._.labels and span.start <= token.i < span.end
+                    and not span.start <= token.head.i < span.end
+                    for span in token.sent._.constituents)):
+        return SyntaxRoot(token.i, "clause-adverbial", StructureKind.CLAUSAL)
     if is_preposed_though_adjective(token):
         verbal = though_clause_verb(token)
         return SyntaxRoot((verbal if verbal is not None else token).i,

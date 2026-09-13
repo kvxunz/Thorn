@@ -746,13 +746,16 @@ class GoldenParseTests(unittest.TestCase):
         self.assertIsNotNone(phrase, "the agent phrase never expanded")
         kids = phrase["children"] or []
         self.assertEqual(
-            [(n["role"], n["text"]) for n in kids][:3],
+            [(n["role"], n["text"]) for n in kids][:2],
             [
                 ("prep-phrase", "by The Chick at the Back of the Church"),
                 ("insertion", "(2001)"),
-                ("appositive", ", a poetry book"),
             ],
         )
+        appositive = kids[2]
+        self.assertEqual(appositive["role"], "appositive")
+        self.assertEqual(appositive["children"][0]["text"], ", a poetry book")
+        self.assertEqual(appositive["children"][1]["role"], "clause-relative")
 
     def test_a_lone_appositive_gets_its_own_card_when_a_comma_fences_it(self):
         """", a refinement of the Big Bang" renames the idea; it is not more of it.

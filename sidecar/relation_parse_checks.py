@@ -101,6 +101,50 @@ CASES = (
 
 
 class RelationParseTests(unittest.TestCase):
+    def test_interrupted_nominal_complements_retain_closed_supplements(self):
+        result = server.analyze_text(
+            "You have the choice either of hiring equipment, at a small cost, or of bringing your own."
+        )
+        choice = next(node for node in result.chunks if node["role"] == "object")
+        self.assertIn("bringing", choice["text"])
+        self.assertTrue(choice["children"])
+        cost = next(node for node in choice["children"] if "cost" in node["text"])
+        self.assertNotIn("bringing", cost["text"])
+        second = next(node for node in choice["children"] if "bringing" in node["text"])
+        self.assertEqual(second["role"], "prep-phrase")
+
+    def test_wh_infinitives_and_reduced_adverbials_keep_introducers(self):
+        for text, opening, word, role in (
+            ("They teach students how to put together and lead a safe exercise program.",
+             "how", "lead", "complement"),
+            ("When inside the house, she closes the windows.", "When", "inside", "clause-adverbial"),
+        ):
+            with self.subTest(text=text):
+                result = server.analyze_text(text)
+                self.assertTrue(any(node["role"] == role and node["text"].startswith(opening)
+                                    and word in node["text"] for node in result.chunks))
+
+    def test_postnominal_measure_and_restatement_stay_with_object(self):
+        result = server.analyze_text(
+            "They found food hundreds of metres away from the camp, food which was still fresh."
+        )
+        nominal = next(node for node in result.chunks if node["role"] == "object")
+        self.assertIn("fresh", nominal["text"])
+        graph = result.evidence.relations
+        food = [index for index, word in enumerate(result.source_tokens) if word == "food"]
+        self.assertEqual(graph.attachment(food[1]).head, food[0])
+        restatement = next(node for node in nominal["children"] if node["role"] == "appositive")
+        self.assertTrue(any(node["role"] == "clause-relative" for node in restatement["children"]))
+
+    def test_result_connector_is_not_a_degree_adverb(self):
+        result = server.analyze_text("She was tired, so she went home.")
+        self.assertIn(("so", "conjunction"), {(node["text"], node["role"]) for node in result.chunks})
+        self.assertTrue(result.evidence.relations.coordinations)
+        for text in ("She was so tired that she slept.", "They walked hundreds of metres away from the camp."):
+            with self.subTest(text=text):
+                result = server.analyze_text(text)
+                self.assertFalse(result.evidence.repairs)
+
     def test_closed_parenthesis_does_not_swallow_following_list(self):
         result = server.analyze_text("We provide bedding (sheets and pillows), towels and blankets.")
         def walk(nodes):

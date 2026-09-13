@@ -900,11 +900,12 @@
   [verb] fall
   [prep-phrase] into one of two categories: those giving their possessors greater control over the environment and those rendering them more independent of it.
     [prep-phrase] into one of two categories:
-    [appositive] those
-    [clause-relative] giving their possessors greater control over the environment
-      [verb] giving
-      [object] their possessors
-      [object] greater control over the environment
+    [appositive] those giving their possessors greater control over the environment
+      [appositive] those
+      [clause-relative] giving their possessors greater control over the environment
+        [verb] giving
+        [object] their possessors
+        [object] greater control over the environment
     [prep-phrase] and those
     [clause-relative] rendering them more independent of it
       [verb] rendering
@@ -1111,8 +1112,8 @@
     [conjunction] Once
     [subject] Renaissance painters
     [verb] discovered
-    [conjunction] how
-    [complement] to render volume and depth
+    [complement] how to render volume and depth
+      [adverbial] how
       [verb] to render
       [object] volume and depth
   [subject] they
@@ -1279,11 +1280,12 @@
     [prep-phrase] for creative reasoning, the very ability that had made the formulation of classical principles possible
       [prep-phrase] for
       [object] creative reasoning
-      [appositive] , the very ability
-      [clause-relative] that had made the formulation of classical principles possible
-        [relative] that
-        [verb] had made
-        [clause-noun] the formulation of classical principles possible
+      [appositive] , the very ability that had made the formulation of classical principles possible
+        [appositive] , the very ability
+        [clause-relative] that had made the formulation of classical principles possible
+          [relative] that
+          [verb] had made
+          [clause-noun] the formulation of classical principles possible
 
 == If duty is the natural outgrowth of one's control over the course of future events, then people who are powerful have duty placed on them whether they like it or not.
   [clause-adverbial] If duty is the natural outgrowth of one's control over the course of future events,
@@ -1986,16 +1988,17 @@
   [verb] present
   [object] unrealistic view of the material world, one which promotes a standard of living that most of us can probably not attain.
     [object] unrealistic view of the material world
-    [appositive] , one
-    [clause-relative] which promotes a standard of living that most of us can probably not attain
-      [relative] which
-      [verb] promotes
-      [object] a standard of living that most of us can probably not attain
-        [object] a standard of living
-        [clause-relative] that most of us can probably not attain
-          [relative] that
-          [subject] most of us
-          [verb] can probably not attain
+    [appositive] , one which promotes a standard of living that most of us can probably not attain
+      [appositive] , one
+      [clause-relative] which promotes a standard of living that most of us can probably not attain
+        [relative] which
+        [verb] promotes
+        [object] a standard of living that most of us can probably not attain
+          [object] a standard of living
+          [clause-relative] that most of us can probably not attain
+            [relative] that
+            [subject] most of us
+            [verb] can probably not attain
 
 == Although it is unusual to denounce museum-goers for not painting, it is quite common, even for those who are unenthusiastic about sports, to criticize spectators for athletic inactivity.
   [clause-adverbial] Although it is unusual to denounce museum-goers for not painting,
@@ -2248,9 +2251,10 @@
   [clause] Du Bois' foreign trips were the highlight, not the totality, of his travels;
     [subject] Du Bois' foreign trips
     [verb] were
-    [complement] the highlight
-    [appositive] , not the totality,
-    [complement] of his travels;
+    [complement] the highlight, not the totality, of his travels;
+      [complement] the highlight
+      [appositive] , not the totality,
+      [complement] of his travels
   [clause] he was habitually on the go across and around the United States.
     [subject] he
     [verb] was
@@ -2443,8 +2447,9 @@
         [conjunction] and
         [adverbial] hence
         [verb] manifests,
-        [object] disrespect toward others
-        [appositive] , especially his interiors,
+        [object] disrespect toward others, especially his interiors,
+          [object] disrespect toward others
+          [appositive] , especially his interiors
     [verb] cannot fail
     [complement] to inspire hatred against himself
       [verb] to inspire
@@ -3110,8 +3115,9 @@
     [conjunction] that
     [subject] one
     [verb] is
-    [complement] a fully independent, functioning part of the whole
-    [insertion] , capable and willing to make choices
+    [complement] a fully independent, functioning part of the whole, capable and willing to make choices
+      [complement] a fully independent, functioning part of the whole
+      [insertion] , capable and willing to make choices
 
 == In their hearts, women think it is men's business to earn money and theirs to spend it—if possible during their husband's life, but, at any rate, after his death.
   [prep-phrase] In their hearts,
@@ -3367,18 +3373,19 @@
   [verb] increased
   [object] the numbers and importance of shareholders as a class, an element in national life representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business.
     [object] the numbers and importance of shareholders as a class
-    [appositive] , an element in national life
-    [clause-relative] representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business
-      [verb] representing
-      [object] irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached
-        [object] irresponsible wealth
-        [clause-relative] detached from the land and the duties of the landowners; and almost equally detached
-          [verb] detached
-          [prep-phrase] from the land and the duties of the landowners;
-          [conjunction] and
-          [adverbial] almost equally
-          [verb] detached
-      [prep-phrase] from the responsible management of business
+    [appositive] , an element in national life representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business
+      [appositive] , an element in national life
+      [clause-relative] representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business
+        [verb] representing
+        [object] irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached
+          [object] irresponsible wealth
+          [clause-relative] detached from the land and the duties of the landowners; and almost equally detached
+            [verb] detached
+            [prep-phrase] from the land and the duties of the landowners;
+            [conjunction] and
+            [adverbial] almost equally
+            [verb] detached
+        [prep-phrase] from the responsible management of business
 
 == Towns like Bournemouth and Eastbourne sprang up to house large, "comfortable" classes who had retired on their incomes, and who had no relation to the rest of the community except that of drawing dividends and occasionally attending a shareholders' meeting to dictate their orders to the management.
   [subject] Towns like Bournemouth and Eastbourne
@@ -3502,10 +3509,11 @@
   [prep-phrase] For Lloyd Nickson, a 54-year-old Darwin resident suffering from lung cancer,
     [prep-phrase] For
     [object] Lloyd Nickson
-    [appositive] , a 54-year-old Darwin resident
-    [clause-relative] suffering from lung cancer
-      [verb] suffering
-      [prep-phrase] from lung cancer
+    [appositive] , a 54-year-old Darwin resident suffering from lung cancer
+      [appositive] , a 54-year-old Darwin resident
+      [clause-relative] suffering from lung cancer
+        [verb] suffering
+        [prep-phrase] from lung cancer
   [subject] the NT Rights of Terminally Ill law
   [verb] means
   [clause-noun] he can get on with living without the haunting fear of his suffering: a terrifying death from his breathing condition.
@@ -3707,14 +3715,15 @@
     [verb] is
     [complement] mankind's instinct for moral reasoning in action, an instinct that should be encouraged rather than laughed at.
       [complement] mankind's instinct for moral reasoning in action
-      [appositive] , an instinct
-      [clause-relative] that should be encouraged rather than laughed at
-        [relative] that
-        [verb] should be encouraged rather than laughed
-          [verb] should be encouraged
-          [conjunction] rather than
-          [verb] laughed
-        [prep-phrase] at
+      [appositive] , an instinct that should be encouraged rather than laughed at
+        [appositive] , an instinct
+        [clause-relative] that should be encouraged rather than laughed at
+          [relative] that
+          [verb] should be encouraged rather than laughed
+            [verb] should be encouraged
+            [conjunction] rather than
+            [verb] laughed
+          [prep-phrase] at
 
 == The Aswan Dam, for example, stopped the Nile flooding but deprived Egypt of the fertile silt that floods left — all in return for a giant reservoir of disease which is now so full of silt that it barely generates electricity.
   [subject] The Aswan Dam,
@@ -3911,10 +3920,11 @@
   [verb] will be
   [complement] a triumph for yet another scientific idea, a refinement of the Big Bang called the inflationary universe theory.
     [complement] a triumph for yet another scientific idea
-    [appositive] , a refinement of the Big Bang
-    [clause-relative] called the inflationary universe theory
-      [verb] called
-      [object] the inflationary universe theory
+    [appositive] , a refinement of the Big Bang called the inflationary universe theory
+      [appositive] , a refinement of the Big Bang
+      [clause-relative] called the inflationary universe theory
+        [verb] called
+        [object] the inflationary universe theory
 
 == Odd though it sounds, cosmic inflation is a scientifically plausible consequence of some respected ideas in elementary-particle physics, and many astrophysicists have been convinced for the better part of a decade that it is true.
   [clause-adverbial] Odd though it sounds,

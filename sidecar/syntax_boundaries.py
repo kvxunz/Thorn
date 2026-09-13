@@ -19,6 +19,12 @@ def boundary_anchors(root, decompose, parent):
     anchors = {root.i}
     if root.pos_ in ("VERB", "AUX"):
         anchors.update(i for i in verb_group_indices(root) if parent.contains(i))
+    if root.pos_ in ("NOUN", "PROPN", "PRON"):
+        anchors.update(child.i for child in root.children
+                       if child.dep_ in ("amod", "appos") and child.i > root.i and parent.contains(child.i))
+    if root.dep_ in ("prep", "agent"):
+        anchors.update(child.i for child in root.children
+                       if child.dep_ == "npadvmod" and child.i < root.i and parent.contains(child.i))
     anchors.update(
         child.i for child in root.children
         if parent.contains(child.i)

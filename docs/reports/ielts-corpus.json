@@ -3,15 +3,16 @@
   "html_sha256": "36a27b1bd29716188d4840f1d0a03fd0a541ed02e0dec8f52ed73c8d3373eaad",
   "provenance": "Third-party transcription; not publisher-verified; annotations are assistant-reviewed, not independent gold",
   "selection": "Deduplicated prose sentences, >=5 words, terminal punctuation; headings, instructions, opening hours and advertisement block excluded",
-  "split_policy": "SHA256 first 8 hex digits modulo 5; heldout is 0 except 5 previously used sentences; only development text exported; no independent blind gold",
+  "split_policy": "Historical SHA256 partition retained for reproducibility; all 100 sentences now exposed to assistant review, not heldout or independent blind gold",
   "cases": [
     {
       "sentence_sha256": "55937597fcc359d9bba9d9e1a4b51108834ab7042dfb47cfc7803d2cc5fdd49c",
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 27,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -19,8 +20,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 18,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -28,8 +30,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -37,8 +40,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 14,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -46,8 +50,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 22,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -55,8 +60,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 24,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -64,8 +70,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 50,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -73,8 +80,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 24,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 2,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -82,8 +90,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 18,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -91,8 +100,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "heldout",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 1,
       "semantic_errors": []
     },
     {
@@ -100,8 +110,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 26,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -109,8 +120,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 12,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -118,8 +130,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "heldout",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -127,8 +140,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 18,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -136,8 +150,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 14,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -145,8 +160,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 14,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -154,8 +170,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 21,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -163,8 +180,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 17,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -172,8 +190,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -181,8 +200,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "heldout",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -190,8 +210,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 25,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -199,8 +220,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 20,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -208,8 +230,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -217,8 +240,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 27,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -226,8 +250,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 17,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -235,8 +260,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 36,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -244,8 +270,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 6,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -253,8 +280,9 @@
       "section": "ielts-reading-transcript-1",
       "split": "development",
       "words": 11,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -262,8 +290,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 22,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -271,8 +300,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 21,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -280,8 +310,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 32,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 5,
+      "semantic_checks": 10,
       "semantic_errors": []
     },
     {
@@ -289,8 +320,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 15,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -298,8 +330,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 10,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -307,8 +340,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 28,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -316,8 +350,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 21,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -325,8 +360,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 15,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 6,
+      "semantic_checks": 12,
       "semantic_errors": []
     },
     {
@@ -334,8 +370,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 24,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -343,8 +380,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 28,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -352,8 +390,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 33,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -361,8 +400,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 13,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -370,8 +410,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 21,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -379,8 +420,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -388,8 +430,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 9,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -397,8 +440,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "heldout",
       "words": 29,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -406,8 +450,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 18,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -415,8 +460,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 10,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -424,8 +470,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "heldout",
       "words": 17,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -433,8 +480,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 26,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -442,8 +490,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "heldout",
       "words": 6,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -451,8 +500,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "heldout",
       "words": 26,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -460,8 +510,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 17,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -469,8 +520,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 18,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -478,8 +530,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 17,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -487,8 +540,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "heldout",
       "words": 29,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -496,8 +550,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 13,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -505,8 +560,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 9,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -514,8 +570,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 22,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -523,8 +580,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 14,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -532,8 +590,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 21,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -541,8 +600,9 @@
       "section": "ielts-reading-transcript-2",
       "split": "development",
       "words": 12,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 2,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -550,8 +610,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 29,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 5,
+      "semantic_checks": 10,
       "semantic_errors": []
     },
     {
@@ -559,8 +620,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 15,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -568,8 +630,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 27,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -577,8 +640,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 29,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -586,8 +650,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 49,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 2,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -595,8 +660,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 29,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -604,8 +670,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 5,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -613,8 +680,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 10,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -622,8 +690,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 20,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -631,8 +700,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 28,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -640,8 +710,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -649,8 +720,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 37,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -658,8 +730,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -667,8 +740,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 12,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -676,8 +750,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -685,8 +760,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -694,8 +770,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 23,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -703,8 +780,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -712,8 +790,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 29,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -721,8 +800,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 22,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -730,8 +810,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 16,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -739,8 +820,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 7,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -748,8 +830,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 28,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 4,
       "semantic_errors": []
     },
     {
@@ -757,8 +840,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 31,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -766,8 +850,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 21,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -775,8 +860,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 20,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -784,8 +870,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 11,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -793,8 +880,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 20,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -802,8 +890,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 14,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -811,8 +900,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 5,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -820,8 +910,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 34,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 3,
+      "semantic_checks": 5,
       "semantic_errors": []
     },
     {
@@ -829,8 +920,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 18,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -838,8 +930,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 41,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -847,8 +940,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "heldout",
       "words": 36,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -856,8 +950,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 15,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 6,
       "semantic_errors": []
     },
     {
@@ -865,8 +960,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 14,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -874,8 +970,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 19,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 4,
+      "semantic_checks": 7,
       "semantic_errors": []
     },
     {
@@ -883,8 +980,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 28,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 2,
       "semantic_errors": []
     },
     {
@@ -892,8 +990,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 11,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 3,
       "semantic_errors": []
     },
     {
@@ -901,8 +1000,9 @@
       "section": "ielts-reading-transcript-3",
       "split": "development",
       "words": 26,
+      "review_status": "Assistant reviewed main backbone; targeted assertions, not exhaustive modifier gold; historical heldout exposed",
       "structural_errors": [],
-      "semantic_checks": 0,
+      "semantic_checks": 5,
       "semantic_errors": []
     }
   ]

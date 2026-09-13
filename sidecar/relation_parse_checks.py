@@ -101,6 +101,32 @@ CASES = (
 
 
 class RelationParseTests(unittest.TestCase):
+    def test_closed_parenthesis_does_not_swallow_following_list(self):
+        result = server.analyze_text("We provide bedding (sheets and pillows), towels and blankets.")
+        def walk(nodes):
+            for node in nodes:
+                yield node
+                yield from walk(node.get("children") or [])
+        closing = result.source_tokens.index(")")
+        blankets = result.source_tokens.index("blankets")
+        asides = [node for node in walk(result.chunks) if node["role"] == "insertion"]
+        self.assertTrue(asides)
+        self.assertTrue(all(node["e"] <= closing + 2 for node in asides))
+        self.assertTrue(any(node["role"] in ("object", "appositive") and node["s"] <= blankets < node["e"]
+                            for node in walk(result.chunks)))
+
+    def test_nominal_and_measure_complements_keep_their_owner(self):
+        for text, phrase, role in (
+            ("She uses a tool similar to a compass.", "a tool similar to a compass.", "object"),
+            ("He discovered facts about how birds communicate.", "facts about how birds communicate.", "object"),
+        ):
+            with self.subTest(text=text):
+                chunks = server.analyze_text(text).chunks
+                self.assertIn((phrase, role), {(node["text"], node["role"]) for node in chunks})
+        chunks = server.analyze_text("The dancer would run 40° to the left of the vertical line.").chunks
+        self.assertIn("would run", {node["text"] for node in chunks if node["role"] == "verb"})
+        self.assertFalse(any("40" in node["text"] for node in chunks if node["role"] == "verb"))
+
     def test_reconciliation_preserves_evidence_and_rejects_counterexamples(self):
         result = server.analyze_text("What did the new policy change?")
         self.assertTrue(result.evidence.repairs)

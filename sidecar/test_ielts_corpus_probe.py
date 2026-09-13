@@ -41,6 +41,8 @@ class IELTSProbeTests(unittest.TestCase):
         self.assertEqual(probe.check_expectations([parent], expected), [])
         self.assertEqual(probe.check_expectations([relative], expected), expected)
         self.assertTrue(probe.check_expectations([parent], [{"anchor": 3, "role": "verb"}]))
+        self.assertTrue(probe.check_expectations([parent], [{"anchor": 1, "role": "subject", "end": 2}]))
+        self.assertEqual(probe.check_expectations([parent], [{"anchor": 1, "role": "subject", "end": 5}]), [])
         self.assertTrue(probe.check_expectations([parent], [
             {"anchor": 3, "role": "clause-relative", "top_level": True}
         ]))

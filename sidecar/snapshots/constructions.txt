@@ -151,11 +151,12 @@
   [clause] There is no necessary intrinsic connection between a word and the thing it refers to;
     [subject] There
     [verb] is
-    [complement] no necessary intrinsic connection between a word and the thing
-    [clause-relative] it refers to;
-      [subject] it
-      [verb] refers
-      [prep-phrase] to
+    [complement] no necessary intrinsic connection between a word and the thing it refers to;
+      [complement] no necessary intrinsic connection between a word and the thing
+      [clause-relative] it refers to
+        [subject] it
+        [verb] refers
+        [prep-phrase] to
   [clause] the relationship is purely conventional.
     [subject] the relationship
     [verb] is
@@ -301,12 +302,13 @@
   [verb] seems
   [complement] to be confusion about what constitutes appropriate behavior for adolescents.
     [verb] to be
-    [complement] confusion about
-    [clause-noun] what constitutes appropriate behavior for adolescents
-      [adverbial] what
-      [verb] constitutes
-      [object] appropriate behavior
-      [prep-phrase] for adolescents
+    [complement] confusion about what constitutes appropriate behavior for adolescents
+      [complement] confusion about
+      [clause-noun] what constitutes appropriate behavior for adolescents
+        [adverbial] what
+        [verb] constitutes
+        [object] appropriate behavior
+        [prep-phrase] for adolescents
 
 == As long as nations cannot themselves accumulate enough physical power to dominate all others, they must depend on allies.
   [clause-adverbial] As long as nations cannot themselves accumulate enough physical power to dominate all others,
@@ -524,11 +526,12 @@
     [subject] some
     [verb] see
     [prep-phrase] in practical jokes
-    [object] a wish for mastery in miniature over a world
-    [clause-relative] that seems very unruly
-      [relative] that
-      [verb] seems
-      [complement] very unruly
+    [object] a wish for mastery in miniature over a world that seems very unruly
+      [object] a wish for mastery in miniature over a world
+      [clause-relative] that seems very unruly
+        [relative] that
+        [verb] seems
+        [complement] very unruly
   [subject] others
   [verb] believe
   [clause-noun] that the jokes' purpose is to disrupt, by reducing all transactions to chaos.
@@ -614,8 +617,7 @@
 
 == An institution concerned about its reputation is at the mercy of the actions of its members; because the misdeeds of individuals are often used to discredit the institutions of which they are a part.
   [clause] An institution concerned about its reputation is at the mercy of the actions of its members;
-    [subject] An institution concerned
-    [prep-phrase] about its reputation
+    [subject] An institution concerned about its reputation
     [verb] is
     [prep-phrase] at the mercy of the actions of its members;
   [clause-adverbial] because the misdeeds of individuals are often used to discredit the institutions of which they are a part.
@@ -1377,12 +1379,13 @@
   [subject] there
   [verb] will be,
   [prep-phrase] among scientists,
-  [complement] considerable uncertainty about the possibility
-  [clause-relative] that increasing levels of atmospheric $CO_{2}$ can cause long-term warming effects.
-    [conjunction] that
-    [subject] increasing levels of atmospheric $CO_{2}$
-    [verb] can cause
-    [object] long-term warming effects
+  [complement] considerable uncertainty about the possibility that increasing levels of atmospheric $CO_{2}$ can cause long-term warming effects.
+    [complement] considerable uncertainty about the possibility
+    [clause-relative] that increasing levels of atmospheric $CO_{2}$ can cause long-term warming effects
+      [conjunction] that
+      [subject] increasing levels of atmospheric $CO_{2}$
+      [verb] can cause
+      [object] long-term warming effects
 
 == Dependence on foreign sources of heavy metals, though diminishing, remains a problem for United States foreign policy.
   [subject] Dependence on foreign sources of heavy metals,
@@ -1447,9 +1450,9 @@
     [subject] medieval women's public participation in spiritual life
     [verb] was not welcomed
     [prep-phrase] by the male establishment
-  [subject] a compensating involvement with religious writings, inoffensive
-  [prep-phrase] to the members of the establishment
-  [prep-phrase] because of its privacy,
+  [subject] a compensating involvement with religious writings, inoffensive to the members of the establishment because of its privacy,
+    [subject] a compensating involvement with religious writings
+    [insertion] , inoffensive to the members of the establishment because of its privacy,
   [verb] became
   [complement] important
   [prep-phrase] for many women.
@@ -1582,20 +1585,21 @@
   [prep-phrase] In the days before the mass marketing of books,
   [subject] censorship
   [verb] was
-  [complement] a prime source of publicity,
-  [clause-relative] which helped the sale of the book and inspired Ralph Waldo Emerson to remark, "Every burned book enlightens the world."
-    [relative] which
-    [verb] helped
-    [object] the sale of the book
-    [conjunction] and
-    [verb] inspired
-    [object] Ralph Waldo Emerson
-    [complement] to remark, "Every burned book enlightens the world
-      [verb] to remark, "
-      [clause-noun] Every burned book enlightens the world
-        [subject] Every burned book
-        [verb] enlightens
-        [object] the world
+  [complement] a prime source of publicity, which helped the sale of the book and inspired Ralph Waldo Emerson to remark, "Every burned book enlightens the world."
+    [complement] a prime source of publicity,
+    [clause-relative] which helped the sale of the book and inspired Ralph Waldo Emerson to remark, "Every burned book enlightens the world
+      [relative] which
+      [verb] helped
+      [object] the sale of the book
+      [conjunction] and
+      [verb] inspired
+      [object] Ralph Waldo Emerson
+      [complement] to remark, "Every burned book enlightens the world
+        [verb] to remark, "
+        [clause-noun] Every burned book enlightens the world
+          [subject] Every burned book
+          [verb] enlightens
+          [object] the world
 
 == Business forecasts usually prove reasonably accurate when the assumption that the future will be much like the past is satisfied; in times of major shifts in the business environment, however, forecasts can be dangerously wrong.
   [clause] Business forecasts usually prove reasonably accurate when the assumption that the future will be much like the past is satisfied;
@@ -1980,17 +1984,18 @@
 == Both television commercials and programs present unrealistic view of the material world, one which promotes a standard of living that most of us can probably not attain.
   [subject] Both television commercials and programs
   [verb] present
-  [object] unrealistic view of the material world
-  [appositive] , one
-  [clause-relative] which promotes a standard of living that most of us can probably not attain.
-    [relative] which
-    [verb] promotes
-    [object] a standard of living that most of us can probably not attain
-      [object] a standard of living
-      [clause-relative] that most of us can probably not attain
-        [relative] that
-        [subject] most of us
-        [verb] can probably not attain
+  [object] unrealistic view of the material world, one which promotes a standard of living that most of us can probably not attain.
+    [object] unrealistic view of the material world
+    [appositive] , one
+    [clause-relative] which promotes a standard of living that most of us can probably not attain
+      [relative] which
+      [verb] promotes
+      [object] a standard of living that most of us can probably not attain
+        [object] a standard of living
+        [clause-relative] that most of us can probably not attain
+          [relative] that
+          [subject] most of us
+          [verb] can probably not attain
 
 == Although it is unusual to denounce museum-goers for not painting, it is quite common, even for those who are unenthusiastic about sports, to criticize spectators for athletic inactivity.
   [clause-adverbial] Although it is unusual to denounce museum-goers for not painting,
@@ -2279,12 +2284,13 @@
 == This project is the first step in a long-range plan of research whose ultimate goal, still many years off, is the creation of a new prototype.
   [subject] This project
   [verb] is
-  [complement] the first step in a long-range plan of research
-  [clause-relative] whose ultimate goal, still many years off, is the creation of a new prototype.
-    [subject] whose ultimate goal,
-    [adverbial] still many years off,
-    [verb] is
-    [complement] the creation of a new prototype
+  [complement] the first step in a long-range plan of research whose ultimate goal, still many years off, is the creation of a new prototype.
+    [complement] the first step in a long-range plan of research
+    [clause-relative] whose ultimate goal, still many years off, is the creation of a new prototype
+      [subject] whose ultimate goal,
+      [adverbial] still many years off,
+      [verb] is
+      [complement] the creation of a new prototype
 
 == Any population increase beyond a certain level necessitates greater recourse to vegetable foods; thus, the ability of a society to choose meat over cereals always arises, in part, from limiting the number of people.
   [clause] Any population increase beyond a certain level necessitates greater recourse to vegetable foods;
@@ -2743,11 +2749,12 @@
         [conjunction] that
         [subject] material sensations actually present
         [verb] may have
-        [object] a weaker influence on our action
-        [clause-adverbial] than do ideas of remote facts
-          [conjunction] than
-          [verb] do
-          [subject] ideas of remote facts
+        [object] a weaker influence on our action than do ideas of remote facts
+          [object] a weaker influence on our action
+          [clause-adverbial] than do ideas of remote facts
+            [conjunction] than
+            [verb] do
+            [subject] ideas of remote facts
 
 == There is some irony in the fact that the author of a book as sensitive and informed as Indian Artisans did not develop her interest in Native American art until adulthood, for she grew up in a region rich in American Indian culture.
   [subject] There
@@ -3118,14 +3125,15 @@
       [verb] to earn
       [object] money
       [conjunction] and
-      [object] theirs to spend it—
-      [clause-adverbial] if possible during their husband's life
-        [conjunction] if
-        [verb] possible
-        [prep-phrase] during their husband's life
-      [conjunction] , but
-      [prep-phrase] , at any rate
-      [prep-phrase] , after his death
+      [object] theirs to spend it—if possible during their husband's life, but, at any rate, after his death
+        [object] theirs to spend it—
+        [clause-adverbial] if possible during their husband's life
+          [conjunction] if
+          [verb] possible
+          [prep-phrase] during their husband's life
+        [conjunction] , but
+        [prep-phrase] , at any rate
+        [prep-phrase] , after his death
 
 == I can't accept this fact because I know that if I wasn't able to avoid a mistake, chances were that no other surgeon could have either.
   [subject] I
@@ -3200,13 +3208,14 @@
   [subject] Most experts
   [verb] see
   [prep-phrase] in this
-  [object] a paradox
-  [appositive] — an endless conflict between the desire
-  [adverbial] to conform
-  [object] and the desire
-  [adverbial] to remain apart.
-    [verb] to remain
-    [adverbial] apart
+  [object] a paradox — an endless conflict between the desire to conform and the desire to remain apart.
+    [object] a paradox
+    [appositive] — an endless conflict between the desire
+    [adverbial] to conform
+    [object] and the desire
+    [adverbial] to remain apart
+      [verb] to remain
+      [adverbial] apart
 
 == Even being good at getting other people to fight for you and telling them how to do it most efficiently — this, after all, is what conquerors and generals have done — is not being civilized.
   [insertion] Even being good at getting other people to fight for you and telling them how to do it most efficiently — this, after all, is what conquerors and generals have done —
@@ -3356,19 +3365,20 @@
   [subject] Such large, impersonal manipulation of capital and industry
   [adverbial] greatly
   [verb] increased
-  [object] the numbers and importance of shareholders as a class
-  [appositive] , an element in national life
-  [clause-relative] representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business.
-    [verb] representing
-    [object] irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached
-      [object] irresponsible wealth
-      [clause-relative] detached from the land and the duties of the landowners; and almost equally detached
-        [verb] detached
-        [prep-phrase] from the land and the duties of the landowners;
-        [conjunction] and
-        [adverbial] almost equally
-        [verb] detached
-    [prep-phrase] from the responsible management of business
+  [object] the numbers and importance of shareholders as a class, an element in national life representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business.
+    [object] the numbers and importance of shareholders as a class
+    [appositive] , an element in national life
+    [clause-relative] representing irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached from the responsible management of business
+      [verb] representing
+      [object] irresponsible wealth detached from the land and the duties of the landowners; and almost equally detached
+        [object] irresponsible wealth
+        [clause-relative] detached from the land and the duties of the landowners; and almost equally detached
+          [verb] detached
+          [prep-phrase] from the land and the duties of the landowners;
+          [conjunction] and
+          [adverbial] almost equally
+          [verb] detached
+      [prep-phrase] from the responsible management of business
 
 == Towns like Bournemouth and Eastbourne sprang up to house large, "comfortable" classes who had retired on their incomes, and who had no relation to the rest of the community except that of drawing dividends and occasionally attending a shareholders' meeting to dictate their orders to the management.
   [subject] Towns like Bournemouth and Eastbourne
@@ -3385,12 +3395,13 @@
       [clause-relative] who had no relation to the rest of the community except that of drawing dividends and occasionally attending a shareholders' meeting to dictate their orders to the management
         [relative] who
         [verb] had
-        [object] no relation to the rest of the community except that
-        [adverbial] of drawing dividends and occasionally attending a shareholders' meeting to dictate their orders to the management
-          [prep-phrase] of drawing dividends and occasionally attending a shareholders' meeting
-          [verb] to dictate
-          [object] their orders
-          [prep-phrase] to the management
+        [object] no relation to the rest of the community except that of drawing dividends and occasionally attending a shareholders' meeting to dictate their orders to the management
+          [object] no relation to the rest of the community except that
+          [adverbial] of drawing dividends and occasionally attending a shareholders' meeting to dictate their orders to the management
+            [prep-phrase] of drawing dividends and occasionally attending a shareholders' meeting
+            [verb] to dictate
+            [object] their orders
+            [prep-phrase] to the management
 
 == Robert Fulton once wrote, "The mechanic should sit down among levers, screws, wedges, wheels, etc., like a poet among the letters of the alphabet, considering them as an exhibition of his thoughts, in which a new arrangement transmits a new idea."
   [subject] Robert Fulton
@@ -3419,12 +3430,13 @@
   [complement] completely reasonable results of social needs.
   [subject] Others
   [verb] are
-  [complement] reasonable consequences of
-  [clause-noun] particular advances in science being to some extent self-accelerating.
-    [subject] particular advances in science
-    [verb] being
-    [prep-phrase] to some extent
-    [complement] self-accelerating
+  [complement] reasonable consequences of particular advances in science being to some extent self-accelerating.
+    [complement] reasonable consequences of
+    [clause-noun] particular advances in science being to some extent self-accelerating
+      [subject] particular advances in science
+      [verb] being
+      [prep-phrase] to some extent
+      [complement] self-accelerating
 
 == This trend began during the Second World War, when several governments came to the conclusion that the specific demands that a government wants to make of its scientific establishment cannot generally be foreseen in detail.
   [subject] This trend
@@ -3693,15 +3705,16 @@
   [clause] it is mankind's instinct for moral reasoning in action, an instinct that should be encouraged rather than laughed at.
     [subject] it
     [verb] is
-    [complement] mankind's instinct for moral reasoning in action
-    [appositive] , an instinct
-    [clause-relative] that should be encouraged rather than laughed at.
-      [relative] that
-      [verb] should be encouraged rather than laughed
-        [verb] should be encouraged
-        [conjunction] rather than
-        [verb] laughed
-      [prep-phrase] at
+    [complement] mankind's instinct for moral reasoning in action, an instinct that should be encouraged rather than laughed at.
+      [complement] mankind's instinct for moral reasoning in action
+      [appositive] , an instinct
+      [clause-relative] that should be encouraged rather than laughed at
+        [relative] that
+        [verb] should be encouraged rather than laughed
+          [verb] should be encouraged
+          [conjunction] rather than
+          [verb] laughed
+        [prep-phrase] at
 
 == The Aswan Dam, for example, stopped the Nile flooding but deprived Egypt of the fertile silt that floods left — all in return for a giant reservoir of disease which is now so full of silt that it barely generates electricity.
   [subject] The Aswan Dam,
@@ -3752,11 +3765,12 @@
   [subject] New ways of organizing the workplace — all that
   [insertion] reengineering and downsizing —
   [verb] are
-  [complement] only one contribution to the overall productivity of an economy,
-  [clause-relative] which is driven by many other factors such as joint investment in equipment and machinery, new technology, and investment in education and training.
-    [relative] which
-    [verb] is driven
-    [prep-phrase] by many other factors such as joint investment in equipment and machinery, new technology, and investment in education and training
+  [complement] only one contribution to the overall productivity of an economy, which is driven by many other factors such as joint investment in equipment and machinery, new technology, and investment in education and training.
+    [complement] only one contribution to the overall productivity of an economy,
+    [clause-relative] which is driven by many other factors such as joint investment in equipment and machinery, new technology, and investment in education and training
+      [relative] which
+      [verb] is driven
+      [prep-phrase] by many other factors such as joint investment in equipment and machinery, new technology, and investment in education and training
 
 == His colleague, Michael Beer, says that far too many companies have applied re-engineering in a mechanistic fashion, chopping out costs without giving sufficient thought to long-term profitability.
   [subject] His colleague,
@@ -3895,11 +3909,12 @@
       [verb] expected
   [subject] that
   [verb] will be
-  [complement] a triumph for yet another scientific idea
-  [appositive] , a refinement of the Big Bang
-  [clause-relative] called the inflationary universe theory.
-    [verb] called
-    [object] the inflationary universe theory
+  [complement] a triumph for yet another scientific idea, a refinement of the Big Bang called the inflationary universe theory.
+    [complement] a triumph for yet another scientific idea
+    [appositive] , a refinement of the Big Bang
+    [clause-relative] called the inflationary universe theory
+      [verb] called
+      [object] the inflationary universe theory
 
 == Odd though it sounds, cosmic inflation is a scientifically plausible consequence of some respected ideas in elementary-particle physics, and many astrophysicists have been convinced for the better part of a decade that it is true.
   [clause-adverbial] Odd though it sounds,
@@ -4092,12 +4107,13 @@
     [conjunction] While
     [subject] there
     [verb] are
-    [complement] almost as many definitions of history
-    [clause-adverbial] as there are historians
-      [conjunction] as
-      [subject] there
-      [verb] are
-      [complement] historians
+    [complement] almost as many definitions of history as there are historians
+      [complement] almost as many definitions of history
+      [clause-adverbial] as there are historians
+        [conjunction] as
+        [subject] there
+        [verb] are
+        [complement] historians
   [subject] modern practice
   [adverbial] most closely
   [verb] conforms

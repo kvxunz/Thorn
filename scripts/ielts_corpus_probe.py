@@ -109,6 +109,8 @@ def check_expectations(chunks, expectations):
                    and node["role"] == expectation["role"]]
         if "start" in expectation:
             matches = [node for node in matches if node["s"] == expectation["start"]]
+        if "end" in expectation:
+            matches = [node for node in matches if node["e"] == expectation["end"]]
         if "parent_anchor" in expectation:
             matches = [node for node in matches if any(
                 parent["s"] <= expectation["parent_anchor"] < parent["e"]
@@ -153,6 +155,7 @@ def main():
         expectations = gold.get(digest, {}).get("expectations", [])
         result = {key: value for key, value in case.items() if key != "text"}
         result.update(words=len(case["text"].split()),
+                      review_status=gold.get(digest, {}).get("review", "not-reviewed"),
                       structural_errors=structural_errors(analysis),
                       semantic_checks=len(expectations),
                       semantic_errors=check_expectations(analysis.chunks, expectations))
@@ -164,7 +167,7 @@ def main():
     print(json.dumps({"source": args.source, "html_sha256": hashlib.sha256(raw).hexdigest(),
                       "provenance": "Third-party transcription; not publisher-verified; annotations are assistant-reviewed, not independent gold",
                       "selection": "Deduplicated prose sentences, >=5 words, terminal punctuation; headings, instructions, opening hours and advertisement block excluded",
-                      "split_policy": "SHA256 first 8 hex digits modulo 5; heldout is 0 except 5 previously used sentences; only development text exported; no independent blind gold",
+                      "split_policy": "Historical SHA256 partition retained for reproducibility; all 100 sentences now exposed to assistant review, not heldout or independent blind gold",
                       "cases": results}, indent=2))
     raise SystemExit(1 if any(case["structural_errors"] or case["semantic_errors"] for case in results) else 0)
 

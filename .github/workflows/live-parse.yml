@@ -2,8 +2,11 @@ name: Live parse regression
 
 on:
   workflow_dispatch:
+  # The default branch, not a feature branch. A merged-and-deleted branch name
+  # here leaves the only automated gate on parser quality unreachable: the
+  # ordinary CI job loads no model and therefore cannot see a wrong tree.
   push:
-    branches: [simplify-and-drag-fix]
+    branches: [main]
 
 permissions:
   contents: read
@@ -32,7 +35,7 @@ jobs:
       - name: Evaluate external targets without hiding existing errors
         run: |
           uv run --locked --script sidecar/server.py --evaluate-external "$RUNNER_TEMP/ewt.conllu" > "$RUNNER_TEMP/external-ewt.json"
-          python scripts/check_external_report.py docs/reports/external-ewt-normalized.json "$RUNNER_TEMP/external-ewt.json"
+          python scripts/check_external_report.py docs/reports/external-ewt-aligned.json "$RUNNER_TEMP/external-ewt.json"
       - name: Upload external evaluation evidence
         if: always()
         uses: actions/upload-artifact@v4

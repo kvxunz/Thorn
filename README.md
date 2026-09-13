@@ -17,6 +17,12 @@
 ---
 
 ## 它给你什么
+ 
+首次使用请先阅读 **[安装、配置与使用指南](docs/getting-started.md)**：包含下载安装、源码构建、首次配置、权限、升级、卸载和故障排查。
+
+预构建包如有发布，可在 [Releases](https://github.com/kvxunz/Thorn/releases) 下载；没有适用包时按指南从源码安装。安装现成 App 不需要完整 Xcode，从源码构建才需要。
+
+准确性边界见 [外部差异审阅](docs/external-review.md) 和 [雅思语料评测](docs/ielts-corpus-evaluation.md)。本地统计解析模型加规则不等于永远正确的语法答案。
 
 选中一句真正难读的话，按 `⌥A`：
 
@@ -125,14 +131,13 @@ uv run --locked --script sidecar/server.py --install-models
 # 2. 翻译模型
 ollama pull hf.co/tencent/Hy-MT2-7B-GGUF:Q6_K
 
-# 3. 构建并安装（先退出正在运行的 Thorn）
+# 3. 构建；安装/升级时先按详细指南备份并移除旧 App
 ./scripts/bundle.sh
-rm -rf /Applications/Thorn.app
 ditto --rsrc --extattr --acl build/Thorn.app /Applications/Thorn.app
 open /Applications/Thorn.app
 ```
 
-`ditto` 的目标固定为 `/Applications/Thorn.app`，重复执行得到同一个干净 bundle。`bundle.sh` 默认使用仓库开发证书哈希；要保留自己的 TCC 授权，用 `THORN_CODESIGN_IDENTITY` 传入钥匙串里的签名身份。
+`ditto` 的目标固定为 `/Applications/Thorn.app`，但不会自动清除旧包的遗留文件。已有安装请先遵循[升级与回滚](docs/getting-started.md#升级与回滚)。`bundle.sh` 默认使用仓库开发证书哈希；要保留自己的 TCC 授权，用 `THORN_CODESIGN_IDENTITY` 传入钥匙串里的签名身份。
 
 **授权**：`⌥A` 需要「辅助功能」，`⌥S` 需要「屏幕录制」（首次弹窗）。`⌥X` 不需要任何权限——它不读取任何东西，只接受你在自己输入框里打的字。
 

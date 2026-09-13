@@ -164,8 +164,13 @@ def group_colon_enumerations(chunks, doc, parent_span):
         return chunks
     lo = items[0].get("_lo")
     hi = items[-1].get("_hi")
-    if lo is not None and hi is not None and lo < hi <= len(doc):
-        text = doc[lo:hi].text
+    # `_hi` is inclusive everywhere in the builder layer (teaching_tree's
+    # _node_from_builder converts it with `end = hi + 1`), so the slice needs
+    # `hi + 1`. Slicing `doc[lo:hi]` dropped the last item of every enumeration.
+    # Nothing downstream noticed because _alignment_payload recomputes the text
+    # from `_lo`/`_hi`; the card was wrong only for whoever read it next.
+    if lo is not None and hi is not None and lo <= hi < len(doc):
+        text = doc[lo:hi + 1].text
     else:
         text = " ".join(c.get("text", "") for c in items)
     group = {

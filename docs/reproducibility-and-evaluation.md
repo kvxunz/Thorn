@@ -78,16 +78,20 @@ dependencies。标注和数据库权利采用 CC BY-SA 4.0，底层文本保留�
 状语从句、形容词修饰、并列边。UD 介词挂载与 spaCy 的中心词体系不同，本轮不强行
 映射；copula 构式也预先排除。不是全量 LAS/UAS，也不是均匀随机的实际用户句子分布。
 
-| 目标 | 命中 / 总数 |
-| --- | ---: |
-| 有效解析 | 100 / 100 |
-| 主句中心 | 96 / 100 |
-| 主干关系 | 207 / 234 |
-| 修饰/补足挂载 | 158 / 198 |
-| 并列边 | 40 / 62 |
+| 目标 | 首次评测 | 并列归一化后 | 对齐修复后（当前） |
+| --- | ---: | ---: | ---: |
+| 有效解析 | 100 / 100 | 100 / 100 | 100 / 100 |
+| 主句中心 | 96 / 100 | 96 / 100 | 96 / 100 |
+| 主干关系 | 207 / 234 | 207 / 234 | 207 / 234 |
+| 修饰/补足挂载 | 158 / 198 | 158 / 198 | 159 / 198 |
+| 并列边 | 40 / 62 | 52 / 62 | 52 / 62 |
+| 失败记录数 | 94 | 82 | 80 |
 
-另有 1 个无法唯一对齐的金标准锚词（`80's`），保留为失败，并且相关关系仍计入分母。
-报告保留全部 94 条失败记录，包含该对齐问题，不把解析成功率当作关系正确率。
+三列分别对应 `external-ewt.json`、`external-ewt-normalized.json`、
+`external-ewt-aligned.json`。后两列的改善来自**评测侧**的两处修复——并列链归一化到
+UD 首项边、`80's` 数字后缀的确定性对齐——不是引擎语法准确率提升。生产结构树未改。
+首次评测里那个无法唯一对齐的金标准锚词（`80's`）现已解决；其余 80 条失败保留在
+基线报告中，不把解析成功率当作关系正确率。
 这些差异可能来自模型错误、标注体系差别或歧义，未经逐项人工审阅不能全归为引擎缺陷。
 
 它是外部人工校正的公开评测，不是本项目新组织的双人盲标，也不能排除模型训练数据
@@ -96,8 +100,13 @@ dependencies。标注和数据库权利采用 CC BY-SA 4.0，底层文本保留�
 ```bash
 curl --fail --location https://raw.githubusercontent.com/UniversalDependencies/UD_English-EWT/b7711cce01cdd4f5fcc0a8199b8a50d951b16c0c/en_ewt-ud-test.conllu -o /tmp/ewt.conllu
 uv run --locked --script sidecar/server.py --evaluate-external /tmp/ewt.conllu > /tmp/external-ewt.json
-python3 scripts/check_external_report.py docs/reports/external-ewt.json /tmp/external-ewt.json
+python3 scripts/check_external_report.py docs/reports/external-ewt-aligned.json /tmp/external-ewt.json
 ```
+
+门禁基线是 `external-ewt-aligned.json`，即当前代码的实测结果，CI 用同一份。
+`external-ewt.json` 和 `external-ewt-normalized.json` 是它之前的两次记录，保留作为
+归一化与对齐修复的证据，不再作为门禁：拿旧报告当基线会让门槛低于现状，
+使已修复的失败重新出现时不报警。
 
 评测命令是诊断报告模式：语料/执行错误返回非零，关系不匹配会完整写入报告。
 回归门禁另行比较目标数量、语料身份及每条失败，禁止新增失败；不是要求已有错误
@@ -133,4 +142,6 @@ before 不带锁文件，因此其报告的 `lock_sha256` 为空，而包版本�
 长句约 50 ms 花在模型推理，结构组装约 2 ms，展示投影约 0.25 ms。
 后续性能优化应先关注模型加载/推理及内存，不继续为微小收益拆规则或增加翻译缓存。
 
-原始报告：`reports/parser-before.json`、`reports/parser-after.json`、`reports/external-ewt.json`。
+原始报告：`reports/parser-before.json`、`reports/parser-after.json`，以及三次外部评测
+`reports/external-ewt.json`、`reports/external-ewt-normalized.json`、
+`reports/external-ewt-aligned.json`（最后一份是门禁基线）。

@@ -4,7 +4,7 @@
 #     "spacy==3.7.5",
 #     "benepar==0.2.0",
 #     "torch==2.13.0",
-#     "transformers==4.30.2",
+#     "transformers==4.49.0",  # direct pin; see the note under this block
 #     "protobuf==3.20.3",
 #     "sentencepiece==0.2.2",
 #     "fastapi==0.140.13",
@@ -14,6 +14,11 @@
 #     "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.7.3/en_core_web_trf-3.7.3-py3-none-any.whl",
 # ]
 # ///
+# `transformers` is pinned although nothing here imports it: the
+# en_core_web_trf weights are read through it, and the window its consumers
+# allow is wide (benepar 0.2.0 `>=4.2.2`, spacy-transformers 1.3.9 `<4.50.0`),
+# so an unpinned resolve would silently change the parse. Move it only with
+# the snapshot in hand: `uv run --script server.py --tool tree_snapshot.py`.
 """Thorn local language sidecar: deterministic spaCy + Benepar chunks.
 
 Run: uv run --script server.py [--port 48620] [--idle-exit 120]

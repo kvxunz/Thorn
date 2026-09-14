@@ -103,20 +103,24 @@ class ParserArchitectureTests(unittest.TestCase):
                 self.assertEqual(plan_roots((spec,), token.doc), [(token, "subject", result)])
 
     def test_structure_roots_never_depend_on_display_depth(self):
-        tree = ast.parse(Path(__file__).with_name("syntax_clause.py").read_text())
+        # Every structure module, not one named file: the call moved once
+        # already (syntax_clause -> syntax_assignment) and a check that names
+        # its file passes by finding nothing.
         calls = 0
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "roots":
-                calls += 1
-                self.assertEqual(len(node.args), 1)
-                self.assertFalse(node.keywords)
+        for path in Path(__file__).parent.glob("syntax_*.py"):
+            tree = ast.parse(path.read_text())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "roots":
+                    calls += 1
+                    self.assertEqual(len(node.args), 1)
+                    self.assertFalse(node.keywords)
         self.assertGreater(calls, 0)
 
     def test_snapshot_gate_includes_all_structure_and_projection_modules(self):
         root = Path(__file__).resolve().parent.parent
         gate = (root / "scripts/githooks/pre-commit").read_text()
         for module in ("syntax_features", "syntax_structure", "syntax_assembly", "syntax_decomposition",
-                       "syntax_boundaries", "syntax_clause", "syntax_nominal", "syntax_grouping",
+                       "syntax_boundaries", "syntax_assignment", "syntax_clause", "syntax_nominal", "syntax_grouping",
                        "syntax_policy", "syntax_relations", "syntax_reconciliation", "syntax_ellipsis",
                        "teaching_projection", "teaching_policy"):
             with self.subTest(module=module):
@@ -129,7 +133,8 @@ class ParserArchitectureTests(unittest.TestCase):
         self.assertFalse(imports & {"syntax_clause", "syntax_assembly"})
         entry = next(node for node in nominal.body if isinstance(node, ast.FunctionDef) and node.name == "analyze_nominal")
         self.assertIn("analyze_clause", [arg.arg for arg in entry.args.kwonlyargs])
-        for name in ("syntax_assembly", "syntax_boundaries", "syntax_nominal", "syntax_grouping", "syntax_clause"):
+        for name in ("syntax_assembly", "syntax_boundaries", "syntax_assignment", "syntax_nominal",
+                     "syntax_grouping", "syntax_clause"):
             self.assertLess(len((root / f"{name}.py").read_text().splitlines()), 750)
 
 

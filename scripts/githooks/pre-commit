@@ -28,6 +28,7 @@ SPLITTER_SOURCES=(
   sidecar/syntax_features.py
   sidecar/syntax_assembly.py
   sidecar/syntax_boundaries.py
+  sidecar/syntax_assignment.py
   sidecar/syntax_clause.py
   sidecar/syntax_nominal.py
   sidecar/syntax_grouping.py
